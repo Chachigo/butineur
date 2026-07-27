@@ -59,6 +59,24 @@ export default function Settings({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="row">
+            <span className="row__label">Début de journée</span>
+            <input
+              className="input input--time"
+              type="time"
+              step={3600}
+              value={`${String(db.settings.dayStart).padStart(2, '0')}:00`}
+              onChange={(e) =>
+                e.target.value && setSettings({ dayStart: Number(e.target.value.slice(0, 2)) })
+              }
+              aria-label="Heure de début de journée"
+            />
+          </div>
+          <p className="hint">
+            À 4 h, ce que tu fais entre minuit et 4 h compte encore pour la veille — les
+            compteurs et les séries ne cassent plus quand tu te couches tard.
+          </p>
+
+          <div className="row">
             <span className="row__label">Récompense par défaut</span>
             <NumberInput
               className="input input--xs"

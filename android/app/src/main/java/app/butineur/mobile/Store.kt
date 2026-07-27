@@ -55,6 +55,7 @@ object Store {
     private const val KEY_CURRENCY = "currency"
     private const val KEY_LABEL = "budgetLabel"
     private const val KEY_ACCENT = "accent"
+    private const val KEY_DAY_START = "dayStart"
     private const val KEY_TASKS = "widgetTasks"
     private const val KEY_TODO = "widgetTodo"
     private const val KEY_PENDING = "pendingCounts"
@@ -221,13 +222,13 @@ object Store {
 
     private fun pendingToday(ctx: Context, taskId: String): Int {
         val arr = readPending(prefs(ctx).getString(KEY_PENDING, null))
-        val today = dayNum(System.currentTimeMillis())
+        val today = dayNum(ctx, System.currentTimeMillis())
         var sum = 0
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
             if (o.optString("taskId") == taskId &&
                 o.optString("kind") == "count" &&
-                dayNum(o.optLong("ts")) == today
+                dayNum(ctx, o.optLong("ts")) == today
             ) {
                 sum += o.optInt("delta")
             }
@@ -248,14 +249,15 @@ object Store {
      * tout au rejeu, donc le solde reste juste.
      */
     fun displayedCount(ctx: Context, t: CounterTask): Int {
-        val base = if (t.day == dayNum(System.currentTimeMillis())) t.count else 0
+        val base = if (t.day == dayNum(ctx, System.currentTimeMillis())) t.count else 0
         return (base + pendingToday(ctx, t.id)).coerceIn(0, t.target)
     }
 
-    /** Même définition que `dayNum` côté web : jour local, insensible à l'heure d'été. */
-    private fun dayNum(ts: Long): Long {
+    /** Même définition que `dayNum` côté web, réglage de bascule compris. */
+    private fun dayNum(ctx: Context, ts: Long): Long {
+        val shift = (prefs(ctx).getString(KEY_DAY_START, null)?.toIntOrNull() ?: 0) * 3_600_000L
         val local = Calendar.getInstance()
-        local.timeInMillis = ts
+        local.timeInMillis = ts - shift
         val utc = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
         utc.clear()
         utc.set(

@@ -11,14 +11,24 @@ type Props = {
   rep: Replay
   now: number
   currency: string
+  dayStart: number
   balanceRef: RefObject<HTMLElement | null>
   onEdit: (t: Task) => void
   onNew: () => void
 }
 
-export default function TaskList({ tasks, rep, now, currency, balanceRef, onEdit, onNew }: Props) {
+export default function TaskList({
+  tasks,
+  rep,
+  now,
+  currency,
+  dayStart,
+  balanceRef,
+  onEdit,
+  onNew,
+}: Props) {
   // Le plus urgent en haut : en retard, puis échéance proche, puis disponible.
-  const sorted = [...tasks].sort((a, b) => rank(a, rep, now) - rank(b, rep, now))
+  const sorted = [...tasks].sort((a, b) => rank(a, rep, now, dayStart) - rank(b, rep, now, dayStart))
 
   // `null` = pas en sélection. Un Set vide reste un mode actif : on peut tout décocher.
   const [selection, setSelection] = useState<Set<string> | null>(null)
@@ -73,6 +83,7 @@ export default function TaskList({ tasks, rep, now, currency, balanceRef, onEdit
             rep={rep}
             now={now}
             currency={currency}
+            dayStart={dayStart}
             balanceRef={balanceRef}
             onEdit={onEdit}
             selection={selection}
@@ -91,9 +102,9 @@ export default function TaskList({ tasks, rep, now, currency, balanceRef, onEdit
   )
 }
 
-function rank(t: Task, rep: Replay, now: number): number {
+function rank(t: Task, rep: Replay, now: number, dayStart: number): number {
   const s = rep.perTask.get(t.id)
-  if (!isAvailable(t, s, now)) return 3
+  if (!isAvailable(t, s, now, dayStart)) return 3
   // Compteur à son objectif : plus rien à y faire aujourd'hui, il descend.
   if (t.counter && (s?.count ?? 0) >= t.counter.target) return 3
   const due = dueTsFor(t, s?.lastDoneTs ?? null)
@@ -114,6 +125,7 @@ function TaskRow({
   rep,
   now,
   currency,
+  dayStart,
   balanceRef,
   onEdit,
   selection,
@@ -122,7 +134,7 @@ function TaskRow({
 }: RowProps) {
   const s = rep.perTask.get(task.id)
   const streak = s?.streak ?? 0
-  const available = isAvailable(task, s, now)
+  const available = isAvailable(task, s, now, dayStart)
   const due = dueTsFor(task, s?.lastDoneTs ?? null)
   const late = due !== null && now > due
 

@@ -37,7 +37,8 @@ class CounterWidget : AppWidgetProvider() {
         val gain = task?.gainAt(Store.displayedCount(context, task)) ?: 0.0
         Store.pushPending(context, taskId, intent.getIntExtra(EXTRA_DELTA, 1), "count", gain)
         // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
-        Widgets.refreshAll(context)
+        // Sans rebuild : la liste doit juste relire ses données.
+        Widgets.refreshAll(context, rebuild = false)
     }
 
     override fun onDeleted(context: Context, ids: IntArray) {

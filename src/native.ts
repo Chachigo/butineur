@@ -24,6 +24,8 @@ export type WidgetPayload = {
   currency: string
   budgetLabel: string
   accent: string
+  /** Heure de bascule du jour, pour que le natif compte comme le moteur. */
+  dayStart: number
   tasks: {
     id: string
     name: string
@@ -94,7 +96,7 @@ export function widgetPayload(
   settings: Settings,
   now: number,
 ): WidgetPayload {
-  const day = dayNum(now)
+  const day = dayNum(now, settings.dayStart)
   const live = tasks.filter((t) => !t.deletedAt && !t.archived)
   const { currency } = settings
 
@@ -104,6 +106,7 @@ export function widgetPayload(
     currency,
     budgetLabel: settings.budgetLabel,
     accent: settings.accent,
+    dayStart: settings.dayStart,
     tasks: live
       .filter((t) => t.counter)
       .map((t) => ({
@@ -164,6 +167,7 @@ export async function pushWidgetState(p: WidgetPayload): Promise<void> {
   await Preferences.set({ key: 'currency', value: p.currency })
   await Preferences.set({ key: 'budgetLabel', value: p.budgetLabel })
   await Preferences.set({ key: 'accent', value: p.accent })
+  await Preferences.set({ key: 'dayStart', value: String(p.dayStart) })
   await Preferences.set({ key: 'widgetTasks', value: JSON.stringify(p.tasks) })
   await Preferences.set({ key: 'widgetTodo', value: JSON.stringify(p.todo) })
   await WidgetBridge.refresh()

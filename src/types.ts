@@ -72,6 +72,8 @@ export type Settings = {
   budgetLabel: string
   /** Couleur d'accentuation, en hexa. Partagée avec les widgets. */
   accent: string
+  /** Heure à laquelle une nouvelle journée commence (0-23). */
+  dayStart: number
   /** Récompense pré-remplie à la création d'une tâche. */
   defaultReward: number
   /** Le journal sait tenir un solde négatif ; l'interface le refuse par défaut. */

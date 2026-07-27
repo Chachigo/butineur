@@ -36,6 +36,17 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
     override fun getViewAt(position: Int): RemoteViews {
         val t = items[position]
         val v = RemoteViews(ctx.packageName, R.layout.item_todo_row)
+
+        // Un compteur doit refléter les taps pas encore versés au journal :
+        // sinon la ligne restait figée sur le compte qu'avait l'appli.
+        val counter = if (t.kind == "count") Store.task(ctx, t.id) else null
+        val count = counter?.let { Store.displayedCount(ctx, it) }
+        val done = if (counter != null) count!! >= counter.target else t.done
+        val label = when {
+            counter == null -> t.label
+            done -> "✓"
+            else -> "$count/${counter.target}"
+        }
         v.setIcon(
             ctx,
             R.id.row_icon,
@@ -46,10 +57,10 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
             18,
         )
         v.setTextViewText(R.id.row_name, t.name)
-        v.setTextViewText(R.id.row_go, t.label)
+        v.setTextViewText(R.id.row_go, label)
 
         val accent = Store.accent(ctx)
-        if (t.done) {
+        if (done) {
             v.setInt(R.id.row_go, "setBackgroundResource", R.drawable.widget_chip)
             v.tint(R.id.row_go, ctx.getColor(R.color.widget_panel))
             v.setTextColor(R.id.row_go, accent)
@@ -66,7 +77,7 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
             Intent()
                 .putExtra(TodoWidget.EXTRA_TASK, t.id)
                 .putExtra(TodoWidget.EXTRA_KIND, t.kind)
-                .putExtra(TodoWidget.EXTRA_DONE, t.done),
+                .putExtra(TodoWidget.EXTRA_DONE, done),
         )
         return v
     }

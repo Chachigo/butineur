@@ -77,7 +77,6 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
               onChange={(e) => patch({ name: e.target.value })}
               placeholder="Nom de la tâche"
               aria-label="Nom"
-              autoFocus
             />
           </div>
 

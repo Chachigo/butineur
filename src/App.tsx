@@ -45,7 +45,10 @@ export default function App() {
   }, [])
 
   // Le journal complet est rejoué : le solde n'est jamais stocké.
-  const rep = useMemo(() => replay(db.events, db.tasks, now), [db.events, db.tasks, now])
+  const rep = useMemo(
+    () => replay(db.events, db.tasks, now, db.settings.dayStart),
+    [db.events, db.tasks, now, db.settings.dayStart],
+  )
   const visibleTasks = useMemo(
     () => db.tasks.filter((t) => !t.deletedAt && !t.archived),
     [db.tasks],
@@ -74,9 +77,9 @@ export default function App() {
 
   // Les tâches à usage unique disparaissent le lendemain de leur validation.
   useEffect(() => {
-    const stale = staleOneShots(db.tasks, rep, now)
+    const stale = staleOneShots(db.tasks, rep, now, db.settings.dayStart)
     if (stale.length) stale.forEach(deleteTask)
-  }, [db.tasks, rep, now])
+  }, [db.tasks, rep, now, db.settings.dayStart])
 
   // On ne réécrit les widgets et les rappels que si leur contenu a bougé —
   // sinon le tick d'une minute les redessinerait en boucle.
@@ -127,6 +130,7 @@ export default function App() {
             rep={rep}
             now={now}
             currency={db.settings.currency}
+            dayStart={db.settings.dayStart}
             balanceRef={balanceRef}
             onEdit={setEditing}
             onNew={() => setEditing(blankTask(db.settings.defaultReward))}

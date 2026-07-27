@@ -12,6 +12,7 @@ const EMPTY: DB = {
     currency: '€',
     budgetLabel: 'budget loisirs',
     accent: '#4ade80',
+    dayStart: 0,
     defaultReward: 10,
     allowNegative: false,
     serverUrl: '',

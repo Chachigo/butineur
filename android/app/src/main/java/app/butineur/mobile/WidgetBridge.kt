@@ -77,12 +77,16 @@ fun RemoteViews.tint(viewId: Int, color: Int) {
 }
 
 object Widgets {
-    fun refreshAll(ctx: Context) {
+    /**
+     * @param rebuild refaire la disposition du widget liste. Inutile après un
+     * simple tap — et contre-productif, cf. [TodoWidget.refresh].
+     */
+    fun refreshAll(ctx: Context, rebuild: Boolean = true) {
         val mgr = AppWidgetManager.getInstance(ctx)
         mgr.getAppWidgetIds(ComponentName(ctx, BalanceWidget::class.java))
             .forEach { mgr.updateAppWidget(it, BalanceWidget.render(ctx)) }
         mgr.getAppWidgetIds(ComponentName(ctx, CounterWidget::class.java))
             .forEach { mgr.updateAppWidget(it, CounterWidget.render(ctx, it)) }
-        TodoWidget.refresh(ctx)
+        TodoWidget.refresh(ctx, rebuild)
     }
 }

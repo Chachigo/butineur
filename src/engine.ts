@@ -2,15 +2,21 @@ import type { Event, LedgerEntry, Pending, Task, TaskState } from './types'
 
 export const DAY = 86_400_000
 
-/** Numéro de jour local, insensible aux changements d'heure d'été. */
-export function dayNum(ts: number): number {
-  const d = new Date(ts)
+/**
+ * Numéro de jour local, insensible aux changements d'heure d'été.
+ *
+ * `dayStart` décale la bascule : à 4, tout ce qui arrive avant 4 h du matin
+ * compte encore pour la veille. Une tâche validée à 2 h ne casse donc pas la
+ * série de quelqu'un qui se couche tard.
+ */
+export function dayNum(ts: number, dayStart = 0): number {
+  const d = new Date(ts - dayStart * 3_600_000)
   return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY)
 }
 
 /** Période d'un compteur : tranche de `everyDays` jours alignée sur le calendrier. */
-export function periodKey(ts: number, everyDays: number): number {
-  return Math.floor(dayNum(ts) / Math.max(1, everyDays))
+export function periodKey(ts: number, everyDays: number, dayStart = 0): number {
+  return Math.floor(dayNum(ts, dayStart) / Math.max(1, everyDays))
 }
 
 const everyDaysOf = (task: Task | undefined) => Math.max(1, task?.repeat?.everyDays ?? 1)
@@ -84,7 +90,8 @@ const freshState = (): TaskState => ({
  * ponytail: rejeu intégral à chaque chargement, O(n) sur le journal. Ajouter un
  * checkpoint (solde figé + curseur) si ça dépasse ~50k événements.
  */
-export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay {
+export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStart = 0): Replay {
+  const day = (ts: number) => dayNum(ts, dayStart)
   const byId = new Map(tasks.map((t) => [t.id, t]))
   const perTask = new Map<string, TaskState>()
   const entries: LedgerEntry[] = []
@@ -123,7 +130,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay
 
     if (e.kind === 'count') {
       const target = task?.counter?.target ?? Infinity
-      const k = periodKey(e.ts, everyDaysOf(task))
+      const k = periodKey(e.ts, everyDaysOf(task), dayStart)
       if (s.periodKey !== k) {
         s.periodKey = k
         s.count = 0
@@ -178,7 +185,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay
     if (s.lastDoneTs === null) {
       s.streak = 1
     } else {
-      const gap = dayNum(e.ts) - dayNum(s.lastDoneTs)
+      const gap = day(e.ts) - day(s.lastDoneTs)
       if (gap > 0) {
         // Un jour de tolérance sur la fenêtre attendue.
         if (gap <= every + 1) s.streak += 1
@@ -222,12 +229,12 @@ export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay
 
   // Recadrage sur l'instant présent : un compteur d'hier repart à zéro, une
   // série dont la fenêtre est passée est rompue.
-  const today = dayNum(now)
+  const today = day(now)
   for (const t of tasks) {
     const s = stateOf(t.id)
     const every = everyDaysOf(t)
     if (t.counter) {
-      const k = periodKey(now, every)
+      const k = periodKey(now, every, dayStart)
       if (s.periodKey !== k) {
         s.periodKey = k
         s.count = 0
@@ -235,7 +242,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay
         s.countTiersPaid = new Set()
       }
     }
-    if (s.lastDoneTs !== null && today - dayNum(s.lastDoneTs) > every + 1) {
+    if (s.lastDoneTs !== null && today - day(s.lastDoneTs) > every + 1) {
       s.streak = 0
       s.streakTiersPaid.clear()
     }
@@ -286,11 +293,16 @@ export function streakAtCap(task: Task): number | null {
 }
 
 /** Une tâche répétitive n'est re-validable qu'une fois son cycle écoulé. */
-export function isAvailable(task: Task, s: TaskState | undefined, now = Date.now()): boolean {
+export function isAvailable(
+  task: Task,
+  s: TaskState | undefined,
+  now = Date.now(),
+  dayStart = 0,
+): boolean {
   if (task.counter) return true
   if (!s || s.lastDoneTs === null) return true
   if (!task.repeat) return false
-  return dayNum(now) - dayNum(s.lastDoneTs) >= task.repeat.everyDays
+  return dayNum(now, dayStart) - dayNum(s.lastDoneTs, dayStart) >= task.repeat.everyDays
 }
 
 /**
@@ -340,13 +352,18 @@ export function pendingToEvents(
  * visibles et annulables le jour même. Leurs événements — donc leurs gains —
  * survivent à la suppression.
  */
-export function staleOneShots(tasks: Task[], rep: Replay, now = Date.now()): string[] {
-  const today = dayNum(now)
+export function staleOneShots(
+  tasks: Task[],
+  rep: Replay,
+  now = Date.now(),
+  dayStart = 0,
+): string[] {
+  const today = dayNum(now, dayStart)
   return tasks
     .filter((t) => {
       if (t.repeat || t.counter || t.deletedAt) return false
       const last = rep.perTask.get(t.id)?.lastDoneTs
-      return last != null && dayNum(last) < today
+      return last != null && dayNum(last, dayStart) < today
     })
     .map((t) => t.id)
 }

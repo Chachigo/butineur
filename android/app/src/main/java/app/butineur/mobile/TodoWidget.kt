@@ -49,7 +49,8 @@ class TodoWidget : AppWidgetProvider() {
         }
         Store.pushPending(context, taskId, 1, kind, gain)
         // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
-        Widgets.refreshAll(context)
+        // Sans rebuild : la liste doit juste relire ses données.
+        Widgets.refreshAll(context, rebuild = false)
     }
 
     companion object {
@@ -59,11 +60,17 @@ class TodoWidget : AppWidgetProvider() {
         const val EXTRA_DONE = "done"
         const val EXTRA_NEW = "newTask"
 
-        fun refresh(ctx: Context) {
+        /**
+         * `rebuild` refait la disposition — nécessaire quand l'accent change,
+         * mais il réinstalle l'adaptateur et peut annuler le rafraîchissement
+         * de la liste. Après un simple tap, on se contente de signaler que les
+         * données ont bougé.
+         */
+        fun refresh(ctx: Context, rebuild: Boolean = true) {
             val mgr = AppWidgetManager.getInstance(ctx)
             val ids = mgr.getAppWidgetIds(ComponentName(ctx, TodoWidget::class.java))
             if (ids.isEmpty()) return
-            ids.forEach { mgr.updateAppWidget(it, render(ctx, it)) }
+            if (rebuild) ids.forEach { mgr.updateAppWidget(it, render(ctx, it)) }
             mgr.notifyAppWidgetViewDataChanged(ids, R.id.todo_list)
         }
 
