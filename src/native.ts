@@ -3,7 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import { Preferences } from '@capacitor/preferences'
 import { dayNum, dueTsFor, isAvailable, previewReward, type Replay } from './engine'
 import { fmt } from './format'
-import type { Pending, Task } from './types'
+import type { Pending, Settings, Task } from './types'
 import { iconChar, isPhosphor } from './ui/Icon'
 
 export const isNative = Capacitor.isNativePlatform()
@@ -19,7 +19,11 @@ const WidgetBridge = registerPlugin<WidgetBridgePlugin>('WidgetBridge')
 
 export type WidgetPayload = {
   balance: string
+  /** Valeur brute : le natif y ajoute les taps en attente pour un affichage immédiat. */
+  balanceRaw: number
   currency: string
+  budgetLabel: string
+  accent: string
   tasks: {
     id: string
     name: string
@@ -30,6 +34,8 @@ export type WidgetPayload = {
     target: number
     unit: string
     day: number
+    /** Ce que le prochain +1 rapporterait, pour l'affichage immédiat du solde. */
+    gain: number
   }[]
   /** Toutes les tâches en cours, compteurs compris — la liste du widget défile. */
   todo: {
@@ -41,8 +47,30 @@ export type WidgetPayload = {
     kind: 'count' | 'complete'
     /** Libellé du bouton, déjà formaté : « +10 », « 3/8 », « ✓ ». */
     label: string
+    /**
+     * Ce que rapporterait le prochain tap. Le widget l'ajoute au solde affiché
+     * en attendant que l'appli recalcule pour de vrai — sans quoi valider une
+     * tâche depuis l'écran d'accueil ne bougeait rien.
+     */
+    gain: number
     done: boolean
   }[]
+}
+
+/**
+ * Ce que le prochain +1 verserait sur un compteur : la récompense de la tâche
+ * s'il atteint l'objectif, plus tout palier franchi au passage.
+ */
+function nextCountGain(t: Task, rep: Replay): number {
+  if (!t.counter) return 0
+  const s = rep.perTask.get(t.id)
+  const count = s?.count ?? 0
+  if (count >= t.counter.target) return 0
+  const next = count + 1
+  const tier = t.counter.tiers
+    .filter((x) => x.at <= next && !s?.countTiersPaid.has(x.at))
+    .reduce((sum, x) => sum + x.bonus, 0)
+  return (next >= t.counter.target ? t.reward : 0) + tier
 }
 
 /** Le natif reçoit le caractère à afficher, jamais un nom d'icône à résoudre. */
@@ -52,13 +80,22 @@ const icon = (raw: string | undefined) => ({
 })
 
 /** Strictement ce que les widgets ont besoin de savoir — aucune règle métier. */
-export function widgetPayload(rep: Replay, tasks: Task[], currency: string, now: number): WidgetPayload {
+export function widgetPayload(
+  rep: Replay,
+  tasks: Task[],
+  settings: Settings,
+  now: number,
+): WidgetPayload {
   const day = dayNum(now)
   const live = tasks.filter((t) => !t.deletedAt && !t.archived)
+  const { currency } = settings
 
   return {
     balance: fmt(rep.balance),
+    balanceRaw: rep.balance,
     currency,
+    budgetLabel: settings.budgetLabel,
+    accent: settings.accent,
     tasks: live
       .filter((t) => t.counter)
       .map((t) => ({
@@ -69,6 +106,7 @@ export function widgetPayload(rep: Replay, tasks: Task[], currency: string, now:
         target: t.counter!.target,
         unit: t.counter!.unit ?? '',
         day,
+        gain: nextCountGain(t, rep),
       })),
     todo: live
       .filter((t) => isAvailable(t, rep.perTask.get(t.id), now))
@@ -83,6 +121,7 @@ export function widgetPayload(rep: Replay, tasks: Task[], currency: string, now:
             ...icon(t.icon),
             kind: 'count' as const,
             label: done ? '✓' : `${count}/${t.counter.target}`,
+            gain: nextCountGain(t, rep),
             done,
           }
         }
@@ -92,6 +131,7 @@ export function widgetPayload(rep: Replay, tasks: Task[], currency: string, now:
           ...icon(t.icon),
           kind: 'complete' as const,
           label: `+${fmt(previewReward(t, s, now))}`,
+          gain: previewReward(t, s, now),
           done: false,
         }
       })
@@ -111,7 +151,10 @@ const due = (t: Task, rep: Replay, now: number) =>
 export async function pushWidgetState(p: WidgetPayload): Promise<void> {
   if (!isNative) return
   await Preferences.set({ key: 'balance', value: p.balance })
+  await Preferences.set({ key: 'balanceRaw', value: String(p.balanceRaw) })
   await Preferences.set({ key: 'currency', value: p.currency })
+  await Preferences.set({ key: 'budgetLabel', value: p.budgetLabel })
+  await Preferences.set({ key: 'accent', value: p.accent })
   await Preferences.set({ key: 'widgetTasks', value: JSON.stringify(p.tasks) })
   await Preferences.set({ key: 'widgetTodo', value: JSON.stringify(p.todo) })
   await WidgetBridge.refresh()

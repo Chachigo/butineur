@@ -33,10 +33,11 @@ function useCountUp(target: number) {
 type Props = {
   value: number
   currency: string
+  label: string
   innerRef: RefObject<HTMLElement | null>
 }
 
-export default function Balance({ value, currency, innerRef }: Props) {
+export default function Balance({ value, currency, label, innerRef }: Props) {
   const shown = useCountUp(value)
   return (
     <header className={`balance${value < 0 ? ' balance--neg' : ''}`} ref={innerRef}>
@@ -44,7 +45,7 @@ export default function Balance({ value, currency, innerRef }: Props) {
         {fmt(shown)}
         <span className="balance__cur">{currency}</span>
       </div>
-      <div className="balance__label">budget loisirs</div>
+      <div className="balance__label">{label}</div>
     </header>
   )
 }

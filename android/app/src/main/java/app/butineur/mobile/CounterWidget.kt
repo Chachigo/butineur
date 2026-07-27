@@ -31,8 +31,10 @@ class CounterWidget : AppWidgetProvider() {
             AppWidgetManager.INVALID_APPWIDGET_ID,
         )
         val taskId = Store.widgetTask(context, widgetId) ?: return
-        Store.pushPending(context, taskId, intent.getIntExtra(EXTRA_DELTA, 1))
-        AppWidgetManager.getInstance(context).updateAppWidget(widgetId, render(context, widgetId))
+        val gain = Store.task(context, taskId)?.gain ?: 0.0
+        Store.pushPending(context, taskId, intent.getIntExtra(EXTRA_DELTA, 1), "count", gain)
+        // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
+        Widgets.refreshAll(context)
     }
 
     override fun onDeleted(context: Context, ids: IntArray) {
@@ -64,14 +66,17 @@ class CounterWidget : AppWidgetProvider() {
 
             // Objectif atteint : la coche remplace le +, et le bouton n'incrémente
             // plus — le moteur plafonne de toute façon le compteur à l'objectif.
+            val accent = Store.accent(ctx)
             if (count >= task.target) {
                 v.setTextViewText(R.id.counter_plus, "✓")
                 v.setInt(R.id.counter_plus, "setBackgroundResource", R.drawable.widget_btn)
-                v.setTextColor(R.id.counter_plus, ctx.getColor(R.color.widget_go))
+                v.tint(R.id.counter_plus, ctx.getColor(R.color.widget_panel))
+                v.setTextColor(R.id.counter_plus, accent)
                 v.setOnClickPendingIntent(R.id.counter_plus, BalanceWidget.openApp(ctx))
             } else {
                 v.setTextViewText(R.id.counter_plus, "+")
                 v.setInt(R.id.counter_plus, "setBackgroundResource", R.drawable.widget_btn_go)
+                v.tint(R.id.counter_plus, accent)
                 v.setTextColor(R.id.counter_plus, ctx.getColor(R.color.widget_go_ink))
                 v.setOnClickPendingIntent(R.id.counter_plus, bump(ctx, widgetId, 1))
             }

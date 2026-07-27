@@ -32,6 +32,11 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const balanceRef = useRef<HTMLElement | null>(null)
 
+  // La couleur d'accentuation pilote toute la feuille de style.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--go', db.settings.accent)
+  }, [db.settings.accent])
+
   // Fait basculer les échéances et les périodes de compteur au fil du temps.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -76,8 +81,8 @@ export default function App() {
   // On ne réécrit les widgets et les rappels que si leur contenu a bougé —
   // sinon le tick d'une minute les redessinerait en boucle.
   const widgetKey = useMemo(
-    () => JSON.stringify(widgetPayload(rep, db.tasks, db.settings.currency, now)),
-    [rep, db.tasks, db.settings.currency, now],
+    () => JSON.stringify(widgetPayload(rep, db.tasks, db.settings, now)),
+    [rep, db.tasks, db.settings, now],
   )
   useEffect(() => void pushWidgetState(JSON.parse(widgetKey)), [widgetKey])
 
@@ -87,9 +92,16 @@ export default function App() {
   )
   useEffect(() => void syncNotifications(JSON.parse(notifKey)), [notifKey])
 
+  if (settingsOpen) return <Settings onClose={() => setSettingsOpen(false)} />
+
   return (
     <div className="app">
-      <Balance value={rep.balance} currency={db.settings.currency} innerRef={balanceRef} />
+      <Balance
+        value={rep.balance}
+        currency={db.settings.currency}
+        label={db.settings.budgetLabel}
+        innerRef={balanceRef}
+      />
 
       <nav className="tabs" role="tablist">
         {TABS.map(([id, label]) => (
@@ -133,7 +145,6 @@ export default function App() {
       </main>
 
       {editing && <TaskEditor task={editing} onClose={() => setEditing(null)} />}
-      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }

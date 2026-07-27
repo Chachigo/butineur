@@ -154,18 +154,22 @@ export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay
       }
       const gained = base + tierBonus
       balance += gained
-      entries.push({
-        eventId: e.id,
-        ts: e.ts,
-        kind: 'count',
-        taskId: e.taskId,
-        label: `${label} ${e.delta > 0 ? '+' : ''}${e.delta}`,
-        base,
-        penalty: 0,
-        multiplierBonus: 0,
-        tierBonus,
-        total: gained,
-      })
+      // Un simple +1 n'entre pas dans l'historique : seuls les taps qui
+      // rapportent quelque chose méritent une ligne, sinon elle est noyée.
+      if (gained !== 0) {
+        entries.push({
+          eventId: e.id,
+          ts: e.ts,
+          kind: 'count',
+          taskId: e.taskId,
+          label: base > 0 ? `${label} — objectif atteint` : `${label} — palier`,
+          base,
+          penalty: 0,
+          multiplierBonus: 0,
+          tierBonus,
+          total: gained,
+        })
+      }
       continue
     }
 

@@ -2,6 +2,18 @@ import { useState } from 'react'
 import { addEvent, setSettings, uid, useDB } from '../store'
 import NumberInput from './NumberInput'
 
+/** Teintes lisibles sur le fond sombre, contraste vérifié à l'œil. */
+const ACCENTS = [
+  ['#4ade80', 'Vert'],
+  ['#38bdf8', 'Bleu'],
+  ['#a78bfa', 'Violet'],
+  ['#f472b6', 'Rose'],
+  ['#fb923c', 'Orange'],
+  ['#facc15', 'Jaune'],
+  ['#2dd4bf', 'Turquoise'],
+  ['#f87171', 'Rouge'],
+]
+
 export default function Settings({ onClose }: { onClose: () => void }) {
   const db = useDB()
   const [adjust, setAdjust] = useState('')
@@ -11,22 +23,33 @@ export default function Settings({ onClose }: { onClose: () => void }) {
     if (!amount) return
     addEvent({ id: uid(), ts: Date.now(), kind: 'adjust', amount, label: 'Correction manuelle' })
     setAdjust('')
-    onClose()
   }
 
   return (
-    <div className="sheet" onClick={onClose}>
-      <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
-        <header className="sheet__head">
-          <h2>Réglages</h2>
-          <button className="sheet__x" onClick={onClose} aria-label="Fermer">
-            ✕
-          </button>
-        </header>
+    <div className="page">
+      <header className="page__head">
+        <button className="page__back" onClick={onClose} aria-label="Retour">
+          ←
+        </button>
+        <h1>Réglages</h1>
+      </header>
 
-        <div className="sheet__body">
+      <div className="page__body">
+        <section className="card">
+          <h2 className="card__title">Budget</h2>
+
+          <label className="field">
+            <span className="field__label">Nom du budget</span>
+            <input
+              className="input"
+              value={db.settings.budgetLabel}
+              onChange={(e) => setSettings({ budgetLabel: e.target.value.slice(0, 24) })}
+              placeholder="budget loisirs"
+            />
+          </label>
+
           <div className="row">
-            <span className="row__label">Symbole du budget</span>
+            <span className="row__label">Symbole</span>
             <input
               className="input input--xs"
               value={db.settings.currency}
@@ -47,18 +70,38 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             <span className="field__suffix">{db.settings.currency}</span>
           </div>
           <p className="hint">Pré-remplie à la création d’une nouvelle tâche.</p>
+        </section>
 
-          <label className="sect sect__head">
+        <section className="card">
+          <h2 className="card__title">Apparence</h2>
+          <p className="hint">Couleur d’accentuation — appliquée aussi aux widgets.</p>
+          <div className="swatches">
+            {ACCENTS.map(([hex, name]) => (
+              <button
+                key={hex}
+                className={`swatch${db.settings.accent === hex ? ' swatch--on' : ''}`}
+                style={{ background: hex }}
+                onClick={() => setSettings({ accent: hex })}
+                aria-label={name}
+                title={name}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="card">
+          <h2 className="card__title">Dépenses</h2>
+          <label className="row row--check">
             <input
               type="checkbox"
               checked={db.settings.allowNegative}
               onChange={(e) => setSettings({ allowNegative: e.target.checked })}
             />
-            <span className="sect__title">Autoriser le solde négatif</span>
+            <span className="row__label">Autoriser le solde négatif</span>
           </label>
           <p className="hint">
             Désactivé, une dépense plus grande que le solde est refusée. Les corrections
-            manuelles ci-dessous restent toujours possibles.
+            ci-dessous restent toujours possibles.
           </p>
 
           <div className="row">
@@ -76,10 +119,10 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             </button>
           </div>
           <p className="hint">
-            La correction est enregistrée dans l’historique — le solde reste toujours la
-            somme du journal.
+            La correction apparaît dans l’historique — le solde reste toujours la somme
+            du journal.
           </p>
-        </div>
+        </section>
       </div>
     </div>
   )

@@ -17,6 +17,8 @@ data class CounterTask(
     val unit: String,
     /** Jour auquel `count` se rapporte : au-delà, le compteur est reparti à zéro. */
     val day: Long,
+    /** Ce que le prochain +1 rapportera, chiffré par le web. */
+    val gain: Double,
 )
 
 data class TodoTask(
@@ -28,6 +30,8 @@ data class TodoTask(
     val kind: String,
     /** Déjà formaté par le web — le natif ne calcule aucun montant. */
     val label: String,
+    /** Ce que le prochain tap rapportera, chiffré par le web. */
+    val gain: Double,
     val done: Boolean,
 )
 
@@ -44,7 +48,10 @@ object Store {
     private const val WIDGETS = "widgets"
 
     private const val KEY_BALANCE = "balance"
+    private const val KEY_BALANCE_RAW = "balanceRaw"
     private const val KEY_CURRENCY = "currency"
+    private const val KEY_LABEL = "budgetLabel"
+    private const val KEY_ACCENT = "accent"
     private const val KEY_TASKS = "widgetTasks"
     private const val KEY_TODO = "widgetTodo"
     private const val KEY_PENDING = "pendingCounts"
@@ -55,9 +62,34 @@ object Store {
     private fun widgetPrefs(ctx: Context) =
         ctx.applicationContext.getSharedPreferences(WIDGETS, Context.MODE_PRIVATE)
 
-    fun balance(ctx: Context): String = prefs(ctx).getString(KEY_BALANCE, null) ?: "0"
+    /**
+     * Solde affiché : celui calculé par l'appli, plus ce que les taps en attente
+     * rapporteront. Le natif ne calcule aucune récompense — il additionne des
+     * montants que le web a déjà chiffrés et déposés dans la file. L'appli
+     * recalcule tout au rejeu à sa prochaine ouverture et corrige si besoin.
+     */
+    fun balance(ctx: Context): String {
+        val raw = prefs(ctx).getString(KEY_BALANCE_RAW, null)?.toDoubleOrNull()
+            ?: return prefs(ctx).getString(KEY_BALANCE, null) ?: "0"
+        return format(raw + pendingGain(ctx))
+    }
+
+    /** Même rendu que `fmt` côté web : arrondi au dixième, virgule décimale. */
+    private fun format(n: Double): String {
+        val r = Math.round(n * 10) / 10.0
+        return if (r == Math.floor(r)) r.toLong().toString()
+        else String.format(java.util.Locale.FRANCE, "%.1f", r)
+    }
 
     fun currency(ctx: Context): String = prefs(ctx).getString(KEY_CURRENCY, null) ?: ""
+
+    fun budgetLabel(ctx: Context): String =
+        prefs(ctx).getString(KEY_LABEL, null)?.ifEmpty { null } ?: "budget loisirs"
+
+    /** Couleur d'accentuation choisie dans les réglages, repli sur le vert. */
+    fun accent(ctx: Context): Int =
+        runCatching { android.graphics.Color.parseColor(prefs(ctx).getString(KEY_ACCENT, null)) }
+            .getOrDefault(ctx.getColor(R.color.widget_go))
 
     fun tasks(ctx: Context): List<CounterTask> {
         val raw = prefs(ctx).getString(KEY_TASKS, null) ?: return emptyList()
@@ -74,6 +106,7 @@ object Store {
                     target = o.optInt("target"),
                     unit = o.optString("unit"),
                     day = o.optLong("day"),
+                    gain = o.optDouble("gain", 0.0),
                 )
             }
         }.getOrDefault(emptyList())
@@ -96,6 +129,7 @@ object Store {
                     iconPh = o.optBoolean("iconPh"),
                     kind = o.optString("kind", "complete"),
                     label = o.optString("label"),
+                    gain = o.optDouble("gain", 0.0),
                     done = o.optBoolean("done"),
                 )
             }
@@ -127,7 +161,13 @@ object Store {
      * journal d'événements : le widget est un troisième « appareil » qui ne sait
      * qu'ajouter des faits. L'appli la vide au démarrage suivant, rien ne se perd.
      */
-    fun pushPending(ctx: Context, taskId: String, delta: Int, kind: String = "count") {
+    fun pushPending(
+        ctx: Context,
+        taskId: String,
+        delta: Int,
+        kind: String = "count",
+        gain: Double = 0.0,
+    ) {
         val p = prefs(ctx)
         val arr = readPending(p.getString(KEY_PENDING, null))
         arr.put(
@@ -135,9 +175,18 @@ object Store {
                 .put("kind", kind)
                 .put("taskId", taskId)
                 .put("delta", delta)
+                .put("gain", gain)
                 .put("ts", System.currentTimeMillis()),
         )
         p.edit().putString(KEY_PENDING, arr.toString()).apply()
+    }
+
+    /** Somme des gains annoncés par le web pour les taps pas encore versés. */
+    private fun pendingGain(ctx: Context): Double {
+        val arr = readPending(prefs(ctx).getString(KEY_PENDING, null))
+        var sum = 0.0
+        for (i in 0 until arr.length()) sum += arr.optJSONObject(i)?.optDouble("gain", 0.0) ?: 0.0
+        return sum
     }
 
     /**

@@ -66,6 +66,10 @@ export type Pending = {
 
 export type Settings = {
   currency: string
+  /** Sous-titre du solde — « budget loisirs » par défaut. */
+  budgetLabel: string
+  /** Couleur d'accentuation, en hexa. Partagée avec les widgets. */
+  accent: string
   /** Récompense pré-remplie à la création d'une tâche. */
   defaultReward: number
   /** Le journal sait tenir un solde négatif ; l'interface le refuse par défaut. */

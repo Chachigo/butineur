@@ -41,8 +41,10 @@ class TodoWidget : AppWidgetProvider() {
         if (intent.getBooleanExtra(EXTRA_DONE, false)) return
 
         val kind = intent.getStringExtra(EXTRA_KIND) ?: "complete"
-        Store.pushPending(context, taskId, 1, kind)
-        refresh(context)
+        val gain = Store.todo(context).firstOrNull { it.id == taskId }?.gain ?: 0.0
+        Store.pushPending(context, taskId, 1, kind, gain)
+        // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
+        Widgets.refreshAll(context)
     }
 
     companion object {

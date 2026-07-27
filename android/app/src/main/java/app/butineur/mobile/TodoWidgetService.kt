@@ -48,11 +48,14 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
         v.setTextViewText(R.id.row_name, t.name)
         v.setTextViewText(R.id.row_go, t.label)
 
+        val accent = Store.accent(ctx)
         if (t.done) {
             v.setInt(R.id.row_go, "setBackgroundResource", R.drawable.widget_chip)
-            v.setTextColor(R.id.row_go, ctx.getColor(R.color.widget_go))
+            v.tint(R.id.row_go, ctx.getColor(R.color.widget_panel))
+            v.setTextColor(R.id.row_go, accent)
         } else {
             v.setInt(R.id.row_go, "setBackgroundResource", R.drawable.widget_pill)
+            v.tint(R.id.row_go, accent)
             v.setTextColor(R.id.row_go, ctx.getColor(R.color.widget_go_ink))
         }
 

@@ -72,19 +72,28 @@ button:disabled {
 }
 
 /*
- * Le contenu défile sous la barre d'état : un simple padding ne suffit pas,
- * il ne fait que décaler le départ. Ce bandeau opaque la masque en permanence.
+ * Le contenu défile sous les barres système : un simple padding ne suffit pas,
+ * il ne fait que décaler le départ. Ces bandeaux opaques les masquent.
  */
-body::before {
+body::before,
+body::after {
   content: '';
   position: fixed;
-  top: 0;
   left: 0;
   right: 0;
-  height: var(--sat);
   background: var(--bg);
   z-index: 40;
   pointer-events: none;
+}
+
+body::before {
+  top: 0;
+  height: var(--sat);
+}
+
+body::after {
+  bottom: 0;
+  height: var(--sab);
 }
 
 /* --- solde --- */
@@ -433,8 +442,90 @@ body::before {
 }
 
 /* --- bouton flottant --- */
+/* --- page pleine (réglages) --- */
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: var(--sat) 0 calc(var(--sab) + 24px);
+}
+
+.page__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.page__head h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.page__back {
+  font-size: 24px;
+  line-height: 1;
+  padding: 6px 10px;
+  color: var(--text);
+}
+
+.page__body {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  background: var(--panel);
+  border-radius: var(--r);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+
+.row--check {
+  cursor: pointer;
+}
+
+.row--check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--go);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.swatch {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.swatch--on {
+  border-color: var(--text);
+  outline: 2px solid var(--bg);
+  outline-offset: -5px;
+}
+
 .fab {
   position: fixed;
+  z-index: 41;
   right: max(16px, calc(50vw - 320px + 16px));
   bottom: calc(var(--sab) + 20px);
   width: 56px;

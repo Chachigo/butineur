@@ -18,7 +18,9 @@ class BalanceWidget : AppWidgetProvider() {
         fun render(ctx: Context): RemoteViews =
             RemoteViews(ctx.packageName, R.layout.widget_balance).apply {
                 setTextViewText(R.id.balance_amount, Store.balance(ctx))
+                setTextColor(R.id.balance_amount, Store.accent(ctx))
                 setTextViewText(R.id.balance_currency, Store.currency(ctx))
+                setTextViewText(R.id.balance_label, Store.budgetLabel(ctx))
                 setOnClickPendingIntent(R.id.balance_root, openApp(ctx))
             }
 

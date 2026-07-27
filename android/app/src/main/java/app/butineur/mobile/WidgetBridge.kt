@@ -3,6 +3,8 @@ package app.butineur.mobile
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.res.ColorStateList
+import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
 import com.getcapacitor.JSObject
@@ -60,6 +62,17 @@ fun RemoteViews.setIcon(
         setTextViewText(textId, if (isPhosphor) fallback else icon.ifEmpty { fallback })
         setViewVisibility(textId, View.VISIBLE)
         setViewVisibility(imageId, View.GONE)
+    }
+}
+
+/**
+ * Teinte un bouton avec la couleur d'accentuation choisie dans les réglages.
+ * `setBackgroundTintList` préserve les coins arrondis du drawable, contrairement
+ * à un `setBackgroundColor`. API 31+ ; en dessous, la couleur par défaut reste.
+ */
+fun RemoteViews.tint(viewId: Int, color: Int) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        setColorStateList(viewId, "setBackgroundTintList", ColorStateList.valueOf(color))
     }
 }
 

@@ -8,7 +8,15 @@ const EMPTY: DB = {
   tasks: [],
   shopItems: [],
   events: [],
-  settings: { currency: '€', defaultReward: 10, allowNegative: false, serverUrl: '', serverToken: '' },
+  settings: {
+    currency: '€',
+    budgetLabel: 'budget loisirs',
+    accent: '#4ade80',
+    defaultReward: 10,
+    allowNegative: false,
+    serverUrl: '',
+    serverToken: '',
+  },
 }
 
 let db: DB = EMPTY
