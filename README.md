@@ -67,3 +67,9 @@ d'événements est fait pour ça.
 
 L'interface est en français. Une traduction anglaise est prévue, et l'anglais
 deviendra la langue par défaut.
+
+## Crédits
+
+L'abeille de l'icône vient de [Noto Emoji](https://github.com/googlefonts/noto-emoji)
+(Google, Apache 2.0), convertie en `VectorDrawable` par `scripts/svg-to-vector.mjs`.
+Les icônes de tâches viennent de [Phosphor](https://phosphoricons.com/) (MIT).

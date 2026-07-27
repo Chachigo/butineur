@@ -35,6 +35,9 @@ function retarget(counter: NonNullable<Task['counter']>, next: number): Tier[] {
   return [...new Map(clamped.map((t) => [t.at, t])).values()].sort((a, b) => a.at - b.at)
 }
 
+/** Index = `Date.getDay()`, dimanche en premier. */
+const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+
 const PENALTY_KINDS: [Penalty['kind'], string][] = [
   ['none', 'aucune'],
   ['flat', 'montant fixe'],
@@ -49,8 +52,12 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
   const patch = (p: Partial<Task>) => setT((prev) => ({ ...prev, ...p }))
   const cur = db.settings.currency
 
+  // Un objectif à zéro serait atteint d'emblée et paierait aussitôt.
+  const missingTarget = !!t.counter && t.counter.target < 1
+  const canSave = !!t.name.trim() && !missingTarget
+
   const save = () => {
-    if (!t.name.trim()) return
+    if (!canSave) return
     saveTask({ ...t, name: t.name.trim() })
     onClose()
   }
@@ -122,7 +129,7 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
             onToggle={(v) =>
               // Atteindre l'objectif verse la récompense de la tâche : pas de
               // palier par défaut, ils ne servent qu'aux bonus intermédiaires.
-              patch({ counter: v ? { target: 8, unit: 'verres', tiers: [] } : null })
+              patch({ counter: v ? { target: 0, unit: 'fois', tiers: [] } : null })
             }
           >
             {t.counter && (
@@ -133,6 +140,7 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                     className="input input--xs"
                     value={t.counter.target}
                     min={1}
+                    placeholder="8"
                     onChange={(target) =>
                       patch({ counter: { ...t.counter!, target, tiers: retarget(t.counter!, target) } })
                     }
@@ -142,7 +150,7 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                     className="input input--unit"
                     value={t.counter.unit ?? ''}
                     onChange={(e) => patch({ counter: { ...t.counter!, unit: e.target.value } })}
-                    placeholder="unité"
+                    placeholder="fois"
                     aria-label="Unité"
                   />
                 </div>
@@ -174,16 +182,40 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
             {t.due && (
               <>
                 <div className="row">
-                  <input
-                    className="input"
-                    type="date"
-                    value={toDateInput(t.due.at)}
-                    onChange={(e) => {
-                      const at = combineDateTime(e.target.value, toTimeInput(t.due!.at))
-                      if (at) patch({ due: { ...t.due!, at } })
-                    }}
-                    aria-label="Jour de l’échéance"
-                  />
+                  {/* Une date figée n'a aucun sens sur une tâche qui revient. */}
+                  {t.repeat ? (
+                    <select
+                      className="input input--select"
+                      value={t.due.weekday ?? ''}
+                      onChange={(e) =>
+                        patch({
+                          due: {
+                            ...t.due!,
+                            weekday: e.target.value === '' ? undefined : Number(e.target.value),
+                          },
+                        })
+                      }
+                      aria-label="Jour de l’échéance"
+                    >
+                      <option value="">à chaque cycle</option>
+                      {WEEKDAYS.map((label, i) => (
+                        <option key={i} value={i}>
+                          chaque {label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="input"
+                      type="date"
+                      value={toDateInput(t.due.at)}
+                      onChange={(e) => {
+                        const at = combineDateTime(e.target.value, toTimeInput(t.due!.at))
+                        if (at) patch({ due: { ...t.due!, at } })
+                      }}
+                      aria-label="Jour de l’échéance"
+                    />
+                  )}
                   <input
                     className="input input--time"
                     type="time"
@@ -195,7 +227,9 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                     aria-label="Heure de l’échéance"
                   />
                 </div>
-                {t.repeat && <p className="hint">L’échéance glisse d’un cycle à chaque passage.</p>}
+                {t.repeat && t.due.weekday == null && (
+                  <p className="hint">L’échéance glisse d’un cycle à chaque passage.</p>
+                )}
 
                 <div className="row">
                   <span className="row__label">Pénalité</span>
@@ -251,20 +285,6 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
             )}
           </Section>
 
-          {/* Les encouragements n'ont de sens que s'il y a une série à encourager. */}
-          <Section
-            title="Encouragements"
-            hint={t.streak ? 'Notifications sur la série' : 'Active « Bonus de série » d’abord'}
-            disabled={!t.streak}
-            disabledHint="Active « Bonus de série » d’abord"
-            on={t.cheer}
-            onToggle={(cheer) => patch({ cheer })}
-          >
-            <p className="hint">
-              Un message quand un palier approche, et quand une série se casse. Envoyé au
-              plus une fois par jour, à l’heure du rappel si tu en as réglé un.
-            </p>
-          </Section>
 
           {/* Une série n'a de sens que sur une tâche qui revient. */}
           <Section
@@ -335,6 +355,18 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                     </>
                   )}
                 </Section>
+
+                <Section
+                  title="Encouragements"
+                  hint="Notifications sur la série"
+                  on={t.cheer}
+                  onToggle={(cheer) => patch({ cheer })}
+                >
+                  <p className="hint">
+                    Un message quand un palier approche, quand une série se casse, ou
+                    quand ton record est à portée. Rien à dire, rien d’envoyé.
+                  </p>
+                </Section>
               </>
             )}
           </Section>
@@ -350,7 +382,11 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
         </div>
 
         <footer className="sheet__foot">
-          {!isNew && (
+          {isNew ? (
+            <button className="btn" onClick={onClose}>
+              Annuler
+            </button>
+          ) : (
             <button
               className="btn btn--danger"
               onClick={() => {
@@ -361,7 +397,7 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
               Supprimer
             </button>
           )}
-          <button className="btn btn--go" onClick={save} disabled={!t.name.trim()}>
+          <button className="btn btn--go" onClick={save} disabled={!canSave}>
             Enregistrer
           </button>
         </footer>

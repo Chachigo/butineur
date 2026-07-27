@@ -1,7 +1,7 @@
 import { useState, type MouseEvent, type RefObject } from 'react'
 import { fmt } from '../format'
 import { coinFly, pop } from '../fx'
-import { addEvent, deleteShopItem, saveShopItem, uid } from '../store'
+import { addEvent, deleteShopItem, saveShopItem, uid, useDB } from '../store'
 import type { ShopItem } from '../types'
 import Icon from './Icon'
 import IconPicker from './IconPicker'
@@ -129,19 +129,30 @@ const blankItem = (): ShopItem => ({
   id: uid(),
   name: '',
   icon: '',
-  price: 20,
+  price: 0,
   updatedAt: 0,
   deletedAt: null,
 })
 
+/** Même structure que l'éditeur de tâche : mêmes champs, mêmes boutons, même ordre. */
 function ItemEditor({ item, onClose }: { item: ShopItem; onClose: () => void }) {
+  const db = useDB()
   const [s, setS] = useState(item)
+  const isNew = !db.shopItems.some((x) => x.id === item.id)
+  const cur = db.settings.currency
+  const canSave = !!s.name.trim() && s.price > 0
+
+  const save = () => {
+    if (!canSave) return
+    saveShopItem({ ...s, name: s.name.trim() })
+    onClose()
+  }
 
   return (
     <div className="sheet" onClick={onClose}>
       <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
         <header className="sheet__head">
-          <h2>Article</h2>
+          <h2>{isNew ? 'Nouvel article' : 'Modifier'}</h2>
           <button className="sheet__x" onClick={onClose} aria-label="Fermer">
             ✕
           </button>
@@ -154,40 +165,43 @@ function ItemEditor({ item, onClose }: { item: ShopItem; onClose: () => void }) 
               className="input"
               value={s.name}
               onChange={(e) => setS({ ...s, name: e.target.value })}
-              placeholder="1 h de jeu vidéo"
+              placeholder="Nom de l’article"
               aria-label="Nom"
-              autoFocus
             />
           </div>
+
           <label className="field">
             <span className="field__label">Prix</span>
-            <NumberInput
-              className="input input--sm"
-              value={s.price}
-              min={0}
-              onChange={(price) => setS({ ...s, price })}
-            />
+            <span className="field__row">
+              <NumberInput
+                className="input input--sm"
+                value={s.price}
+                min={0}
+                placeholder="20"
+                onChange={(price) => setS({ ...s, price })}
+              />
+              <span className="field__suffix">{cur}</span>
+            </span>
           </label>
         </div>
 
         <footer className="sheet__foot">
-          <button
-            className="btn btn--danger"
-            onClick={() => {
-              deleteShopItem(s.id)
-              onClose()
-            }}
-          >
-            Supprimer
-          </button>
-          <button
-            className="btn btn--go"
-            disabled={!s.name.trim()}
-            onClick={() => {
-              saveShopItem({ ...s, name: s.name.trim() })
-              onClose()
-            }}
-          >
+          {isNew ? (
+            <button className="btn" onClick={onClose}>
+              Annuler
+            </button>
+          ) : (
+            <button
+              className="btn btn--danger"
+              onClick={() => {
+                deleteShopItem(s.id)
+                onClose()
+              }}
+            >
+              Supprimer
+            </button>
+          )}
+          <button className="btn btn--go" onClick={save} disabled={!canSave}>
             Enregistrer
           </button>
         </footer>

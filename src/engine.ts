@@ -23,15 +23,33 @@ const everyDaysOf = (task: Task | undefined) => Math.max(1, task?.repeat?.everyD
 
 /**
  * Échéance qui s'applique à la prochaine validation.
- * Tâche ponctuelle : la date fixe. Tâche répétitive : elle glisse d'un cycle
- * à chaque passage, sinon toute tâche récurrente serait en retard à vie.
+ *
+ * Tâche ponctuelle : la date fixe. Tâche répétitive : elle glisse d'un cycle à
+ * chaque passage, sinon toute tâche récurrente serait en retard à vie. Avec un
+ * jour de la semaine, c'est sa prochaine occurrence après le dernier passage.
  */
-export function dueTsFor(task: Task, lastDoneTs: number | null): number | null {
+export function dueTsFor(task: Task, lastDoneTs: number | null, now = Date.now()): number | null {
   if (!task.due) return null
   const fixed = Date.parse(task.due.at)
   if (Number.isNaN(fixed)) return null
+
+  if (task.due.weekday != null && task.repeat) {
+    // Depuis la veille quand rien n'a encore été fait : l'échéance du jour compte.
+    return nextWeekday(lastDoneTs ?? now - DAY, task.due.weekday, fixed)
+  }
   if (!task.repeat || lastDoneTs === null) return fixed
   return lastDoneTs + task.repeat.everyDays * DAY
+}
+
+/** Première occurrence de `weekday` strictement après `from`, à l'heure de `timeFrom`. */
+function nextWeekday(from: number, weekday: number, timeFrom: number): number {
+  const t = new Date(timeFrom)
+  const d = new Date(from)
+  d.setHours(t.getHours(), t.getMinutes(), 0, 0)
+  do {
+    d.setDate(d.getDate() + 1)
+  } while (d.getDay() !== weekday % 7)
+  return +d
 }
 
 /**

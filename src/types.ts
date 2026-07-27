@@ -16,8 +16,12 @@ export type Task = {
   repeat: null | { everyDays: number }
   /** null = validation simple ; sinon on incrémente jusqu'à `target`. */
   counter: null | { target: number; unit?: string; tiers: Tier[] }
-  /** Pour une tâche répétitive, l'échéance glisse : dernier passage + everyDays. */
-  due: null | { at: string; penalty: Penalty }
+  /**
+   * Pour une tâche répétitive, l'échéance glisse : dernier passage + everyDays.
+   * `weekday` (0 = dimanche) la fixe plutôt à un jour de la semaine, ce qui est
+   * bien plus lisible pour une tâche hebdomadaire.
+   */
+  due: null | { at: string; penalty: Penalty; weekday?: number }
   streak: null | { tiers: Tier[]; multiplier: null | { perStep: number; cap: number } }
   /** Rappel quotidien à une heure donnée, tant que la tâche est à faire. */
   remind: null | { time: string }

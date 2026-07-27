@@ -158,7 +158,7 @@ export function widgetPayload(
 }
 
 const due = (t: Task, rep: Replay, now: number) =>
-  dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null) ?? now + 3.15e10
+  dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null, now) ?? now + 3.15e10
 
 export async function pushWidgetState(p: WidgetPayload): Promise<void> {
   if (!isNative) return
@@ -201,7 +201,7 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
 
   const deadlines = live
     .filter((t) => t.due)
-    .map((t) => ({ t, at: dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null) }))
+    .map((t) => ({ t, at: dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null, now) }))
     .filter((x): x is { t: Task; at: number } => x.at !== null && x.at > now)
     .map(({ t, at }) => ({
       id: notifId(t.id),

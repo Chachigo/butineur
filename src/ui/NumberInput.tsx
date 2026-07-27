@@ -7,6 +7,8 @@ type Props = {
   max?: number
   step?: number
   className?: string
+  /** Avec un placeholder, `0` s'affiche vide : le champ suggère au lieu d'imposer. */
+  placeholder?: string
   'aria-label'?: string
 }
 
@@ -27,14 +29,16 @@ export default function NumberInput({
   max,
   step,
   className = 'input',
+  placeholder,
   ...rest
 }: Props) {
-  const [text, setText] = useState(() => String(value))
+  const shown = (n: number) => (placeholder && n === 0 ? '' : String(n))
+  const [text, setText] = useState(() => shown(value))
   const [editing, setEditing] = useState(false)
 
   // On ne suit les changements venus d'ailleurs que quand l'utilisateur ne tape pas.
   useEffect(() => {
-    if (!editing) setText(String(value))
+    if (!editing) setText(shown(value))
   }, [value, editing])
 
   return (
@@ -53,9 +57,15 @@ export default function NumberInput({
         // Seules les valeurs déjà valides remontent ; le clamp attend le blur.
         if (e.target.value !== '' && Number.isFinite(n)) onChange(n)
       }}
+      placeholder={placeholder}
       onBlur={() => {
         setEditing(false)
         const n = Number(text)
+        // Vidé alors qu'un placeholder existe : on laisse à zéro, c'est « non renseigné ».
+        if (text === '' && placeholder) {
+          if (value !== 0) onChange(0)
+          return
+        }
         const next = clamp(Number.isFinite(n) && text !== '' ? n : (min ?? 0), min, max)
         setText(String(next))
         if (next !== value) onChange(next)

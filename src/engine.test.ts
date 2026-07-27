@@ -3,7 +3,9 @@ import {
   DAY,
   computePenalty,
   isAvailable,
+  dayNum,
   daysUntilWorthless,
+  dueTsFor,
   pendingToEvents,
   replay,
   rewardAfterDays,
@@ -77,6 +79,31 @@ describe('pénalité de retard', () => {
     // Dernier passage au jour 10 : la prochaine échéance est le jour 17, pas le jour 0.
     expect(computePenalty(rep, at(16), at(10)).factor).toBe(1)
     expect(computePenalty(rep, at(18), at(10)).factor).toBeCloseTo(0.5)
+  })
+})
+
+describe('échéance au jour de la semaine', () => {
+  // T0 = lundi 5 janvier 2026. Échéance « dimanche » (0) à 20 h.
+  const dimanche = new Date(at(0))
+  dimanche.setHours(20, 0, 0, 0)
+  const t = task({
+    repeat: { everyDays: 7 },
+    due: { at: dimanche.toISOString(), penalty: { kind: 'none' }, weekday: 0 },
+  })
+
+  it('vise le prochain dimanche, pas une date figée', () => {
+    const due = dueTsFor(t, null, at(0))!
+    expect(new Date(due).getDay()).toBe(0)
+    expect(new Date(due).getHours()).toBe(20)
+    // Lundi → le dimanche qui suit, six jours plus tard.
+    expect(dayNum(due) - dayNum(at(0))).toBe(6)
+  })
+
+  it('repousse au dimanche suivant après un passage', () => {
+    const fait = dueTsFor(t, null, at(0))! // ce dimanche
+    const suivant = dueTsFor(t, fait, at(0))!
+    expect(new Date(suivant).getDay()).toBe(0)
+    expect(dayNum(suivant) - dayNum(fait)).toBe(7)
   })
 })
 

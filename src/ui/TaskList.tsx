@@ -107,7 +107,7 @@ function rank(t: Task, rep: Replay, now: number, dayStart: number): number {
   if (!isAvailable(t, s, now, dayStart)) return 3
   // Compteur à son objectif : plus rien à y faire aujourd'hui, il descend.
   if (t.counter && (s?.count ?? 0) >= t.counter.target) return 3
-  const due = dueTsFor(t, s?.lastDoneTs ?? null)
+  const due = dueTsFor(t, s?.lastDoneTs ?? null, now)
   if (due !== null && now > due) return 0
   if (due !== null) return 1
   return 2
@@ -135,7 +135,7 @@ function TaskRow({
   const s = rep.perTask.get(task.id)
   const streak = s?.streak ?? 0
   const available = isAvailable(task, s, now, dayStart)
-  const due = dueTsFor(task, s?.lastDoneTs ?? null)
+  const due = dueTsFor(task, s?.lastDoneTs ?? null, now)
   const late = due !== null && now > due
 
   const complete = (e: MouseEvent<HTMLButtonElement>) => {
