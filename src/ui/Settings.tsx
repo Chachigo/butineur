@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { addEvent, setSettings, uid, useDB } from '../store'
 import NumberInput from './NumberInput'
 
+const pad = (n: number) => String(n).padStart(2, '0')
+const minutesToTime = (m: number) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`
+const timeToMinutes = (t: string) => {
+  const [h, m] = t.split(':').map(Number)
+  return ((h || 0) * 60 + (m || 0)) % 1440
+}
+
 /** Teintes lisibles sur le fond sombre, contraste vérifié à l'œil. */
 const ACCENTS = [
   ['#4ade80', 'Vert'],
@@ -63,17 +70,14 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             <input
               className="input input--time"
               type="time"
-              step={3600}
-              value={`${String(db.settings.dayStart).padStart(2, '0')}:00`}
-              onChange={(e) =>
-                e.target.value && setSettings({ dayStart: Number(e.target.value.slice(0, 2)) })
-              }
+              value={minutesToTime(db.settings.dayStart)}
+              onChange={(e) => e.target.value && setSettings({ dayStart: timeToMinutes(e.target.value) })}
               aria-label="Heure de début de journée"
             />
           </div>
           <p className="hint">
-            À 4 h, ce que tu fais entre minuit et 4 h compte encore pour la veille — les
-            compteurs et les séries ne cassent plus quand tu te couches tard.
+            À 4 h 30, un compteur monté jusqu’à 4 h du matin compte encore pour la
+            veille. Les dates limites, elles, ne bougent pas.
           </p>
 
           <div className="row">

@@ -255,7 +255,7 @@ object Store {
 
     /** Même définition que `dayNum` côté web, réglage de bascule compris. */
     private fun dayNum(ctx: Context, ts: Long): Long {
-        val shift = (prefs(ctx).getString(KEY_DAY_START, null)?.toIntOrNull() ?: 0) * 3_600_000L
+        val shift = (prefs(ctx).getString(KEY_DAY_START, null)?.toIntOrNull() ?: 0) * 60_000L
         val local = Calendar.getInstance()
         local.timeInMillis = ts - shift
         val utc = Calendar.getInstance(TimeZone.getTimeZone("UTC"))

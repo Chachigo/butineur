@@ -3,7 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import { Preferences } from '@capacitor/preferences'
 import { dayNum, dueTsFor, isAvailable, previewReward, type Replay } from './engine'
 import { fmt } from './format'
-import type { Pending, Settings, Task } from './types'
+import type { Pending, Settings, Task, TaskState } from './types'
 import { iconChar, isPhosphor } from './ui/Icon'
 
 export const isNative = Capacitor.isNativePlatform()
@@ -24,7 +24,7 @@ export type WidgetPayload = {
   currency: string
   budgetLabel: string
   accent: string
-  /** Heure de bascule du jour, pour que le natif compte comme le moteur. */
+  /** Bascule du jour en minutes, pour que le natif compte comme le moteur. */
   dayStart: number
   tasks: {
     id: string
@@ -223,10 +223,51 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
       at: nextTimeToday(t.remind!.time, now),
     }))
 
-  return [...deadlines, ...reminders]
+  // Encouragements : uniquement quand il y a quelque chose à dire.
+  const cheers = live
+    .filter((t) => t.cheer && t.streak && isAvailable(t, rep.perTask.get(t.id), now))
+    .map((t) => ({ t, body: cheerFor(t, rep.perTask.get(t.id)) }))
+    .filter((x): x is { t: Task; body: string } => x.body !== null)
+    .map(({ t, body }) => ({
+      id: notifId(t.id) + 2,
+      title: t.name,
+      body,
+      at: nextTimeToday(t.remind?.time ?? '19:00', now),
+    }))
+
+  return [...deadlines, ...reminders, ...cheers]
     .sort((a, b) => a.at - b.at)
     // Android plafonne les alarmes programmées ; les plus proches suffisent.
     .slice(0, 32)
+}
+
+/**
+ * Le message d'encouragement du jour, ou `null` s'il n'y a rien à dire.
+ *
+ * Trois cas seulement : un palier tout proche, une série qu'on vient de perdre,
+ * un record en vue. Le reste du temps on se tait — un encouragement quotidien
+ * sans contenu devient du bruit qu'on finit par désactiver.
+ */
+function cheerFor(t: Task, s: TaskState | undefined): string | null {
+  const streak = s?.streak ?? 0
+
+  if (streak === 0 && (s?.brokenStreak ?? 0) > 1) {
+    return `Série de ${s!.brokenStreak} perdue. On repart d’ici ce soir ?`
+  }
+
+  const next = (t.streak?.tiers ?? [])
+    .filter((x) => x.at > streak)
+    .sort((a, b) => a.at - b.at)[0]
+  if (next && next.at - streak <= 2) {
+    const reste = next.at - streak
+    return `${streak} d’affilée. Encore ${reste} et le palier tombe : +${fmt(next.bonus)}.`
+  }
+
+  if (streak > 0 && streak + 1 > (s?.bestStreak ?? 0)) {
+    return `${streak} d’affilée — une de plus et c’est ton record.`
+  }
+
+  return null
 }
 
 /** Prochaine occurrence de « HH:MM » : aujourd'hui si l'heure est à venir, sinon demain. */

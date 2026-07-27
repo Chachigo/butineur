@@ -18,6 +18,7 @@ export function blankTask(defaultReward: number): Task {
     due: null,
     streak: null,
     remind: null,
+    cheer: false,
     archived: false,
     updatedAt: 0,
     deletedAt: null,
@@ -248,6 +249,21 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                 </p>
               </>
             )}
+          </Section>
+
+          {/* Les encouragements n'ont de sens que s'il y a une série à encourager. */}
+          <Section
+            title="Encouragements"
+            hint={t.streak ? 'Notifications sur la série' : 'Active « Bonus de série » d’abord'}
+            disabled={!t.streak}
+            disabledHint="Active « Bonus de série » d’abord"
+            on={t.cheer}
+            onToggle={(cheer) => patch({ cheer })}
+          >
+            <p className="hint">
+              Un message quand un palier approche, et quand une série se casse. Envoyé au
+              plus une fois par jour, à l’heure du rappel si tu en as réglé un.
+            </p>
           </Section>
 
           {/* Une série n'a de sens que sur une tâche qui revient. */}

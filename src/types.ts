@@ -21,6 +21,8 @@ export type Task = {
   streak: null | { tiers: Tier[]; multiplier: null | { perStep: number; cap: number } }
   /** Rappel quotidien à une heure donnée, tant que la tâche est à faire. */
   remind: null | { time: string }
+  /** Encouragements sur la série en cours. Désactivé par défaut, c'est intrusif. */
+  cheer: boolean
   archived: boolean
   updatedAt: number
   deletedAt: number | null
@@ -72,7 +74,7 @@ export type Settings = {
   budgetLabel: string
   /** Couleur d'accentuation, en hexa. Partagée avec les widgets. */
   accent: string
-  /** Heure à laquelle une nouvelle journée commence (0-23). */
+  /** Début d'une nouvelle journée, en minutes depuis minuit (0-1439). */
   dayStart: number
   /** Récompense pré-remplie à la création d'une tâche. */
   defaultReward: number
@@ -99,6 +101,12 @@ export type TaskState = {
   periodKey: number | null
   /** L'objectif du compteur a déjà été payé pour cette période. */
   targetPaid: boolean
+  /** Dernier moment où l'objectif d'un compteur a été atteint, toutes périodes confondues. */
+  lastTargetTs: number | null
+  /** Longueur de la série qui vient d'être perdue, tant qu'on ne l'a pas relancée. */
+  brokenStreak: number
+  /** Plus longue série jamais tenue sur cette tâche. */
+  bestStreak: number
   countTiersPaid: Set<number>
   streakTiersPaid: Set<number>
 }

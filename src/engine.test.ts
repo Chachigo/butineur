@@ -26,6 +26,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   due: null,
   streak: null,
   remind: null,
+  cheer: false,
   archived: false,
   updatedAt: 0,
   deletedAt: null,
@@ -102,6 +103,22 @@ describe('série', () => {
     const { balance, perTask } = replay([done(0), done(1), done(5), done(6)], [big], at(6))
     expect(perTask.get('t1')!.streak).toBe(2)
     expect(balance).toBe(40 + 200) // 4 validations à 10, le palier 2 franchi deux fois
+  })
+
+  it('retient la série perdue pour pouvoir l’annoncer', () => {
+    const { perTask } = replay([done(0), done(1), done(2)], [t], at(9))
+    const s = perTask.get('t1')!
+    expect(s.streak).toBe(0) // rompue par le simple passage du temps
+    expect(s.brokenStreak).toBe(3)
+    expect(s.bestStreak).toBe(3)
+  })
+
+  it('garde le record après une rupture puis une reprise', () => {
+    const { perTask } = replay([done(0), done(1), done(2), done(9), done(10)], [t], at(10))
+    const s = perTask.get('t1')!
+    expect(s.streak).toBe(2)
+    expect(s.brokenStreak).toBe(3)
+    expect(s.bestStreak).toBe(3)
   })
 
   it('tolère un jour de retard sans casser la série', () => {
@@ -240,7 +257,21 @@ describe('purge des tâches à usage unique', () => {
     expect(staleOneShots([t], replay(evts, [t], at(1)), at(1))).toEqual(['t1'])
   })
 
-  it('épargne les répétitives et les compteurs', () => {
+  it('efface un compteur sans répétition une fois son objectif atteint', () => {
+    const c = task({ counter: { target: 2, unit: '', tiers: [] } })
+    const events = [count(0), count(0)]
+    // Le jour même il reste visible, le lendemain il s'en va.
+    expect(staleOneShots([c], replay(events, [c], at(0)), at(0))).toEqual([])
+    expect(staleOneShots([c], replay(events, [c], at(1)), at(1))).toEqual(['t1'])
+  })
+
+  it('garde un compteur sans répétition dont l’objectif n’est pas atteint', () => {
+    const c = task({ counter: { target: 5, unit: '', tiers: [] } })
+    const events = [count(0), count(0)]
+    expect(staleOneShots([c], replay(events, [c], at(3)), at(3))).toEqual([])
+  })
+
+  it('épargne les répétitives et les compteurs qui reviennent', () => {
     const rep = task({ id: 'r', repeat: daily })
     const cnt = task({ id: 'c', counter: { target: 2, unit: '', tiers: [] } })
     const evts: Event[] = [

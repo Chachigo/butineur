@@ -215,6 +215,10 @@ function TaskRow({
           <span className="task__meta">
             {task.repeat && <em className="badge">tous les {task.repeat.everyDays} j</em>}
             {streak > 1 && <em className="badge badge--streak">série {streak} 🔥</em>}
+            {/* Une série perdue se dit une fois, tant qu'elle n'est pas relancée. */}
+            {streak === 0 && (s?.brokenStreak ?? 0) > 1 && (
+              <em className="badge badge--broken">série {s!.brokenStreak} perdue 💔</em>
+            )}
             {due !== null && (
               <em className={`badge${late ? ' badge--late' : ''}`}>{relativeDay(due, now)}</em>
             )}

@@ -5,12 +5,12 @@ export const DAY = 86_400_000
 /**
  * Numéro de jour local, insensible aux changements d'heure d'été.
  *
- * `dayStart` décale la bascule : à 4, tout ce qui arrive avant 4 h du matin
- * compte encore pour la veille. Une tâche validée à 2 h ne casse donc pas la
- * série de quelqu'un qui se couche tard.
+ * `dayStart` est un décalage **en minutes** : à 270 (4 h 30), tout ce qui arrive
+ * avant 4 h 30 compte encore pour la veille. Un compteur monté tard le soir se
+ * termine donc bien sur la journée à laquelle on pense.
  */
 export function dayNum(ts: number, dayStart = 0): number {
-  const d = new Date(ts - dayStart * 3_600_000)
+  const d = new Date(ts - dayStart * 60_000)
   return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY)
 }
 
@@ -78,6 +78,9 @@ const freshState = (): TaskState => ({
   count: 0,
   periodKey: null,
   targetPaid: false,
+  lastTargetTs: null,
+  brokenStreak: 0,
+  bestStreak: 0,
   countTiersPaid: new Set(),
   streakTiersPaid: new Set(),
 })
@@ -146,6 +149,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
       let base = 0
       if (task && s.count >= target && !s.targetPaid) {
         s.targetPaid = true
+        s.lastTargetTs = e.ts
         base = task.reward
       }
 
@@ -190,6 +194,8 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
         // Un jour de tolérance sur la fenêtre attendue.
         if (gap <= every + 1) s.streak += 1
         else {
+          // On garde ce qu'on vient de perdre : l'interface doit pouvoir le dire.
+          s.brokenStreak = s.streak
           s.streak = 1
           s.streakTiersPaid.clear()
         }
@@ -213,6 +219,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
 
     balance += total
     s.lastDoneTs = e.ts
+    s.bestStreak = Math.max(s.bestStreak, s.streak)
     entries.push({
       eventId: e.id,
       ts: e.ts,
@@ -243,6 +250,9 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
       }
     }
     if (s.lastDoneTs !== null && today - day(s.lastDoneTs) > every + 1) {
+      // La fenêtre est passée sans validation : la série est perdue maintenant,
+      // pas à la prochaine validation. C'est ce qui permet de l'annoncer.
+      if (s.streak > 0) s.brokenStreak = s.streak
       s.streak = 0
       s.streakTiersPaid.clear()
     }
@@ -347,10 +357,13 @@ export function pendingToEvents(
 }
 
 /**
- * Tâches à usage unique validées avant aujourd'hui : elles ont fait leur temps.
- * On les efface le lendemain plutôt qu'à la validation, pour qu'elles restent
+ * Tâches à usage unique accomplies avant aujourd'hui : elles ont fait leur temps.
+ * On les efface le lendemain plutôt qu'à l'instant, pour qu'elles restent
  * visibles et annulables le jour même. Leurs événements — donc leurs gains —
  * survivent à la suppression.
+ *
+ * Un compteur sans répétition en fait partie : il ne se refera pas, une fois
+ * son objectif atteint il n'a plus rien à faire dans la liste.
  */
 export function staleOneShots(
   tasks: Task[],
@@ -361,8 +374,9 @@ export function staleOneShots(
   const today = dayNum(now, dayStart)
   return tasks
     .filter((t) => {
-      if (t.repeat || t.counter || t.deletedAt) return false
-      const last = rep.perTask.get(t.id)?.lastDoneTs
+      if (t.repeat || t.deletedAt) return false
+      const s = rep.perTask.get(t.id)
+      const last = t.counter ? s?.lastTargetTs : s?.lastDoneTs
       return last != null && dayNum(last, dayStart) < today
     })
     .map((t) => t.id)

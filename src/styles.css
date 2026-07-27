@@ -310,6 +310,11 @@ body::after {
   color: var(--bad);
 }
 
+.badge--broken {
+  color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 14%, var(--panel-2));
+}
+
 .task__go {
   flex: 0 0 auto;
   padding: 0 18px;

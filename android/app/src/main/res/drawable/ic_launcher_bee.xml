@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Avant-plan de l'icône adaptative.
+
+  L'abeille est dessinée dans un repère 24×24 comme l'icône de notification.
+  Le groupe la transpose dans les 108×108 attendus : avec un pivot à l'origine,
+  un point p devient p × scale + translate. Le motif fait ~50×42 une fois mis à
+  l'échelle, il tient donc dans le cercle de sécurité de 66 dp que le système
+  peut rogner.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:pivotX="0"
+        android:pivotY="0"
+        android:scaleX="2.6"
+        android:scaleY="2.6"
+        android:translateX="22.8"
+        android:translateY="28">
+
+        <!-- Ailes translucides -->
+        <group android:pivotX="6.2" android:pivotY="8.4" android:rotation="-28">
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillAlpha="0.6"
+                android:pathData="M2.6,8.4 a3.7,2.2 0 1,0 7.4,0 a3.7,2.2 0 1,0 -7.4,0" />
+        </group>
+        <group android:pivotX="17.8" android:pivotY="8.4" android:rotation="28">
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillAlpha="0.6"
+                android:pathData="M14.1,8.4 a3.7,2.2 0 1,0 7.4,0 a3.7,2.2 0 1,0 -7.4,0" />
+        </group>
+
+        <!-- Antennes -->
+        <path
+            android:strokeColor="#1B1233"
+            android:strokeWidth="1.2"
+            android:strokeLineCap="round"
+            android:pathData="M10.6,4.3 L9.1,2.3" />
+        <path
+            android:strokeColor="#1B1233"
+            android:strokeWidth="1.2"
+            android:strokeLineCap="round"
+            android:pathData="M13.4,4.3 L14.9,2.3" />
+
+        <!-- Tête -->
+        <path
+            android:fillColor="#1B1233"
+            android:pathData="M9.6,6.2 a2.4,2.4 0 1,0 4.8,0 a2.4,2.4 0 1,0 -4.8,0" />
+
+        <!-- Abdomen : bandes jaunes et sombres alternées -->
+        <path
+            android:fillColor="#FACC15"
+            android:pathData="M7.4,9.9 a4.6,1.7 0 1,0 9.2,0 a4.6,1.7 0 1,0 -9.2,0" />
+        <path
+            android:fillColor="#1B1233"
+            android:pathData="M8.0,13.2 a4.0,1.6 0 1,0 8.0,0 a4.0,1.6 0 1,0 -8.0,0" />
+        <path
+            android:fillColor="#FACC15"
+            android:pathData="M9.1,16.4 a2.9,1.5 0 1,0 5.8,0 a2.9,1.5 0 1,0 -5.8,0" />
+    </group>
+</vector>
