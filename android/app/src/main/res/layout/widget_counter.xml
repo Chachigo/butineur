@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/counter_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <!-- Emoji ou glyphe Phosphor : une seule des deux est visible. -->
+    <TextView
+        android:id="@+id/counter_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="24sp" />
+
+    <TextView
+        android:id="@+id/counter_icon_ph"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/phosphor"
+        android:textColor="@color/widget_text"
+        android:textSize="24sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/counter_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/widget_text"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/counter_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:textColor="@color/widget_dim"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/counter_plus"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/widget_btn_go"
+        android:contentDescription="@string/widget_plus"
+        android:gravity="center"
+        android:text="+"
+        android:textColor="@color/widget_go_ink"
+        android:textSize="26sp"
+        android:textStyle="bold" />
+</LinearLayout>

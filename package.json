@@ -1,0 +1,35 @@
+{
+  "name": "butineur",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "android": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-/usr/libexec/android-studio/jbr} ./gradlew installDebug",
+    "android:apk": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-/usr/libexec/android-studio/jbr} ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/local-notifications": "^8.2.1",
+    "@capacitor/preferences": "^8.0.1",
+    "@phosphor-icons/web": "^2.1.2",
+    "canvas-confetti": "^1.9.3",
+    "idb-keyval": "^6.2.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
+  }
+}

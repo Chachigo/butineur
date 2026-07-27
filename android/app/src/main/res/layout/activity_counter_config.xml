@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/config_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/widget_screen"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="14dp"
+        android:text="@string/widget_config_title"
+        android:textColor="@color/widget_text"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/config_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:lineSpacingMultiplier="1.35"
+        android:text="@string/widget_config_empty"
+        android:textColor="@color/widget_dim"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <ListView
+        android:id="@+id/config_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@null"
+        android:dividerHeight="8dp"
+        android:listSelector="@android:color/transparent" />
+
+    <TextView
+        android:id="@+id/config_cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:padding="14dp"
+        android:text="@string/widget_config_cancel"
+        android:textColor="@color/widget_dim"
+        android:textSize="15sp" />
+</LinearLayout>

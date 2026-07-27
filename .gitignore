@@ -1,0 +1,27 @@
+.claude
+node_modules/
+dist/
+*.local
+
+# Build Android
+android/build/
+android/app/build/
+android/.gradle/
+android/captures/
+*.apk
+*.aab
+*.keystore
+
+# Machine-specific : chemin du SDK Android
+android/local.properties
+
+# Regénérés par `npx cap sync`
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+
+# Divers
+.DS_Store
+.directory
+*.log
+.todo

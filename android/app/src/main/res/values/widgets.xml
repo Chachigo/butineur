@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mêmes teintes que le thème du web (src/styles.css). -->
+    <color name="widget_screen">#0E0E14</color>
+    <color name="widget_bg">#191924</color>
+    <color name="widget_panel">#2C2C3D</color>
+    <color name="widget_text">#ECECF4</color>
+    <color name="widget_dim">#8F8FA8</color>
+    <color name="widget_go">#4ADE80</color>
+    <color name="widget_go_ink">#04180C</color>
+
+    <string name="widget_balance_label">budget loisirs</string>
+    <string name="widget_balance_desc">Solde du budget loisirs</string>
+    <string name="widget_counter_desc">Compteur d\'une tâche</string>
+    <string name="widget_todo_desc">Tâches à faire</string>
+    <string name="widget_todo_title">À FAIRE</string>
+    <string name="widget_todo_empty">Tout est fait. 🎉</string>
+    <string name="widget_todo_new">Nouvelle tâche</string>
+    <string name="widget_unassigned">Aucune tâche</string>
+    <string name="widget_config_title">Quelle tâche compteur ?</string>
+    <string name="widget_config_empty">Aucune tâche à compteur pour l\'instant.\n\nOuvre l\'appli, crée une tâche puis active « Compteur » dedans. Repose ensuite le widget.</string>
+    <string name="widget_config_cancel">Annuler</string>
+    <string name="widget_plus">Ajouter 1</string>
+
+    <!-- Écran de configuration du widget : sombre, comme l'appli. -->
+    <style name="ConfigTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/widget_screen</item>
+        <item name="android:colorBackground">@color/widget_screen</item>
+        <item name="android:textColorPrimary">@color/widget_text</item>
+        <item name="android:textColor">@color/widget_text</item>
+        <item name="colorAccent">@color/widget_go</item>
+    </style>
+
+
+
+
+</resources>

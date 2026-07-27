@@ -1,0 +1,841 @@
+/* Même police que les widgets Android (android/app/src/main/res/font). */
+@font-face {
+  font-family: 'Phosphor';
+  src: url('/fonts/phosphor.woff2') format('woff2');
+  font-display: block;
+}
+
+.ph-glyph {
+  font-family: 'Phosphor';
+  line-height: 1;
+}
+
+:root {
+  --bg: #0e0e14;
+  --panel: #191924;
+  --panel-2: #21212f;
+  --line: #2c2c3d;
+  --text: #ececf4;
+  --dim: #8f8fa8;
+  --go: #4ade80;
+  --go-ink: #04180c;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --streak: #fb923c;
+  --r: 14px;
+  color-scheme: dark;
+
+  /*
+   * Capacitor 8 injecte `--safe-area-inset-*` dans la WebView (SystemBars,
+   * insetsHandling: css). `env()` seul ne suffit pas sous Android : les
+   * fenêtres passaient sous les boutons de navigation.
+   */
+  --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: var(--sat) 0 calc(var(--sab) + 88px);
+}
+
+/* --- solde --- */
+.balance {
+  padding: 28px 20px 20px;
+  text-align: center;
+}
+
+.balance__amount {
+  font-size: clamp(44px, 14vw, 64px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--go);
+}
+
+.balance--neg .balance__amount {
+  color: var(--bad);
+}
+
+.balance__cur {
+  font-size: 0.45em;
+  font-weight: 600;
+  margin-left: 6px;
+  color: var(--dim);
+}
+
+.balance__label {
+  color: var(--dim);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* --- onglets --- */
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 12px;
+}
+
+.tab {
+  flex: 1;
+  padding: 9px 8px;
+  border-radius: 10px;
+  color: var(--dim);
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--panel);
+}
+
+.tab--on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.tab--icon {
+  flex: 0 0 42px;
+}
+
+.tabs--inner {
+  padding: 0 18px 8px;
+}
+
+.main {
+  padding: 0 16px;
+}
+
+/* --- listes --- */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty {
+  text-align: center;
+  color: var(--dim);
+  padding: 48px 16px;
+  line-height: 1.7;
+}
+
+.task {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  background: var(--panel);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.task--done {
+  opacity: 0.45;
+}
+
+.task--late {
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+
+/* --- sélection multiple --- */
+.task--picked {
+  outline: 2px solid var(--go);
+  opacity: 1;
+}
+
+.task__tick {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.task__tick--on {
+  background: var(--go);
+  border-color: var(--go);
+  color: var(--go-ink);
+}
+
+.selbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border-radius: var(--r);
+}
+
+.selbar__x {
+  font-size: 16px;
+  color: var(--dim);
+  padding: 4px 6px;
+}
+
+.selbar__count {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.selbar__all {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--go);
+  padding: 6px 8px;
+}
+
+.selbar .btn {
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.task__body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px 12px 14px;
+  text-align: left;
+  min-width: 0;
+}
+
+.task__icon {
+  font-size: 22px;
+  width: 28px;
+  flex: 0 0 28px;
+  text-align: center;
+}
+
+.task__text {
+  min-width: 0;
+}
+
+.task__name {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.badge {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+  background: var(--panel-2);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.badge--streak {
+  color: var(--streak);
+}
+
+.badge--late {
+  color: var(--bad);
+}
+
+.task__go {
+  flex: 0 0 auto;
+  padding: 0 18px;
+  margin: 8px;
+  border-radius: 10px;
+  background: var(--go);
+  color: var(--go-ink);
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.task__go:disabled {
+  background: var(--panel-2);
+  color: var(--dim);
+}
+
+.task__go--buy {
+  background: var(--warn);
+  color: #241a00;
+}
+
+.task__counter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+}
+
+.round {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.round:disabled {
+  opacity: 0.35;
+}
+
+.round--go {
+  background: var(--go);
+  color: var(--go-ink);
+}
+
+.task__count {
+  min-width: 52px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.task__count--ok {
+  color: var(--go);
+}
+
+.task__target {
+  color: var(--dim);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+/* --- historique --- */
+.list--history {
+  gap: 6px;
+}
+
+.entry {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.entry__main {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.entry__label {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry__total {
+  color: var(--go);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.entry__total--neg {
+  color: var(--bad);
+}
+
+.entry__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.chip {
+  background: var(--panel-2);
+  padding: 1px 6px;
+  border-radius: 5px;
+}
+
+.chip--neg {
+  color: var(--bad);
+}
+
+.chip--bonus {
+  color: var(--streak);
+}
+
+/* --- dépense libre --- */
+.free {
+  margin-top: 20px;
+  padding: 14px;
+  background: var(--panel);
+  border-radius: var(--r);
+}
+
+/* --- bouton flottant --- */
+.fab {
+  position: fixed;
+  right: max(16px, calc(50vw - 320px + 16px));
+  bottom: calc(var(--sab) + 20px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--go);
+  color: var(--go-ink);
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1;
+  box-shadow: 0 6px 20px #0008;
+}
+
+/* --- feuille modale --- */
+.sheet {
+  position: fixed;
+  inset: 0;
+  background: #000a;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 20;
+  animation: fade 0.15s ease-out;
+}
+
+.sheet__panel {
+  width: 100%;
+  max-width: 640px;
+  max-height: calc(94dvh - var(--sat));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: 20px 20px 0 0;
+  animation: rise 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(24px);
+  }
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 8px;
+}
+
+.sheet__head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.sheet__x {
+  color: var(--dim);
+  font-size: 18px;
+  padding: 4px 8px;
+}
+
+.sheet__body {
+  overflow-y: auto;
+  padding: 8px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet__foot {
+  display: flex;
+  gap: 10px;
+  padding: 12px 18px calc(var(--sab) + 16px);
+  border-top: 1px solid var(--line);
+}
+
+/* Une feuille sans pied doit quand même dégager les boutons de navigation. */
+.sheet__body:last-child {
+  padding-bottom: calc(var(--sab) + 18px);
+}
+
+.sheet__foot .btn--go {
+  flex: 1;
+}
+
+/* --- champs --- */
+.input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--go);
+  outline-offset: 1px;
+}
+
+.input--sm {
+  width: 5.5em;
+  flex: 0 0 auto;
+}
+
+/* Assez large pour 3 chiffres, assez étroit pour tenir dans une ligne de réglage. */
+.input--xs {
+  width: 4.2em;
+  flex: 0 0 auto;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.input--unit {
+  width: 6em;
+  flex: 0 1 auto;
+}
+
+.input--time {
+  width: 7.5em;
+  flex: 0 0 auto;
+}
+
+.input--select {
+  flex: 1 1 8em;
+  width: auto;
+}
+
+/* Ligne de réglage : libellé à gauche, contrôles serrés à droite. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.row__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+/* --- sélecteur d'icône --- */
+.iconpick {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.iconpick__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.iconpick__cell {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.iconpick__cell--on {
+  outline: 2px solid var(--go);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field--row,
+.field__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.field__label {
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.field__suffix {
+  font-size: 13px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.hint {
+  margin: 2px 0;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.preview {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.preview strong {
+  color: var(--go);
+}
+
+/* --- sections repliables --- */
+.sect {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.sect--on {
+  background: var(--panel);
+}
+
+.sect__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.sect__head input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--go);
+}
+
+.sect__title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.sect__hint {
+  font-size: 12px;
+  color: var(--dim);
+  margin-left: auto;
+  text-align: right;
+}
+
+.sect__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* --- paliers --- */
+.tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tier {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.tier__unit {
+  font-size: 12px;
+  color: var(--dim);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tier__arrow {
+  color: var(--dim);
+  margin: 0 2px;
+}
+
+.tier__del {
+  margin-left: auto;
+  color: var(--dim);
+  padding: 4px 8px;
+}
+
+/* --- simulation de série --- */
+.sim__strip {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.sim__step {
+  flex: 0 0 auto;
+  min-width: 44px;
+  text-align: center;
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 5px 6px;
+}
+
+.sim__step--cap {
+  opacity: 0.55;
+}
+
+.sim__n {
+  display: block;
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.sim__day {
+  font-style: normal;
+  opacity: 0.65;
+  margin-left: 3px;
+}
+
+.sim__v--zero {
+  color: var(--bad);
+}
+
+.sect--off {
+  opacity: 0.5;
+}
+
+.sect--off .sect__head {
+  cursor: not-allowed;
+}
+
+.sim__v {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--go);
+  font-variant-numeric: tabular-nums;
+}
+
+.sim__tier {
+  font-style: normal;
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.sim__total {
+  color: var(--go);
+}
+
+.link {
+  align-self: flex-start;
+  color: var(--go);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.btn {
+  padding: 11px 18px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-weight: 600;
+}
+
+.btn--go {
+  background: var(--go);
+  color: var(--go-ink);
+}
+
+.btn--go:disabled {
+  background: var(--panel-2);
+  color: var(--dim);
+}
+
+.btn--danger {
+  color: var(--bad);
+}
+
+/* --- pièce animée (injectée par fx.ts) --- */
+.coin {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--go);
+  color: var(--go-ink);
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px #0009;
+}
+
+.coin--neg {
+  background: var(--bad);
+  color: #260707;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  .sheet,
+  .sheet__panel {
+    animation: none !important;
+    transition: none !important;
+  }
+}
