@@ -41,7 +41,12 @@ class TodoWidget : AppWidgetProvider() {
         if (intent.getBooleanExtra(EXTRA_DONE, false)) return
 
         val kind = intent.getStringExtra(EXTRA_KIND) ?: "complete"
-        val gain = Store.todo(context).firstOrNull { it.id == taskId }?.gain ?: 0.0
+        val gain = if (kind == "count") {
+            // Compteur : le gain dépend du cran, il vit dans `widgetTasks`.
+            Store.task(context, taskId)?.let { it.gainAt(Store.displayedCount(context, it)) } ?: 0.0
+        } else {
+            Store.todo(context).firstOrNull { it.id == taskId }?.gain ?: 0.0
+        }
         Store.pushPending(context, taskId, 1, kind, gain)
         // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
         Widgets.refreshAll(context)

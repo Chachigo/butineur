@@ -31,7 +31,10 @@ class CounterWidget : AppWidgetProvider() {
             AppWidgetManager.INVALID_APPWIDGET_ID,
         )
         val taskId = Store.widgetTask(context, widgetId) ?: return
-        val gain = Store.task(context, taskId)?.gain ?: 0.0
+        val task = Store.task(context, taskId)
+        // Gain du cran courant, pas d'un cran figé : plusieurs taps d'affilée
+        // appli fermée doivent tous compter juste.
+        val gain = task?.gainAt(Store.displayedCount(context, task)) ?: 0.0
         Store.pushPending(context, taskId, intent.getIntExtra(EXTRA_DELTA, 1), "count", gain)
         // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
         Widgets.refreshAll(context)
@@ -50,14 +53,14 @@ class CounterWidget : AppWidgetProvider() {
             val task = Store.task(ctx, Store.widgetTask(ctx, widgetId))
 
             if (task == null) {
-                v.setIcon(ctx, R.id.counter_icon, R.id.counter_icon_img, "", false, "🎯", 28)
+                v.setIcon(ctx, R.id.counter_icon, R.id.counter_icon_img, "", false, "🎯", 24)
                 v.setTextViewText(R.id.counter_name, ctx.getString(R.string.widget_unassigned))
                 v.setTextViewText(R.id.counter_value, "")
                 v.setOnClickPendingIntent(R.id.counter_plus, BalanceWidget.openApp(ctx))
                 return v
             }
 
-            v.setIcon(ctx, R.id.counter_icon, R.id.counter_icon_img, task.icon, task.iconPh, "🎯", 28)
+            v.setIcon(ctx, R.id.counter_icon, R.id.counter_icon_img, task.icon, task.iconPh, "🎯", 24)
             v.setTextViewText(R.id.counter_name, task.name)
             v.setOnClickPendingIntent(R.id.counter_name, BalanceWidget.openApp(ctx))
 

@@ -25,6 +25,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   counter: null,
   due: null,
   streak: null,
+  remind: null,
   archived: false,
   updatedAt: 0,
   deletedAt: null,

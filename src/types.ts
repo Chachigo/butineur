@@ -19,6 +19,8 @@ export type Task = {
   /** Pour une tâche répétitive, l'échéance glisse : dernier passage + everyDays. */
   due: null | { at: string; penalty: Penalty }
   streak: null | { tiers: Tier[]; multiplier: null | { perStep: number; cap: number } }
+  /** Rappel quotidien à une heure donnée, tant que la tâche est à faire. */
+  remind: null | { time: string }
   archived: boolean
   updatedAt: number
   deletedAt: number | null

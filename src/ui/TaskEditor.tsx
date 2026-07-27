@@ -17,6 +17,7 @@ export function blankTask(defaultReward: number): Task {
     counter: null,
     due: null,
     streak: null,
+    remind: null,
     archived: false,
     updatedAt: 0,
     deletedAt: null,
@@ -218,6 +219,34 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                   onChange={(penalty) => patch({ due: { ...t.due!, penalty } })}
                 />
                 {t.due.penalty.kind !== 'none' && <PenaltySim task={t} currency={cur} />}
+              </>
+            )}
+          </Section>
+
+          <Section
+            title="Rappel"
+            hint="Notification à une heure fixe"
+            on={!!t.remind}
+            onToggle={(v) => patch({ remind: v ? { time: '19:00' } : null })}
+          >
+            {t.remind && (
+              <>
+                <div className="row">
+                  <span className="row__label">Chaque jour à</span>
+                  <input
+                    className="input input--time"
+                    type="time"
+                    value={t.remind.time}
+                    onChange={(e) =>
+                      e.target.value && patch({ remind: { time: e.target.value } })
+                    }
+                    aria-label="Heure du rappel"
+                  />
+                </div>
+                <p className="hint">
+                  Envoyé seulement les jours où la tâche est à faire. Rien tant qu’elle
+                  est déjà validée.
+                </p>
               </>
             )}
           </Section>

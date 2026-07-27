@@ -17,9 +17,12 @@ data class CounterTask(
     val unit: String,
     /** Jour auquel `count` se rapporte : au-delà, le compteur est reparti à zéro. */
     val day: Long,
-    /** Ce que le prochain +1 rapportera, chiffré par le web. */
-    val gain: Double,
-)
+    /** Gain de chaque cran, chiffré par le web : `gains[i]` fait passer de i à i+1. */
+    val gains: List<Double>,
+) {
+    /** Ce que rapporterait le prochain +1, depuis le compte affiché. */
+    fun gainAt(count: Int): Double = gains.getOrElse(count) { 0.0 }
+}
 
 data class TodoTask(
     val id: String,
@@ -106,7 +109,9 @@ object Store {
                     target = o.optInt("target"),
                     unit = o.optString("unit"),
                     day = o.optLong("day"),
-                    gain = o.optDouble("gain", 0.0),
+                    gains = o.optJSONArray("gains").let { g ->
+                        (0 until (g?.length() ?: 0)).map { g!!.optDouble(it, 0.0) }
+                    },
                 )
             }
         }.getOrDefault(emptyList())

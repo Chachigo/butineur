@@ -34,8 +34,12 @@ export type WidgetPayload = {
     target: number
     unit: string
     day: number
-    /** Ce que le prochain +1 rapporterait, pour l'affichage immédiat du solde. */
-    gain: number
+    /**
+     * Ce que rapporte chaque cran : `gains[i]` est le gain du tap qui fait
+     * passer le compte de `i` à `i+1`. Le widget indexe par son compte courant,
+     * et reste donc juste sur plusieurs taps consécutifs appli fermée.
+     */
+    gains: number[]
   }[]
   /** Toutes les tâches en cours, compteurs compris — la liste du widget défile. */
   todo: {
@@ -58,19 +62,23 @@ export type WidgetPayload = {
 }
 
 /**
- * Ce que le prochain +1 verserait sur un compteur : la récompense de la tâche
- * s'il atteint l'objectif, plus tout palier franchi au passage.
+ * Gain de chaque cran d'un compteur, du premier à l'objectif.
+ *
+ * Un seul montant ne suffisait pas : après un tap appli fermée, il valait encore
+ * ce que le web avait chiffré pour le cran précédent, et le solde du widget ne
+ * bougeait plus. Avec le tableau, le natif indexe par son compte courant.
  */
-function nextCountGain(t: Task, rep: Replay): number {
-  if (!t.counter) return 0
-  const s = rep.perTask.get(t.id)
-  const count = s?.count ?? 0
-  if (count >= t.counter.target) return 0
-  const next = count + 1
-  const tier = t.counter.tiers
-    .filter((x) => x.at <= next && !s?.countTiersPaid.has(x.at))
-    .reduce((sum, x) => sum + x.bonus, 0)
-  return (next >= t.counter.target ? t.reward : 0) + tier
+function countGains(t: Task, rep: Replay): number[] {
+  if (!t.counter) return []
+  const paid = rep.perTask.get(t.id)?.countTiersPaid
+  const { target, tiers } = t.counter
+  return Array.from({ length: target }, (_, i) => {
+    const step = i + 1
+    const tier = tiers
+      .filter((x) => x.at === step && !paid?.has(x.at))
+      .reduce((sum, x) => sum + x.bonus, 0)
+    return (step === target ? t.reward : 0) + tier
+  })
 }
 
 /** Le natif reçoit le caractère à afficher, jamais un nom d'icône à résoudre. */
@@ -106,7 +114,7 @@ export function widgetPayload(
         target: t.counter!.target,
         unit: t.counter!.unit ?? '',
         day,
-        gain: nextCountGain(t, rep),
+        gains: countGains(t, rep),
       })),
     todo: live
       .filter((t) => isAvailable(t, rep.perTask.get(t.id), now))
@@ -121,7 +129,8 @@ export function widgetPayload(
             ...icon(t.icon),
             kind: 'count' as const,
             label: done ? '✓' : `${count}/${t.counter.target}`,
-            gain: nextCountGain(t, rep),
+            // Un compteur : le gain dépend du cran, le natif le lit dans `tasks`.
+            gain: 0,
             done,
           }
         }
@@ -184,19 +193,45 @@ export async function takeNewTaskRequest(): Promise<boolean> {
 export type NotifSpec = { id: number; title: string; body: string; at: number }
 
 export function notificationSpecs(rep: Replay, tasks: Task[], now: number, currency: string): NotifSpec[] {
-  return tasks
-    .filter((t) => t.due && !t.deletedAt && !t.archived)
+  const live = tasks.filter((t) => !t.deletedAt && !t.archived)
+
+  const deadlines = live
+    .filter((t) => t.due)
     .map((t) => ({ t, at: dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null) }))
     .filter((x): x is { t: Task; at: number } => x.at !== null && x.at > now)
-    .sort((a, b) => a.at - b.at)
-    // Android plafonne les alarmes programmées ; les plus proches suffisent.
-    .slice(0, 32)
     .map(({ t, at }) => ({
       id: notifId(t.id),
       title: t.name,
       body: `Échéance maintenant — ${fmt(t.reward)} ${currency} en jeu`,
       at,
     }))
+
+  // Rappels : rien pour une tâche déjà faite, on la reprogramme au prochain cycle.
+  const reminders = live
+    .filter((t) => t.remind && isAvailable(t, rep.perTask.get(t.id), now))
+    .map((t) => ({
+      // Décalé pour ne pas écraser la notification d'échéance de la même tâche.
+      id: notifId(t.id) + 1,
+      title: t.name,
+      body: t.counter
+        ? `Objectif du jour : ${t.counter.target} ${t.counter.unit ?? ''}`.trim()
+        : `À faire — ${fmt(previewReward(t, rep.perTask.get(t.id), now))} ${currency}`,
+      at: nextTimeToday(t.remind!.time, now),
+    }))
+
+  return [...deadlines, ...reminders]
+    .sort((a, b) => a.at - b.at)
+    // Android plafonne les alarmes programmées ; les plus proches suffisent.
+    .slice(0, 32)
+}
+
+/** Prochaine occurrence de « HH:MM » : aujourd'hui si l'heure est à venir, sinon demain. */
+function nextTimeToday(time: string, now: number): number {
+  const [h, m] = time.split(':').map(Number)
+  const d = new Date(now)
+  d.setHours(h || 0, m || 0, 0, 0)
+  if (+d <= now) d.setDate(d.getDate() + 1)
+  return +d
 }
 
 export async function syncNotifications(specs: NotifSpec[]): Promise<void> {
