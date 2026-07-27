@@ -37,11 +37,13 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
         val t = items[position]
         val v = RemoteViews(ctx.packageName, R.layout.item_todo_row)
         v.setIcon(
+            ctx,
             R.id.row_icon,
-            R.id.row_icon_ph,
+            R.id.row_icon_img,
             t.icon,
             t.iconPh,
             if (t.kind == "count") "🎯" else "✓",
+            18,
         )
         v.setTextViewText(R.id.row_name, t.name)
         v.setTextViewText(R.id.row_go, t.label)

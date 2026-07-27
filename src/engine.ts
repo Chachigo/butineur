@@ -71,6 +71,7 @@ const freshState = (): TaskState => ({
   lastDoneTs: null,
   count: 0,
   periodKey: null,
+  targetPaid: false,
   countTiersPaid: new Set(),
   streakTiersPaid: new Set(),
 })
@@ -121,15 +122,25 @@ export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay
     const s = stateOf(e.taskId)
 
     if (e.kind === 'count') {
+      const target = task?.counter?.target ?? Infinity
       const k = periodKey(e.ts, everyDaysOf(task))
       if (s.periodKey !== k) {
         s.periodKey = k
         s.count = 0
+        s.targetPaid = false
         s.countTiersPaid = new Set()
       }
       // L'objectif plafonne le compteur : au-delà, un tap de plus ne sert à rien
       // et ne doit surtout pas décaler le franchissement d'un palier.
-      s.count = Math.min(task?.counter?.target ?? Infinity, Math.max(0, s.count + e.delta))
+      s.count = Math.min(target, Math.max(0, s.count + e.delta))
+
+      // Atteindre l'objectif verse la récompense de la tâche, une fois par
+      // période. Les paliers ne servent qu'aux bonus intermédiaires.
+      let base = 0
+      if (task && s.count >= target && !s.targetPaid) {
+        s.targetPaid = true
+        base = task.reward
+      }
 
       // Un palier franchi n'est payé qu'une fois par période : décrémenter puis
       // réincrémenter ne permet pas de le farmer, et deux `count` concurrents
@@ -141,18 +152,19 @@ export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay
           tierBonus += t.bonus
         }
       }
-      balance += tierBonus
+      const gained = base + tierBonus
+      balance += gained
       entries.push({
         eventId: e.id,
         ts: e.ts,
         kind: 'count',
         taskId: e.taskId,
         label: `${label} ${e.delta > 0 ? '+' : ''}${e.delta}`,
-        base: 0,
+        base,
         penalty: 0,
         multiplierBonus: 0,
         tierBonus,
-        total: tierBonus,
+        total: gained,
       })
       continue
     }
@@ -215,6 +227,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now()): Replay
       if (s.periodKey !== k) {
         s.periodKey = k
         s.count = 0
+        s.targetPaid = false
         s.countTiersPaid = new Set()
       }
     }

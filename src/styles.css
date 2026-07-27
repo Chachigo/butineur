@@ -71,6 +71,22 @@ button:disabled {
   padding: var(--sat) 0 calc(var(--sab) + 88px);
 }
 
+/*
+ * Le contenu défile sous la barre d'état : un simple padding ne suffit pas,
+ * il ne fait que décaler le départ. Ce bandeau opaque la masque en permanence.
+ */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--sat);
+  background: var(--bg);
+  z-index: 40;
+  pointer-events: none;
+}
+
 /* --- solde --- */
 .balance {
   padding: 28px 20px 20px;

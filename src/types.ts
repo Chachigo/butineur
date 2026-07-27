@@ -89,6 +89,8 @@ export type TaskState = {
   /** Compte de la période courante. */
   count: number
   periodKey: number | null
+  /** L'objectif du compteur a déjà été payé pour cette période. */
+  targetPaid: boolean
   countTiersPaid: Set<number>
   streakTiersPaid: Set<number>
 }

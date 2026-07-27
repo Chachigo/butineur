@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.ImageView
 import android.widget.ListView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -58,7 +59,23 @@ class CounterConfigActivity : AppCompatActivity() {
                 val v = convertView
                     ?: layoutInflater.inflate(R.layout.item_counter_task, parent, false)
                 val t = getItem(position) ?: return v
-                v.findViewById<TextView>(R.id.item_icon).text = t.icon.ifEmpty { "🎯" }
+
+                // Même rendu que les widgets : emoji en texte, Phosphor en image.
+                val txt = v.findViewById<TextView>(R.id.item_icon)
+                val img = v.findViewById<ImageView>(R.id.item_icon_img)
+                val bmp = if (t.iconPh && t.icon.isNotEmpty()) {
+                    Glyph.bitmap(this@CounterConfigActivity, t.icon, 26, getColor(R.color.widget_text))
+                } else null
+                if (bmp != null) {
+                    img.setImageBitmap(bmp)
+                    img.visibility = View.VISIBLE
+                    txt.visibility = View.GONE
+                } else {
+                    txt.text = t.icon.ifEmpty { "🎯" }
+                    txt.visibility = View.VISIBLE
+                    img.visibility = View.GONE
+                }
+
                 v.findViewById<TextView>(R.id.item_name).text = t.name
                 v.findViewById<TextView>(R.id.item_sub).text =
                     "objectif ${t.target} ${t.unit}".trim()

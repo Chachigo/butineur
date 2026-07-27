@@ -110,28 +110,40 @@ describe('série', () => {
 })
 
 describe('compteur', () => {
-  const t = task({ counter: { target: 8, unit: 'verres', tiers: [{ at: 8, bonus: 20 }] } })
+  // Récompense 10 pour l'objectif, plus un bonus intermédiaire à 4.
+  const t = task({ reward: 10, counter: { target: 8, unit: 'verres', tiers: [{ at: 4, bonus: 3 }] } })
 
-  it('ne verse un palier qu’une fois malgré deux incréments concurrents', () => {
+  it('verse la récompense à l’objectif, sans palier à y poser', () => {
+    const nu = task({ reward: 10, counter: { target: 2, unit: '', tiers: [] } })
+    expect(replay([count(0)], [nu], at(0)).balance).toBe(0)
+    expect(replay([count(0), count(0)], [nu], at(0)).balance).toBe(10)
+  })
+
+  it('cumule les bonus intermédiaires avec la récompense', () => {
+    const events = [...Array(8)].map(() => count(0))
+    expect(replay(events, [t], at(0)).balance).toBe(13) // 3 à mi-parcours + 10 à l'objectif
+  })
+
+  it('ne paie l’objectif qu’une fois malgré deux incréments concurrents', () => {
     const seven = [1, 2, 3, 4, 5, 6, 7].map(() => count(0))
-    // Deux appareils hors-ligne franchissent le palier chacun de leur côté.
+    // Deux appareils hors-ligne franchissent l'objectif chacun de leur côté.
     const events = [...seven, count(0, 1, 'phone'), count(0, 1, 'pc')]
     const { balance, perTask } = replay(events, [t], at(0))
     expect(perTask.get('t1')!.count).toBe(8) // plafonné à l'objectif
-    expect(balance).toBe(20) // et le palier n'est payé qu'une fois
+    expect(balance).toBe(13)
   })
 
   it('ne se laisse pas farmer en décrémentant puis réincrémentant', () => {
     const events = [...Array(8)].map(() => count(0))
     events.push(count(0, -1), count(0, 1), count(0, -1), count(0, 1))
-    expect(replay(events, [t], at(0)).balance).toBe(20)
+    expect(replay(events, [t], at(0)).balance).toBe(13)
   })
 
   it('ne dépasse jamais l’objectif', () => {
     const events = [...Array(12)].map(() => count(0))
     const { perTask, balance } = replay(events, [t], at(0))
     expect(perTask.get('t1')!.count).toBe(8)
-    expect(balance).toBe(20) // le palier reste payé une seule fois
+    expect(balance).toBe(13)
   })
 
   it('replafonne correctement après un retrait', () => {
@@ -140,18 +152,10 @@ describe('compteur', () => {
     expect(replay(events, [t], at(0)).perTask.get('t1')!.count).toBe(6)
   })
 
-  it('ne rapporte rien si un palier dépasse l’objectif', () => {
-    // Le cas qui cassait : objectif ramené à 2, palier resté à 8.
-    const bancal = task({ counter: { target: 2, unit: '', tiers: [{ at: 8, bonus: 20 }] } })
-    const events = [...Array(5)].map(() => count(0))
-    const { balance, perTask } = replay(events, [bancal], at(0))
-    expect(perTask.get('t1')!.count).toBe(2)
-    expect(balance).toBe(0)
-  })
-
-  it('paie dès que le palier colle à l’objectif', () => {
-    const bon = task({ counter: { target: 2, unit: '', tiers: [{ at: 2, bonus: 20 }] } })
-    expect(replay([count(0), count(0)], [bon], at(0)).balance).toBe(20)
+  it('repaie l’objectif à chaque nouvelle période', () => {
+    const jour1 = [...Array(8)].map(() => count(0))
+    const jour2 = [...Array(8)].map(() => count(1))
+    expect(replay([...jour1, ...jour2], [t], at(1)).balance).toBe(26)
   })
 
   it('repart à zéro à la période suivante', () => {

@@ -24,16 +24,12 @@ export function blankTask(defaultReward: number): Task {
 }
 
 /**
- * Recale les paliers quand l'objectif change.
- *
- * Sans ça, ramener l'objectif de 8 à 2 laissait le palier à 8 : le compteur
- * plafonne à 2, le palier n'est jamais atteint et la tâche ne rapporte rien.
- * Le palier posé sur l'ancien objectif suit, les autres sont bornés.
+ * Borne les paliers quand l'objectif baisse : le compteur plafonne à l'objectif,
+ * un palier au-delà ne tomberait jamais.
  */
 function retarget(counter: NonNullable<Task['counter']>, next: number): Tier[] {
-  const moved = counter.tiers.map((t) => (t.at === counter.target ? { ...t, at: next } : t))
-  const clamped = moved.map((t) => ({ ...t, at: Math.min(t.at, next) }))
-  // Le recalage peut faire doublon : on garde le bonus le plus élevé par palier.
+  const clamped = counter.tiers.map((t) => ({ ...t, at: Math.min(t.at, next) }))
+  // Le recalage peut faire doublon : un seul palier par valeur.
   return [...new Map(clamped.map((t) => [t.at, t])).values()].sort((a, b) => a.at - b.at)
 }
 
@@ -123,11 +119,9 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
             hint="Ex. 8 verres d’eau par jour"
             on={!!t.counter}
             onToggle={(v) =>
-              patch({
-                // Un compteur ne rapporte que par ses paliers : on pré-remplit
-                // celui de l'objectif avec la récompense, visible et éditable.
-                counter: v ? { target: 8, unit: 'verres', tiers: [{ at: 8, bonus: t.reward }] } : null,
-              })
+              // Atteindre l'objectif verse la récompense de la tâche : pas de
+              // palier par défaut, ils ne servent qu'aux bonus intermédiaires.
+              patch({ counter: v ? { target: 8, unit: 'verres', tiers: [] } : null })
             }
           >
             {t.counter && (
@@ -151,7 +145,13 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                     aria-label="Unité"
                   />
                 </div>
-                <p className="hint">Paliers de récompense</p>
+                <p className="preview">
+                  Objectif atteint :{' '}
+                  <strong>
+                    +{fmt(t.reward)} {cur}
+                  </strong>
+                </p>
+                <p className="hint">Bonus intermédiaires (facultatif)</p>
                 <TierEditor
                   tiers={t.counter.tiers}
                   onChange={(tiers) => patch({ counter: { ...t.counter!, tiers } })}

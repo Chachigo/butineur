@@ -34,17 +34,33 @@ class WidgetBridge : Plugin() {
 }
 
 /**
- * Une icône est soit un emoji, soit un glyphe Phosphor. `RemoteViews` ne sait pas
- * changer de police à l'exécution : chaque disposition porte donc deux vues
- * superposées, et on n'affiche que la bonne.
+ * Une icône est soit un emoji — du texte — soit un glyphe Phosphor, rendu en
+ * image par [Glyph]. Chaque disposition porte donc les deux vues, et on
+ * n'affiche que celle qui convient.
  */
-fun RemoteViews.setIcon(emojiId: Int, phId: Int, icon: String, isPhosphor: Boolean, fallback: String) {
-    val usePh = isPhosphor && icon.isNotEmpty()
-    val shown = if (usePh) phId else emojiId
-    val hidden = if (usePh) emojiId else phId
-    setViewVisibility(shown, View.VISIBLE)
-    setViewVisibility(hidden, View.GONE)
-    setTextViewText(shown, icon.ifEmpty { fallback })
+fun RemoteViews.setIcon(
+    ctx: Context,
+    textId: Int,
+    imageId: Int,
+    icon: String,
+    isPhosphor: Boolean,
+    fallback: String,
+    sizeDp: Int,
+) {
+    val bmp = if (isPhosphor && icon.isNotEmpty()) {
+        Glyph.bitmap(ctx, icon, sizeDp, ctx.getColor(R.color.widget_text))
+    } else null
+
+    if (bmp != null) {
+        setImageViewBitmap(imageId, bmp)
+        setViewVisibility(imageId, View.VISIBLE)
+        setViewVisibility(textId, View.GONE)
+    } else {
+        // Emoji, ou repli si la police n'a pas pu être chargée.
+        setTextViewText(textId, if (isPhosphor) fallback else icon.ifEmpty { fallback })
+        setViewVisibility(textId, View.VISIBLE)
+        setViewVisibility(imageId, View.GONE)
+    }
 }
 
 object Widgets {
