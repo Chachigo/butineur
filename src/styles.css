@@ -528,6 +528,11 @@ body::after {
   outline-offset: -5px;
 }
 
+/* Un panneau est ouvert : le bouton flottant recouvrait « Enregistrer ». */
+body:has(.sheet) .fab {
+  display: none;
+}
+
 .fab {
   position: fixed;
   z-index: 41;
@@ -678,6 +683,29 @@ button:focus-visible {
   min-width: 0;
   font-size: 13px;
   color: var(--dim);
+}
+
+/* --- jours de la semaine, sans liste déroulante --- */
+.days {
+  display: flex;
+  gap: 4px;
+  flex: 1 1 auto;
+}
+
+.day {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 9px 0;
+  border-radius: 9px;
+  background: var(--panel-2);
+  color: var(--dim);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.day--on {
+  background: var(--go);
+  color: var(--go-ink);
 }
 
 /* --- sélecteur d'icône --- */

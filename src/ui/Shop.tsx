@@ -6,6 +6,7 @@ import type { ShopItem } from '../types'
 import Icon from './Icon'
 import IconPicker from './IconPicker'
 import NumberInput from './NumberInput'
+import { useCloseOnBack } from './useCloseOnBack'
 
 type Props = {
   items: ShopItem[]
@@ -141,6 +142,8 @@ function ItemEditor({ item, onClose }: { item: ShopItem; onClose: () => void }) 
   const isNew = !db.shopItems.some((x) => x.id === item.id)
   const cur = db.settings.currency
   const canSave = !!s.name.trim() && s.price > 0
+
+  useCloseOnBack(true, onClose)
 
   const save = () => {
     if (!canSave) return

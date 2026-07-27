@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { addEvent, setSettings, uid, useDB } from '../store'
 import NumberInput from './NumberInput'
+import { useCloseOnBack } from './useCloseOnBack'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const minutesToTime = (m: number) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`
@@ -24,6 +25,8 @@ const ACCENTS = [
 export default function Settings({ onClose }: { onClose: () => void }) {
   const db = useDB()
   const [adjust, setAdjust] = useState('')
+
+  useCloseOnBack(true, onClose)
 
   const applyAdjust = () => {
     const amount = +adjust.replace(',', '.')

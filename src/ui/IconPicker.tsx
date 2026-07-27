@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Icon, { phosphor } from './Icon'
 import { PHOSPHOR_GROUPS } from './icons.generated'
+import { useCloseOnBack } from './useCloseOnBack'
 
 /**
  * Deux banques : les icônes Phosphor (par défaut, sobres et cohérentes) et une
@@ -29,6 +30,8 @@ export default function IconPicker({
 }) {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('ph')
+
+  useCloseOnBack(open, () => setOpen(false))
 
   const choose = (icon: string) => {
     onChange(icon)

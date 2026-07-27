@@ -6,6 +6,7 @@ import type { Penalty, Task, Tier } from '../types'
 import IconPicker from './IconPicker'
 import NumberInput from './NumberInput'
 import TierEditor from './TierEditor'
+import { useCloseOnBack } from './useCloseOnBack'
 
 export function blankTask(defaultReward: number): Task {
   return {
@@ -35,8 +36,16 @@ function retarget(counter: NonNullable<Task['counter']>, next: number): Tier[] {
   return [...new Map(clamped.map((t) => [t.at, t])).values()].sort((a, b) => a.at - b.at)
 }
 
-/** Index = `Date.getDay()`, dimanche en premier. */
-const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+/** Lundi d'abord comme en France ; la valeur reste celle de `Date.getDay()`. */
+const WEEKDAYS: [number, string, string][] = [
+  [1, 'L', 'lundi'],
+  [2, 'M', 'mardi'],
+  [3, 'M', 'mercredi'],
+  [4, 'J', 'jeudi'],
+  [5, 'V', 'vendredi'],
+  [6, 'S', 'samedi'],
+  [0, 'D', 'dimanche'],
+]
 
 const PENALTY_KINDS: [Penalty['kind'], string][] = [
   ['none', 'aucune'],
@@ -51,6 +60,8 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
   const isNew = !db.tasks.some((x) => x.id === task.id)
   const patch = (p: Partial<Task>) => setT((prev) => ({ ...prev, ...p }))
   const cur = db.settings.currency
+
+  useCloseOnBack(true, onClose)
 
   // Un objectif à zéro serait atteint d'emblée et paierait aussitôt.
   const missingTarget = !!t.counter && t.counter.target < 1
@@ -184,26 +195,28 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                 <div className="row">
                   {/* Une date figée n'a aucun sens sur une tâche qui revient. */}
                   {t.repeat ? (
-                    <select
-                      className="input input--select"
-                      value={t.due.weekday ?? ''}
-                      onChange={(e) =>
-                        patch({
-                          due: {
-                            ...t.due!,
-                            weekday: e.target.value === '' ? undefined : Number(e.target.value),
-                          },
-                        })
-                      }
-                      aria-label="Jour de l’échéance"
-                    >
-                      <option value="">à chaque cycle</option>
-                      {WEEKDAYS.map((label, i) => (
-                        <option key={i} value={i}>
-                          chaque {label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="days" role="group" aria-label="Jour de l’échéance">
+                      {WEEKDAYS.map(([value, letter, label]) => {
+                        const on = t.due!.weekday === value
+                        return (
+                          <button
+                            key={label}
+                            type="button"
+                            className={on ? 'day day--on' : 'day'}
+                            title={label}
+                            aria-label={label}
+                            aria-pressed={on}
+                            // Retaper le jour choisi le désélectionne : on revient
+                            // à l'échéance qui glisse d'un cycle.
+                            onClick={() =>
+                              patch({ due: { ...t.due!, weekday: on ? undefined : value } })
+                            }
+                          >
+                            {letter}
+                          </button>
+                        )
+                      })}
+                    </div>
                   ) : (
                     <input
                       className="input"
@@ -227,8 +240,12 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                     aria-label="Heure de l’échéance"
                   />
                 </div>
-                {t.repeat && t.due.weekday == null && (
-                  <p className="hint">L’échéance glisse d’un cycle à chaque passage.</p>
+                {t.repeat && (
+                  <p className="hint">
+                    {t.due.weekday == null
+                      ? 'Aucun jour choisi : l’échéance glisse d’un cycle à chaque passage.'
+                      : 'Retape le jour sélectionné pour revenir à une échéance glissante.'}
+                  </p>
                 )}
 
                 <div className="row">
