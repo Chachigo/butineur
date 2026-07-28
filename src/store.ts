@@ -1,4 +1,5 @@
 import { get, set } from 'idb-keyval'
+import { defaultDue } from './format'
 import { useSyncExternalStore } from 'react'
 import type { DB, Event, ShopItem, Task } from './types'
 
@@ -35,15 +36,23 @@ function persist() {
 export const uid = () => crypto.randomUUID()
 
 /**
- * Le jour de la semaine a déménagé de `due` vers `repeat` : c'est le rythme qui
- * le porte, pas l'échéance. Appliqué au chargement et à la restauration, pour
- * qu'une sauvegarde d'avant le déménagement reste lisible.
+ * Deux rattrapages, appliqués au chargement et à la restauration pour qu'une
+ * sauvegarde plus ancienne reste lisible :
+ *
+ * - le jour de la semaine a déménagé de `due` vers `repeat` — c'est le rythme
+ *   qui le porte, pas l'échéance ;
+ * - une tâche répétitive a forcément une échéance à chaque tour, elle porte
+ *   donc toujours un `due` : sans pénalité, il ne fait qu'afficher la date.
  */
 const migrate = (tasks: Task[] = []): Task[] =>
   tasks.map((t) => {
-    const { weekday, ...due } = (t.due ?? {}) as Task['due'] & { weekday?: number }
-    if (weekday == null || !t.repeat) return t
-    return { ...t, due: due as Task['due'], repeat: { ...t.repeat, everyDays: 7, weekday } }
+    const { weekday, ...reste } = (t.due ?? {}) as Task['due'] & { weekday?: number }
+    let next = t
+    if (weekday != null && t.repeat) {
+      next = { ...t, due: reste as Task['due'], repeat: { ...t.repeat, everyDays: 7, weekday } }
+    }
+    if (!next.repeat || next.due || next.counter) return next
+    return { ...next, due: { at: defaultDue(), penalty: { kind: 'none' } } }
   })
 
 /** Appelé une fois avant le premier rendu. */

@@ -108,11 +108,20 @@ function NextDue({ task, state }: { task: Task; state?: TaskState }) {
 }
 
 const PENALTY_KINDS: [Penalty['kind'], string][] = [
-  ['none', 'aucune'],
   ['flat', 'montant fixe'],
   ['percent', 'pourcentage'],
   ['decay', 'dégressive par jour'],
 ]
+
+/**
+ * Une dégressive « par jour » ne veut rien dire sur une tâche quotidienne : un
+ * jour de retard, c'est déjà le cycle suivant. On propose un pourcentage sec,
+ * qui sanctionne l'heure et non le jour.
+ */
+const defaultPenalty = (t: Task): Penalty =>
+  t.repeat && rythme(t.repeat) === 'jour'
+    ? { kind: 'percent', percent: 50 }
+    : { kind: 'decay', percentPerDay: 20 }
 
 export default function TaskEditor({
   task,
@@ -269,6 +278,26 @@ export default function TaskEditor({
                     </p>
                   </>
                 )}
+
+                {/* L'heure appartient au rythme : « chaque dimanche à 20 h » se lit d'un trait. */}
+                {t.due && (
+                  <>
+                    <div className="row">
+                      <span className="row__label">En retard à partir de</span>
+                      <input
+                        className="input input--time"
+                        type="time"
+                        value={toTimeInput(t.due.at)}
+                        onChange={(e) => {
+                          const at = combineDateTime(toDateInput(t.due!.at), e.target.value)
+                          if (at) patch({ due: { ...t.due!, at } })
+                        }}
+                        aria-label="Heure de l’échéance"
+                      />
+                    </div>
+                    <NextDue task={t} state={state} />
+                  </>
+                )}
               </>
             )}
           </Section>
@@ -323,30 +352,26 @@ export default function TaskEditor({
             )}
           </Section>
 
-          <Section
-            title="Date limite"
-            on={!!t.due}
-            onToggle={(v) =>
-              patch({ due: v ? { at: defaultDue(), penalty: { kind: 'decay', percentPerDay: 20 } } : null })
-            }
-          >
-            {t.due && (
-              <>
+          {/* Une tâche qui revient tient son échéance de son rythme : pas de
+              date à choisir, seulement pour celles qui n'arrivent qu'une fois. */}
+          {!t.repeat && (
+            <Section
+              title="Date limite"
+              on={!!t.due}
+              onToggle={(v) => patch({ due: v ? { at: defaultDue(), penalty: { kind: 'none' } } : null })}
+            >
+              {t.due && (
                 <div className="row">
-                  {/* Le jour vient du rythme sur une tâche qui revient : ici, l'heure suffit. */}
-                  {!t.repeat && (
-                    <input
-                      className="input"
-                      type="date"
-                      value={toDateInput(t.due.at)}
-                      onChange={(e) => {
-                        const at = combineDateTime(e.target.value, toTimeInput(t.due!.at))
-                        if (at) patch({ due: { ...t.due!, at } })
-                      }}
-                      aria-label="Jour de l’échéance"
-                    />
-                  )}
-                  {t.repeat && <span className="row__label">En retard à partir de</span>}
+                  <input
+                    className="input"
+                    type="date"
+                    value={toDateInput(t.due.at)}
+                    onChange={(e) => {
+                      const at = combineDateTime(e.target.value, toTimeInput(t.due!.at))
+                      if (at) patch({ due: { ...t.due!, at } })
+                    }}
+                    aria-label="Jour de l’échéance"
+                  />
                   <input
                     className="input input--time"
                     type="time"
@@ -358,33 +383,53 @@ export default function TaskEditor({
                     aria-label="Heure de l’échéance"
                   />
                 </div>
-                {t.repeat && <NextDue task={t} state={state} />}
+              )}
+            </Section>
+          )}
 
-                <div className="row">
-                  <span className="row__label">Pénalité</span>
-                  <select
-                    className="input input--select"
-                    value={t.due.penalty.kind}
-                    onChange={(e) =>
-                      patch({ due: { ...t.due!, penalty: newPenalty(e.target.value as Penalty['kind']) } })
-                    }
-                  >
-                    {PENALTY_KINDS.map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <PenaltyValue
-                  penalty={t.due.penalty}
-                  currency={cur}
-                  onChange={(penalty) => patch({ due: { ...t.due!, penalty } })}
-                />
-                {t.due.penalty.kind !== 'none' && <PenaltySim task={t} currency={cur} />}
-              </>
-            )}
-          </Section>
+          {t.due && (
+            <Section
+              title="Pénalité de retard"
+              hint="Aucune : le retard ne coûte rien"
+              on={t.due.penalty.kind !== 'none'}
+              onToggle={(v) =>
+                patch({ due: { ...t.due!, penalty: v ? defaultPenalty(t) : { kind: 'none' } } })
+              }
+            >
+              {t.due.penalty.kind !== 'none' && (
+                <>
+                  <div className="row">
+                    <span className="row__label">Type</span>
+                    <select
+                      className="input input--select"
+                      value={t.due.penalty.kind}
+                      onChange={(e) =>
+                        patch({ due: { ...t.due!, penalty: newPenalty(e.target.value as Penalty['kind']) } })
+                      }
+                    >
+                      {PENALTY_KINDS.map(([k, label]) => (
+                        <option key={k} value={k}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <PenaltyValue
+                    penalty={t.due.penalty}
+                    currency={cur}
+                    onChange={(penalty) => patch({ due: { ...t.due!, penalty } })}
+                  />
+                  <PenaltySim task={t} currency={cur} />
+                  {/* La série, elle, ne se négocie pas : elle tombe au cycle manqué. */}
+                  {t.streak && (
+                    <p className="hint">
+                      Sans rapport avec la série : un cycle manqué la casse de toute façon.
+                    </p>
+                  )}
+                </>
+              )}
+            </Section>
+          )}
 
           <Section
             title="Rappel"
