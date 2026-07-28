@@ -152,7 +152,13 @@ export default function App() {
         {tab === 'history' && <History entries={rep.entries} currency={db.settings.currency} />}
       </main>
 
-      {editing && <TaskEditor task={editing} onClose={() => setEditing(null)} />}
+      {editing && (
+        <TaskEditor
+          task={editing}
+          state={rep.perTask.get(editing.id)}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   )
 }

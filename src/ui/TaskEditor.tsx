@@ -10,7 +10,7 @@ import {
 } from '../engine'
 import { combineDateTime, defaultDue, fmt, formatDueLong, toDateInput, toTimeInput } from '../format'
 import { deleteTask, saveTask, uid, useDB } from '../store'
-import type { Penalty, Task, Tier } from '../types'
+import type { Penalty, Task, TaskState, Tier } from '../types'
 import IconPicker from './IconPicker'
 import NumberInput from './NumberInput'
 import TierEditor from './TierEditor'
@@ -99,10 +99,10 @@ function newRepeat(r: Rythme, prev: NonNullable<Task['repeat']>): NonNullable<Ta
 }
 
 /** L'échéance en toutes lettres : c'est elle qui rend le réglage lisible. */
-function NextDue({ task }: { task: Task }) {
-  // État vide : on annonce la prochaine échéance à partir d'aujourd'hui, pas
-  // celle qui découlerait de l'historique — c'est un aperçu du réglage.
-  const due = dueTsFor(task, undefined)
+function NextDue({ task, state }: { task: Task; state?: TaskState }) {
+  // L'état réel de la tâche, sinon un cycle glissant annoncerait l'échéance
+  // d'une tâche neuve au lieu de la sienne.
+  const due = dueTsFor(task, state)
   if (due === null) return null
   return <p className="hint">Prochaine échéance : {formatDueLong(due)}</p>
 }
@@ -114,7 +114,15 @@ const PENALTY_KINDS: [Penalty['kind'], string][] = [
   ['decay', 'dégressive par jour'],
 ]
 
-export default function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
+export default function TaskEditor({
+  task,
+  state,
+  onClose,
+}: {
+  task: Task
+  state?: TaskState
+  onClose: () => void
+}) {
   const db = useDB()
   const [t, setT] = useState(task)
   const isNew = !db.tasks.some((x) => x.id === task.id)
@@ -341,7 +349,7 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                     aria-label="Heure de l’échéance"
                   />
                 </div>
-                {t.repeat && <NextDue task={t} />}
+                {t.repeat && <NextDue task={t} state={state} />}
 
                 <div className="row">
                   <span className="row__label">Pénalité</span>
@@ -388,13 +396,24 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                   <button
                     type="button"
                     className={remindKind(t) === 'before' ? 'chip-btn chip-btn--on' : 'chip-btn'}
-                    disabled={!t.due}
-                    title={t.due ? undefined : 'Active « Date limite » d’abord'}
-                    onClick={() => patch({ remind: { kind: 'before', minutes: 60 } })}
+                    // Sans date limite il n'y avait rien à devancer, et le bouton
+                    // restait mort sans le dire. On pose l'échéance manquante —
+                    // sans pénalité, une date posée en passant ne doit rien coûter.
+                    onClick={() =>
+                      patch({
+                        remind: { kind: 'before', minutes: 60 },
+                        due: t.due ?? { at: defaultDue(), penalty: { kind: 'none' } },
+                      })
+                    }
                   >
                     avant l’échéance
                   </button>
                 </div>
+                {remindKind(t) === 'before' && (
+                  <p className="hint">
+                    Compté depuis l’échéance ci-dessus : change l’heure dans « Date limite ».
+                  </p>
+                )}
 
                 {remindKind(t) === 'time' ? (
                   <div className="row">
