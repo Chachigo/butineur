@@ -183,8 +183,17 @@ export default function TaskEditor({
           <Section
             title="Répétitive"
             on={!!t.repeat}
-            // Retirer la répétition emporte la série : elle n'aurait plus de sens.
-            onToggle={(v) => patch({ repeat: v ? { everyDays: 1 } : null, streak: v ? t.streak : null })}
+            onToggle={(v) =>
+              patch({
+                repeat: v ? { everyDays: 1 } : null,
+                // Retirer la répétition emporte la série : elle n'aurait plus de sens.
+                streak: v ? t.streak : null,
+                // Une tâche qui revient est attendue à chaque tour : l'échéance
+                // vient avec, sans pénalité tant qu'on n'en demande pas une. Pas
+                // sur un compteur, qui se remplit dans la journée sans être en retard.
+                due: v && !t.due && !t.counter ? { at: defaultDue(), penalty: { kind: 'none' } } : t.due,
+              })
+            }
           >
             {t.repeat && (
               <>
