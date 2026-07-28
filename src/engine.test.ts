@@ -60,16 +60,16 @@ describe('pénalité de retard', () => {
   const t = task({ reward: 50, due: { at: new Date(at(0)).toISOString(), penalty: { kind: 'decay', percentPerDay: 20 } } })
 
   it('décroît par jour de retard et ne passe jamais sous zéro', () => {
-    expect(computePenalty(t, at(0), null).factor).toBe(1)
-    expect(computePenalty(t, at(1), null).factor).toBeCloseTo(0.8)
-    expect(computePenalty(t, at(3), null).factor).toBeCloseTo(0.4)
-    expect(computePenalty(t, at(5), null).factor).toBe(0)
-    expect(computePenalty(t, at(50), null).factor).toBe(0)
+    expect(computePenalty(t, at(0), undefined).factor).toBe(1)
+    expect(computePenalty(t, at(1), undefined).factor).toBeCloseTo(0.8)
+    expect(computePenalty(t, at(3), undefined).factor).toBeCloseTo(0.4)
+    expect(computePenalty(t, at(5), undefined).factor).toBe(0)
+    expect(computePenalty(t, at(50), undefined).factor).toBe(0)
   })
 
   it('ne rend jamais une tâche en retard coûteuse', () => {
     const flat = task({ reward: 10, due: { at: new Date(at(0)).toISOString(), penalty: { kind: 'flat', amount: 999 } } })
-    const p = computePenalty(flat, at(1), null)
+    const p = computePenalty(flat, at(1), undefined)
     const { balance } = replay([done(1, { baseReward: 10, penaltyFactor: p.factor, penaltyFlat: p.flat })], [flat])
     expect(balance).toBe(0)
   })
@@ -77,33 +77,72 @@ describe('pénalité de retard', () => {
   it("glisse d'un cycle sur une tâche répétitive au lieu d'être en retard à vie", () => {
     const rep = task({ repeat: { everyDays: 7 }, due: { at: new Date(at(0)).toISOString(), penalty: { kind: 'percent', percent: 50 } } })
     // Dernier passage au jour 10 : la prochaine échéance est le jour 17, pas le jour 0.
-    expect(computePenalty(rep, at(16), at(10)).factor).toBe(1)
-    expect(computePenalty(rep, at(18), at(10)).factor).toBeCloseTo(0.5)
+    const s = replay([done(10)], [rep], at(10)).perTask.get('t1')
+    expect(computePenalty(rep, at(16), s).factor).toBe(1)
+    expect(computePenalty(rep, at(18), s).factor).toBeCloseTo(0.5)
   })
 })
 
-describe('échéance au jour de la semaine', () => {
-  // T0 = lundi 5 janvier 2026. Échéance « dimanche » (0) à 20 h.
-  const dimanche = new Date(at(0))
-  dimanche.setHours(20, 0, 0, 0)
-  const t = task({
-    repeat: { everyDays: 7 },
-    due: { at: dimanche.toISOString(), penalty: { kind: 'none' }, weekday: 0 },
+describe('cycles', () => {
+  // T0 = lundi 5 janvier 2026, midi. Échéance à 20 h.
+  const vingtHeures = new Date(at(0))
+  vingtHeures.setHours(20, 0, 0, 0)
+  const due = { at: vingtHeures.toISOString(), penalty: { kind: 'none' as const } }
+  const state = (t: Task, evts: Event[]) =>
+    replay(evts, [t], evts[evts.length - 1].ts).perTask.get('t1')
+
+  describe('hebdomadaire', () => {
+    const t = task({ repeat: { everyDays: 7, weekday: 0 }, due }) // dimanche
+
+    it('vise le prochain dimanche, pas une date figée', () => {
+      const d = dueTsFor(t, undefined, at(0))!
+      expect(new Date(d).getDay()).toBe(0)
+      expect(new Date(d).getHours()).toBe(20)
+      expect(dayNum(d) - dayNum(at(0))).toBe(6) // lundi → dimanche
+    })
+
+    it('ne rapproche pas l’échéance quand on s’y prend en avance', () => {
+      // Fait samedi, la veille de l'échéance : la suivante est le dimanche
+      // d'après, pas celui de demain.
+      const s = state(t, [done(5)])
+      expect(dayNum(dueTsFor(t, s, at(5))!) - dayNum(at(5))).toBe(8)
+    })
+
+    it('ne saute pas un cycle quand on rattrape un retard', () => {
+      // Faite le dimanche 11, puis le dimanche 18 manqué et rattrapé le
+      // mercredi 21 : la prochaine échéance reste le dimanche qui vient.
+      const s = state(t, [done(6), done(16)])
+      expect(dayNum(dueTsFor(t, s, at(16))!) - dayNum(at(16))).toBe(4)
+    })
+
+    it('rouvre le lendemain de l’échéance, pas sept jours après le passage', () => {
+      const s = state(t, [done(2)]) // fait mercredi, pour le dimanche 11
+      expect(isAvailable(t, s, at(5))).toBe(false) // samedi : rien à refaire
+      expect(isAvailable(t, s, at(7))).toBe(true) // lundi : nouveau cycle
+    })
   })
 
-  it('vise le prochain dimanche, pas une date figée', () => {
-    const due = dueTsFor(t, null, at(0))!
-    expect(new Date(due).getDay()).toBe(0)
-    expect(new Date(due).getHours()).toBe(20)
-    // Lundi → le dimanche qui suit, six jours plus tard.
-    expect(dayNum(due) - dayNum(at(0))).toBe(6)
+  describe('quotidienne', () => {
+    const t = task({ repeat: { everyDays: 1 }, due })
+
+    it('garde l’heure réglée au lieu de la décaler à chaque passage', () => {
+      const tard = at(0) + 9 * 3_600_000 // validée à 21 h, une heure trop tard
+      const s = replay([done(0, { ts: tard })], [t], tard).perTask.get('t1')
+      const d = new Date(dueTsFor(t, s, tard)!)
+      expect(d.getHours()).toBe(20)
+      expect(dayNum(+d) - dayNum(tard)).toBe(1)
+    })
   })
 
-  it('repousse au dimanche suivant après un passage', () => {
-    const fait = dueTsFor(t, null, at(0))! // ce dimanche
-    const suivant = dueTsFor(t, fait, at(0))!
-    expect(new Date(suivant).getDay()).toBe(0)
-    expect(dayNum(suivant) - dayNum(fait)).toBe(7)
+  describe('mensuelle', () => {
+    const t = task({ repeat: { everyDays: 31, monthday: 31 }, due })
+
+    it('retombe sur le dernier jour des mois trop courts', () => {
+      const janvier = state(t, [done(26)]) // 31 janvier
+      const suivante = dueTsFor(t, janvier, at(26))!
+      expect(new Date(suivante).getMonth()).toBe(1) // février
+      expect(new Date(suivante).getDate()).toBe(28)
+    })
   })
 })
 

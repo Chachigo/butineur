@@ -1,6 +1,14 @@
 import { useState, type ReactNode } from 'react'
-import { daysUntilWorthless, rewardAfterDays, rewardAtStreak, streakAtCap } from '../engine'
-import { combineDateTime, defaultDue, fmt, toDateInput, toTimeInput } from '../format'
+import {
+  daysUntilWorthless,
+  dueTsFor,
+  rewardAfterDays,
+  rewardAtStreak,
+  rythme,
+  streakAtCap,
+  type Rythme,
+} from '../engine'
+import { combineDateTime, defaultDue, fmt, formatDueLong, toDateInput, toTimeInput } from '../format'
 import { deleteTask, saveTask, uid, useDB } from '../store'
 import type { Penalty, Task, Tier } from '../types'
 import IconPicker from './IconPicker'
@@ -60,6 +68,44 @@ const WEEKDAYS: [number, string, string][] = [
   [6, 'S', 'samedi'],
   [0, 'D', 'dimanche'],
 ]
+
+const RYTHMES: [Rythme, string][] = [
+  ['jour', 'Chaque jour'],
+  ['semaine', 'Chaque semaine'],
+  ['mois', 'Chaque mois'],
+  ['glissant', 'Tous les N jours'],
+]
+
+/**
+ * Le rythme choisi décide seul des champs : deux réglages ne peuvent plus se
+ * contredire, puisqu'un seul existe à la fois.
+ *
+ * ponytail: le mensuel pose `everyDays` à 31, ce qui suffit aux périodes de
+ * compteur et à la tolérance de série ; l'échéance, elle, suit le vrai
+ * calendrier. À reprendre le jour où un compteur mensuel apparaît.
+ */
+function newRepeat(r: Rythme, prev: NonNullable<Task['repeat']>): NonNullable<Task['repeat']> {
+  const now = new Date()
+  switch (r) {
+    case 'jour':
+      return { everyDays: 1 }
+    case 'semaine':
+      return { everyDays: 7, weekday: prev.weekday ?? now.getDay() }
+    case 'mois':
+      return { everyDays: 31, monthday: prev.monthday ?? now.getDate() }
+    case 'glissant':
+      return { everyDays: Math.max(2, prev.everyDays) }
+  }
+}
+
+/** L'échéance en toutes lettres : c'est elle qui rend le réglage lisible. */
+function NextDue({ task }: { task: Task }) {
+  // État vide : on annonce la prochaine échéance à partir d'aujourd'hui, pas
+  // celle qui découlerait de l'historique — c'est un aperçu du réglage.
+  const due = dueTsFor(task, undefined)
+  if (due === null) return null
+  return <p className="hint">Prochaine échéance : {formatDueLong(due)}</p>
+}
 
 const PENALTY_KINDS: [Penalty['kind'], string][] = [
   ['none', 'aucune'],
@@ -133,17 +179,80 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
             onToggle={(v) => patch({ repeat: v ? { everyDays: 1 } : null, streak: v ? t.streak : null })}
           >
             {t.repeat && (
-              <div className="row">
-                <span className="row__label">Tous les</span>
-                <NumberInput
-                  className="input input--xs"
-                  value={t.repeat.everyDays}
-                  min={1}
-                  onChange={(everyDays) => patch({ repeat: { everyDays } })}
-                  aria-label="Nombre de jours"
-                />
-                <span className="field__suffix">jour(s)</span>
-              </div>
+              <>
+                <div className="row">
+                  <span className="row__label">Revient</span>
+                  <select
+                    className="input input--select"
+                    value={rythme(t.repeat)}
+                    onChange={(e) => patch({ repeat: newRepeat(e.target.value as Rythme, t.repeat!) })}
+                    aria-label="Rythme"
+                  >
+                    {RYTHMES.map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {rythme(t.repeat) === 'semaine' && (
+                  <div className="days" role="group" aria-label="Jour de la semaine">
+                    {WEEKDAYS.map(([value, letter, label]) => {
+                      const on = t.repeat!.weekday === value
+                      return (
+                        <button
+                          key={label}
+                          type="button"
+                          className={on ? 'day day--on' : 'day'}
+                          title={label}
+                          aria-label={label}
+                          aria-pressed={on}
+                          onClick={() => patch({ repeat: { ...t.repeat!, weekday: value } })}
+                        >
+                          {letter}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {rythme(t.repeat) === 'mois' && (
+                  <div className="row">
+                    <span className="row__label">Le</span>
+                    <NumberInput
+                      className="input input--xs"
+                      value={t.repeat.monthday ?? 1}
+                      min={1}
+                      max={31}
+                      onChange={(monthday) => patch({ repeat: { ...t.repeat!, monthday } })}
+                      aria-label="Jour du mois"
+                    />
+                    <span className="field__suffix">du mois</span>
+                  </div>
+                )}
+
+                {rythme(t.repeat) === 'glissant' && (
+                  <>
+                    <div className="row">
+                      <span className="row__label">Tous les</span>
+                      <NumberInput
+                        className="input input--xs"
+                        value={t.repeat.everyDays}
+                        // En dessous de 2, c'est « chaque jour » : le même réglage
+                        // à deux endroits n'aurait aucun sens.
+                        min={2}
+                        onChange={(everyDays) => patch({ repeat: { everyDays } })}
+                        aria-label="Nombre de jours"
+                      />
+                      <span className="field__suffix">jour(s)</span>
+                    </div>
+                    <p className="hint">
+                      Le compte repart de la dernière validation : faire en retard décale la suite.
+                    </p>
+                  </>
+                )}
+              </>
             )}
           </Section>
 
@@ -207,31 +316,8 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
             {t.due && (
               <>
                 <div className="row">
-                  {/* Une date figée n'a aucun sens sur une tâche qui revient. */}
-                  {t.repeat ? (
-                    <div className="days" role="group" aria-label="Jour de l’échéance">
-                      {WEEKDAYS.map(([value, letter, label]) => {
-                        const on = t.due!.weekday === value
-                        return (
-                          <button
-                            key={label}
-                            type="button"
-                            className={on ? 'day day--on' : 'day'}
-                            title={label}
-                            aria-label={label}
-                            aria-pressed={on}
-                            // Retaper le jour choisi le désélectionne : on revient
-                            // à l'échéance qui glisse d'un cycle.
-                            onClick={() =>
-                              patch({ due: { ...t.due!, weekday: on ? undefined : value } })
-                            }
-                          >
-                            {letter}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ) : (
+                  {/* Le jour vient du rythme sur une tâche qui revient : ici, l'heure suffit. */}
+                  {!t.repeat && (
                     <input
                       className="input"
                       type="date"
@@ -243,6 +329,7 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                       aria-label="Jour de l’échéance"
                     />
                   )}
+                  {t.repeat && <span className="row__label">En retard à partir de</span>}
                   <input
                     className="input input--time"
                     type="time"
@@ -254,13 +341,7 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
                     aria-label="Heure de l’échéance"
                   />
                 </div>
-                {t.repeat && (
-                  <p className="hint">
-                    {t.due.weekday == null
-                      ? 'Aucun jour choisi : l’échéance glisse d’un cycle à chaque passage.'
-                      : 'Retape le jour sélectionné pour revenir à une échéance glissante.'}
-                  </p>
-                )}
+                {t.repeat && <NextDue task={t} />}
 
                 <div className="row">
                   <span className="row__label">Pénalité</span>

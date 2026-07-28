@@ -11,8 +11,18 @@ export const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n))
 const dt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' })
 const dtTime = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
+const dtDue = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
 export const formatDate = (ts: number) => dt.format(ts)
 export const formatDateTime = (ts: number) => dtTime.format(ts)
+/** « dimanche 2 août à 20:00 » — l'échéance en toutes lettres, dans l'éditeur. */
+export const formatDueLong = (ts: number) => dtDue.format(ts)
 
 /** « aujourd'hui », « demain », « il y a 3 j » — pour les échéances. */
 export function relativeDay(ts: number, now = Date.now()): string {

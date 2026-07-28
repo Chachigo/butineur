@@ -12,16 +12,22 @@ export type Task = {
   name: string
   icon?: string
   reward: number
-  /** null = tâche ponctuelle. */
-  repeat: null | { everyDays: number }
+  /**
+   * null = tâche ponctuelle. Sinon le rythme, qui découpe le temps en cycles :
+   * `weekday` (0 = dimanche) pour un rendez-vous hebdomadaire, `monthday` (1-31)
+   * pour « le 5 du mois », aucun des deux pour un cycle qui glisse d'`everyDays`
+   * après chaque passage. `everyDays` reste le rythme en jours dans tous les
+   * cas — c'est lui qui règle les périodes de compteur et la tolérance de série.
+   */
+  repeat: null | { everyDays: number; weekday?: number; monthday?: number }
   /** null = validation simple ; sinon on incrémente jusqu'à `target`. */
   counter: null | { target: number; unit?: string; tiers: Tier[] }
   /**
-   * Pour une tâche répétitive, l'échéance glisse : dernier passage + everyDays.
-   * `weekday` (0 = dimanche) la fixe plutôt à un jour de la semaine, ce qui est
-   * bien plus lisible pour une tâche hebdomadaire.
+   * Date limite. Sur une tâche répétitive, seule l'heure de `at` compte : le
+   * jour vient du rythme. Sans `due`, la tâche a quand même des cycles, elle
+   * n'est simplement jamais en retard.
    */
-  due: null | { at: string; penalty: Penalty; weekday?: number }
+  due: null | { at: string; penalty: Penalty }
   streak: null | { tiers: Tier[]; multiplier: null | { perStep: number; cap: number } }
   /**
    * Rappel, tant que la tâche est à faire : soit à une heure fixe chaque jour,
@@ -110,6 +116,12 @@ export type DB = {
 export type TaskState = {
   streak: number
   lastDoneTs: number | null
+  /**
+   * Fin du cycle en cours — l'échéance que la prochaine validation doit tenir.
+   * Elle n'avance qu'à la validation, jamais avec le temps qui passe : c'est ce
+   * qui fait qu'une tâche faite en avance ne rapproche pas l'échéance suivante.
+   */
+  pendingDue: number | null
   /** Compte de la période courante. */
   count: number
   periodKey: number | null

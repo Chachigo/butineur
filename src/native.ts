@@ -165,7 +165,7 @@ export function widgetPayload(
 }
 
 const due = (t: Task, rep: Replay, now: number) =>
-  dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null, now) ?? now + 3.15e10
+  dueTsFor(t, rep.perTask.get(t.id), now) ?? now + 3.15e10
 
 export async function pushWidgetState(p: WidgetPayload): Promise<void> {
   if (!isNative) return
@@ -211,7 +211,7 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
   // l'appli comme depuis un widget — laissait la notification partir quand même.
   const deadlines = live
     .filter((t) => t.due && isAvailable(t, rep.perTask.get(t.id), now))
-    .map((t) => ({ t, at: dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null, now) }))
+    .map((t) => ({ t, at: dueTsFor(t, rep.perTask.get(t.id), now) }))
     .filter((x): x is { t: Task; at: number } => x.at !== null && x.at > now)
     .map(({ t, at }) => ({
       id: notifId(t.id),
@@ -292,7 +292,7 @@ function cheerFor(t: Task, s: TaskState | undefined): string | null {
 function remindAt(t: Task, rep: Replay, now: number): number | null {
   const r = t.remind!
   if ('kind' in r && r.kind === 'before') {
-    const due = dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null, now)
+    const due = dueTsFor(t, rep.perTask.get(t.id), now)
     if (due === null) return null
     return due - r.minutes * 60_000
   }

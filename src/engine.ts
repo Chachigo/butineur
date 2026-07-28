@@ -22,34 +22,140 @@ export function periodKey(ts: number, everyDays: number, dayStart = 0): number {
 const everyDaysOf = (task: Task | undefined) => Math.max(1, task?.repeat?.everyDays ?? 1)
 
 /**
- * Échéance qui s'applique à la prochaine validation.
- *
- * Tâche ponctuelle : la date fixe. Tâche répétitive : elle glisse d'un cycle à
- * chaque passage, sinon toute tâche récurrente serait en retard à vie. Avec un
- * jour de la semaine, c'est sa prochaine occurrence après le dernier passage.
+ * Rythme d'une tâche répétitive, déduit de ses champs plutôt que stocké : un
+ * seul réglage à l'écran, donc aucune combinaison contradictoire possible.
  */
-export function dueTsFor(task: Task, lastDoneTs: number | null, now = Date.now()): number | null {
-  if (!task.due) return null
-  const fixed = Date.parse(task.due.at)
-  if (Number.isNaN(fixed)) return null
+export type Rythme = 'jour' | 'semaine' | 'mois' | 'glissant'
 
-  if (task.due.weekday != null && task.repeat) {
-    // Depuis la veille quand rien n'a encore été fait : l'échéance du jour compte.
-    return nextWeekday(lastDoneTs ?? now - DAY, task.due.weekday, fixed)
-  }
-  if (!task.repeat || lastDoneTs === null) return fixed
-  return lastDoneTs + task.repeat.everyDays * DAY
+export function rythme(repeat: NonNullable<Task['repeat']>): Rythme {
+  if (repeat.monthday != null) return 'mois'
+  if (repeat.weekday != null) return 'semaine'
+  // « Tous les 1 jours après chaque passage » n'existe pas : c'est le quotidien.
+  return repeat.everyDays > 1 ? 'glissant' : 'jour'
 }
 
-/** Première occurrence de `weekday` strictement après `from`, à l'heure de `timeFrom`. */
-function nextWeekday(from: number, weekday: number, timeFrom: number): number {
-  const t = new Date(timeFrom)
-  const d = new Date(from)
-  d.setHours(t.getHours(), t.getMinutes(), 0, 0)
+/** Heure de l'échéance. Sans date limite, le cycle se ferme en fin de journée. */
+function dueHm(task: Task): [number, number] {
+  const d = task.due ? new Date(task.due.at) : null
+  return d && !Number.isNaN(+d) ? [d.getHours(), d.getMinutes()] : [23, 59]
+}
+
+const atHm = (d: Date, [h, m]: [number, number]) => {
+  const x = new Date(d)
+  x.setHours(h, m, 0, 0)
+  return +x
+}
+
+/** Le `md` du mois demandé, ramené au dernier jour quand le mois est trop court. */
+function monthdayTs(y: number, month: number, md: number, hm: [number, number]): number {
+  const last = new Date(y, month + 1, 0).getDate()
+  return atHm(new Date(y, month, Math.min(md, last)), hm)
+}
+
+/** Minuit du jour auquel `ts` appartient, `dayStart` compris. */
+function startOfDay(ts: number, dayStart: number): number {
+  const d = new Date(ts - dayStart * 60_000)
+  d.setHours(0, 0, 0, 0)
+  return +d + dayStart * 60_000
+}
+
+/** Prochaine échéance du calendrier strictement après `after`. */
+function nextBoundary(task: Task, after: number): number {
+  const r = task.repeat!
+  const hm = dueHm(task)
+  const d = new Date(after)
+
+  if (r.monthday != null) {
+    const here = monthdayTs(d.getFullYear(), d.getMonth(), r.monthday, hm)
+    return here > after ? here : monthdayTs(d.getFullYear(), d.getMonth() + 1, r.monthday, hm)
+  }
+  d.setHours(hm[0], hm[1], 0, 0)
+  if (+d > after && (r.weekday == null || d.getDay() === r.weekday)) return +d
   do {
     d.setDate(d.getDate() + 1)
-  } while (d.getDay() !== weekday % 7)
+  } while (r.weekday != null && d.getDay() !== r.weekday)
   return +d
+}
+
+/** Échéance précédant `due` sur la même grille. */
+function prevBoundary(task: Task, due: number): number {
+  const r = task.repeat!
+  const d = new Date(due)
+  if (r.monthday != null) {
+    return monthdayTs(d.getFullYear(), d.getMonth() - 1, r.monthday, dueHm(task))
+  }
+  d.setDate(d.getDate() - (r.weekday != null ? 7 : 1))
+  return +d
+}
+
+/**
+ * Échéance d'une tâche jamais validée : la prochaine du calendrier, celle
+ * d'aujourd'hui comprise. Elle avance donc d'un cycle au lieu de rester au
+ * passé — une tâche neuve n'est pas en retard depuis sa date de création.
+ */
+function firstCycleEnd(task: Task, now: number, dayStart: number): number {
+  if (rythme(task.repeat!) === 'glissant') return atHm(new Date(now), dueHm(task))
+  return nextBoundary(task, startOfDay(now, dayStart) - 1)
+}
+
+/**
+ * Échéance suivante une fois `ts` validé.
+ *
+ * En calendaire, la validation remplit le cycle qui était en cours quel que soit
+ * le moment : faire en avance ne rapproche pas l'échéance suivante, et rattraper
+ * un retard ne saute pas un cycle. En glissant, c'est le passage qui redémarre
+ * le compte — c'est tout l'intérêt de ce rythme.
+ */
+function nextCycleEnd(task: Task, pending: number, ts: number): number {
+  const r = task.repeat!
+  if (rythme(r) === 'glissant') {
+    const d = new Date(ts)
+    d.setDate(d.getDate() + Math.max(1, r.everyDays))
+    return atHm(d, dueHm(task))
+  }
+  return nextBoundary(task, Math.max(pending, ts))
+}
+
+export type Cycle = {
+  /** Ouverture : avant, la tâche est déjà faite pour ce tour. */
+  from: number
+  /** Fermeture : après, on est en retard. */
+  end: number | null
+}
+
+/**
+ * Le cycle que la prochaine validation vient remplir. Disponibilité et retard
+ * en sortent tous les deux, donc ils ne peuvent plus se contredire.
+ */
+export function cycleFor(
+  task: Task,
+  s: TaskState | undefined,
+  now = Date.now(),
+  dayStart = 0,
+): Cycle {
+  if (!task.repeat) {
+    const fixed = task.due ? Date.parse(task.due.at) : NaN
+    return { from: -Infinity, end: Number.isNaN(fixed) ? null : fixed }
+  }
+  const end = s?.pendingDue ?? firstCycleEnd(task, now, dayStart)
+  if (rythme(task.repeat) === 'glissant') return { from: startOfDay(end, dayStart), end }
+
+  // Le cycle s'ouvre le lendemain de l'échéance précédente : une hebdomadaire
+  // due dimanche se fait du lundi au dimanche, pas de dimanche 20 h à dimanche 20 h.
+  const d = new Date(prevBoundary(task, end))
+  d.setDate(d.getDate() + 1)
+  return { from: startOfDay(+d, dayStart), end }
+}
+
+/** Échéance qui s'applique à la prochaine validation, ou null sans date limite. */
+export function dueTsFor(
+  task: Task,
+  s: TaskState | undefined,
+  now = Date.now(),
+  dayStart = 0,
+): number | null {
+  if (!task.due) return null
+  return cycleFor(task, s, now, dayStart).end
 }
 
 /**
@@ -59,10 +165,13 @@ function nextWeekday(from: number, weekday: number, timeFrom: number): number {
 export function computePenalty(
   task: Task,
   ts: number,
-  lastDoneTs: number | null,
+  s: TaskState | undefined,
 ): { factor: number; flat: number } {
+  return penaltyAt(task, ts, dueTsFor(task, s, ts))
+}
+
+function penaltyAt(task: Task, ts: number, due: number | null): { factor: number; flat: number } {
   const none = { factor: 1, flat: 0 }
-  const due = dueTsFor(task, lastDoneTs)
   if (!task.due || due === null || ts <= due) return none
 
   const p = task.due.penalty
@@ -93,6 +202,7 @@ export type Replay = {
 const freshState = (): TaskState => ({
   streak: 0,
   lastDoneTs: null,
+  pendingDue: null,
   count: 0,
   periodKey: null,
   targetPaid: false,
@@ -275,6 +385,12 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
       }
     }
 
+    // Le cycle rempli, on passe au suivant. Calculé ici et pas à la lecture :
+    // il dépend de l'échéance qui était en cours, donc de tout l'historique.
+    if (task?.repeat) {
+      s.pendingDue = nextCycleEnd(task, s.pendingDue ?? firstCycleEnd(task, e.ts, dayStart), e.ts)
+    }
+
     const penalized = Math.max(0, e.baseReward * e.penaltyFactor - e.penaltyFlat)
     const m = task?.streak?.multiplier
     const factor = m ? Math.max(1, Math.min(1 + m.perStep * (s.streak - 1), m.cap)) : 1
@@ -343,12 +459,11 @@ export function rewardAtStreak(task: Task, streak: number): number {
 
 /** Ce que rapporterait la tâche validée avec `daysLate` jours de retard. */
 export function rewardAfterDays(task: Task, daysLate: number): number {
-  if (!task.due) return task.reward
-  const due = Date.parse(task.due.at)
-  if (Number.isNaN(due)) return task.reward
-  // Pile n jours après l'échéance : `computePenalty` arrondit au jour supérieur,
-  // un décalage d'une milliseconde compterait un jour de retard en trop.
-  const { factor, flat } = computePenalty(task, due + Math.max(0, daysLate) * DAY, null)
+  const due = dueTsFor(task, undefined)
+  if (due === null) return task.reward
+  // Pile n jours après l'échéance : `penaltyAt` arrondit au jour supérieur, un
+  // décalage d'une milliseconde compterait un jour de retard en trop.
+  const { factor, flat } = penaltyAt(task, due + Math.max(0, daysLate) * DAY, due)
   return Math.max(0, task.reward * factor - flat)
 }
 
@@ -386,7 +501,7 @@ export function lastCompletion(events: Event[], taskId: string): CompleteEvent |
   return found
 }
 
-/** Une tâche répétitive n'est re-validable qu'une fois son cycle écoulé. */
+/** Une tâche répétitive n'est re-validable qu'au cycle suivant. */
 export function isAvailable(
   task: Task,
   s: TaskState | undefined,
@@ -396,7 +511,7 @@ export function isAvailable(
   if (task.counter) return true
   if (!s || s.lastDoneTs === null) return true
   if (!task.repeat) return false
-  return dayNum(now, dayStart) - dayNum(s.lastDoneTs, dayStart) >= task.repeat.everyDays
+  return now >= cycleFor(task, s, now, dayStart).from
 }
 
 /**
@@ -423,7 +538,7 @@ export function pendingToEvents(
       const task = byId.get(p.taskId)
       if (!task) continue
       const { perTask } = replay([...existing, ...added], tasks, p.ts)
-      const { factor, flat } = computePenalty(task, p.ts, perTask.get(task.id)?.lastDoneTs ?? null)
+      const { factor, flat } = computePenalty(task, p.ts, perTask.get(task.id))
       added.push({
         id: newId(),
         ts: p.ts,
@@ -468,8 +583,7 @@ export function staleOneShots(
 
 /** Aperçu de ce que rapporterait une validation maintenant, pour l'afficher avant le tap. */
 export function previewReward(task: Task, s: TaskState | undefined, now = Date.now()): number {
-  const last = s?.lastDoneTs ?? null
-  const { factor, flat } = computePenalty(task, now, last)
+  const { factor, flat } = computePenalty(task, now, s)
   const penalized = Math.max(0, task.reward * factor - flat)
   const nextStreak = (s?.streak ?? 0) + 1
   const m = task.streak?.multiplier

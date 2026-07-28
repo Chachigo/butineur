@@ -34,10 +34,24 @@ function persist() {
 
 export const uid = () => crypto.randomUUID()
 
+/**
+ * Le jour de la semaine a déménagé de `due` vers `repeat` : c'est le rythme qui
+ * le porte, pas l'échéance. Appliqué au chargement et à la restauration, pour
+ * qu'une sauvegarde d'avant le déménagement reste lisible.
+ */
+const migrate = (tasks: Task[] = []): Task[] =>
+  tasks.map((t) => {
+    const { weekday, ...due } = (t.due ?? {}) as Task['due'] & { weekday?: number }
+    if (weekday == null || !t.repeat) return t
+    return { ...t, due: due as Task['due'], repeat: { ...t.repeat, everyDays: 7, weekday } }
+  })
+
 /** Appelé une fois avant le premier rendu. */
 export async function load() {
   const saved = await get<DB>(KEY)
-  db = saved ? { ...EMPTY, ...saved, settings: { ...EMPTY.settings, ...saved.settings } } : EMPTY
+  db = saved
+    ? { ...EMPTY, ...saved, tasks: migrate(saved.tasks), settings: { ...EMPTY.settings, ...saved.settings } }
+    : EMPTY
   emit()
 }
 
@@ -88,7 +102,12 @@ export const deleteShopItem = (id: string) =>
  * leurs valeurs par défaut, pour qu'une sauvegarde plus ancienne reste lisible.
  */
 export function replaceAll(next: DB) {
-  update(() => ({ ...EMPTY, ...next, settings: { ...EMPTY.settings, ...next.settings } }))
+  update(() => ({
+    ...EMPTY,
+    ...next,
+    tasks: migrate(next.tasks),
+    settings: { ...EMPTY.settings, ...next.settings },
+  }))
 }
 
 export const setSettings = (patch: Partial<DB['settings']>) =>
