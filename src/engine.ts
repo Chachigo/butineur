@@ -124,8 +124,16 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     return s
   }
 
+  // Les annulations sont connues d'avance : l'événement visé est simplement
+  // sauté, comme s'il n'avait jamais eu lieu. Séries et compteurs se
+  // recalculent donc tout seuls.
+  const undone = new Set<string>()
+  for (const e of events) if (e.kind === 'undo') undone.add(e.targetId)
+
   // `id` départage les événements de même horodatage : deux appareils trient pareil.
-  const sorted = [...events].sort((a, b) => a.ts - b.ts || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  const sorted = [...events]
+    .filter((e): e is Exclude<Event, { kind: 'undo' }> => e.kind !== 'undo' && !undone.has(e.id))
+    .sort((a, b) => a.ts - b.ts || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 
   for (const e of sorted) {
     if (e.kind === 'spend' || e.kind === 'adjust') {
@@ -162,23 +170,33 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
       // et ne doit surtout pas décaler le franchissement d'un palier.
       s.count = Math.min(target, Math.max(0, s.count + e.delta))
 
-      // Atteindre l'objectif verse la récompense de la tâche, une fois par
-      // période. Les paliers ne servent qu'aux bonus intermédiaires.
+      // Le solde suit le compteur dans les deux sens : atteindre l'objectif
+      // verse la récompense, redescendre en dessous la reprend. C'est ce que
+      // l'on attend en corrigeant une erreur de saisie — et c'est aussi ce qui
+      // rend le farming impossible, puisqu'un aller-retour se solde à zéro.
       let base = 0
-      if (task && s.count >= target && !s.targetPaid) {
+      const reached = task != null && s.count >= target
+      if (reached && !s.targetPaid) {
         s.targetPaid = true
         s.lastTargetTs = e.ts
-        base = task.reward
+        base = task!.reward
+      } else if (!reached && s.targetPaid) {
+        s.targetPaid = false
+        s.lastTargetTs = null
+        base = -(task?.reward ?? 0)
       }
 
-      // Un palier franchi n'est payé qu'une fois par période : décrémenter puis
-      // réincrémenter ne permet pas de le farmer, et deux `count` concurrents
-      // venus de deux appareils ne le versent pas deux fois.
+      // Même symétrie sur les paliers intermédiaires.
       let tierBonus = 0
       for (const t of task?.counter?.tiers ?? []) {
-        if (t.at <= s.count && !s.countTiersPaid.has(t.at)) {
+        const crossed = t.at <= s.count
+        const paid = s.countTiersPaid.has(t.at)
+        if (crossed && !paid) {
           s.countTiersPaid.add(t.at)
           tierBonus += t.bonus
+        } else if (!crossed && paid) {
+          s.countTiersPaid.delete(t.at)
+          tierBonus -= t.bonus
         }
       }
       const gained = base + tierBonus
@@ -191,7 +209,12 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
           ts: e.ts,
           kind: 'count',
           taskId: e.taskId,
-          label: base > 0 ? `${label} — objectif atteint` : `${label} — palier`,
+          label:
+            base > 0
+              ? `${label} — objectif atteint`
+              : base < 0
+                ? `${label} — objectif annulé`
+                : `${label} — palier`,
           base,
           penalty: 0,
           multiplierBonus: 0,
@@ -318,6 +341,24 @@ export function streakAtCap(task: Task): number | null {
   const m = task.streak?.multiplier
   if (!m || m.perStep <= 0) return null
   return Math.ceil((m.cap - 1) / m.perStep) + 1
+}
+
+/**
+ * Dernière validation encore active d'une tâche, celle qu'« annuler » vise.
+ * Les événements déjà annulés sont ignorés, sinon on annulerait dans le vide.
+ */
+export type CompleteEvent = Extract<Event, { kind: 'complete' }>
+
+export function lastCompletion(events: Event[], taskId: string): CompleteEvent | null {
+  const undone = new Set<string>()
+  for (const e of events) if (e.kind === 'undo') undone.add(e.targetId)
+
+  let found: CompleteEvent | null = null
+  for (const e of events) {
+    if (e.kind !== 'complete' || e.taskId !== taskId || undone.has(e.id)) continue
+    if (!found || e.ts > found.ts) found = e
+  }
+  return found
 }
 
 /** Une tâche répétitive n'est re-validable qu'une fois son cycle écoulé. */

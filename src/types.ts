@@ -60,6 +60,12 @@ export type Event =
   | { id: string; ts: number; kind: 'count'; taskId: string; delta: number }
   | { id: string; ts: number; kind: 'spend'; amount: number; label: string; shopItemId?: string }
   | { id: string; ts: number; kind: 'adjust'; amount: number; label: string }
+  /**
+   * Annule un autre événement. On n'efface jamais un fait du journal — on en
+   * ajoute un qui dit « celui-là ne compte pas », ce qui reste fusionnable
+   * entre appareils et idempotent.
+   */
+  | { id: string; ts: number; kind: 'undo'; targetId: string }
 
 /**
  * Un tap fait depuis un widget, appli fermée. Le natif n'y met que des faits :

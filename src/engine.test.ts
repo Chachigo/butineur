@@ -178,7 +178,23 @@ describe('compteur', () => {
     expect(balance).toBe(13)
   })
 
-  it('ne se laisse pas farmer en décrémentant puis réincrémentant', () => {
+  it('reprend la récompense quand on redescend sous l’objectif', () => {
+    const events = [...Array(8)].map(() => count(0))
+    expect(replay(events, [t], at(0)).balance).toBe(13)
+    // 8/8 → 7/8 : l'objectif n'est plus atteint, ses 10 repartent.
+    const { balance, perTask } = replay([...events, count(0, -1)], [t], at(0))
+    expect(perTask.get('t1')!.count).toBe(7)
+    expect(balance).toBe(3) // il reste le bonus intermédiaire de 4
+  })
+
+  it('rembourse aussi les paliers intermédiaires quittés', () => {
+    const events = [...Array(8)].map(() => count(0))
+    const retours = [...Array(5)].map(() => count(0, -1))
+    // Redescendu à 3 : ni l'objectif ni le palier de 4 ne tiennent.
+    expect(replay([...events, ...retours], [t], at(0)).balance).toBe(0)
+  })
+
+  it('ne se laisse pas farmer par des allers-retours', () => {
     const events = [...Array(8)].map(() => count(0))
     events.push(count(0, -1), count(0, 1), count(0, -1), count(0, 1))
     expect(replay(events, [t], at(0)).balance).toBe(13)
@@ -212,6 +228,36 @@ describe('compteur', () => {
   it('remet le compteur à zéro même sans événement aujourd’hui', () => {
     const { perTask } = replay([count(0), count(0)], [t], at(3))
     expect(perTask.get('t1')!.count).toBe(0)
+  })
+})
+
+describe('annulation', () => {
+  const t = task({ repeat: daily, streak: { tiers: [{ at: 2, bonus: 50 }], multiplier: null } })
+
+  it('retire du solde la validation annulée', () => {
+    const e = done(0)
+    expect(replay([e], [t], at(0)).balance).toBe(10)
+    const annule: Event = { id: 'u1', ts: at(0), kind: 'undo', targetId: e.id }
+    expect(replay([e, annule], [t], at(0)).balance).toBe(0)
+  })
+
+  it('recalcule la série et reprend le palier', () => {
+    const a = done(0)
+    const b = done(1)
+    // Deux jours d'affilée : le palier de 2 tombe.
+    expect(replay([a, b], [t], at(1)).balance).toBe(70)
+
+    const annule: Event = { id: 'u2', ts: at(1), kind: 'undo', targetId: b.id }
+    const { balance, perTask } = replay([a, b, annule], [t], at(1))
+    expect(balance).toBe(10)
+    expect(perTask.get('t1')!.streak).toBe(1)
+  })
+
+  it('reste sans effet si on annule deux fois', () => {
+    const e = done(0)
+    const u1: Event = { id: 'u3', ts: at(0), kind: 'undo', targetId: e.id }
+    const u2: Event = { id: 'u4', ts: at(0), kind: 'undo', targetId: e.id }
+    expect(replay([e, u1, u2], [t], at(0)).balance).toBe(0)
   })
 })
 

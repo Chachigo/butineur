@@ -337,6 +337,13 @@ body::after {
   color: #241a00;
 }
 
+/* Tâche déjà faite : le bouton propose de revenir en arrière. */
+.task__go--undo {
+  background: var(--panel-2);
+  color: var(--dim);
+  font-size: 13px;
+}
+
 .task__counter {
   display: flex;
   align-items: center;

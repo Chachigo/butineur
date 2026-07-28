@@ -1,8 +1,15 @@
 import type { MouseEvent, RefObject } from 'react'
-import { computePenalty, dueTsFor, isAvailable, previewReward, type Replay } from '../engine'
+import {
+  computePenalty,
+  dueTsFor,
+  isAvailable,
+  lastCompletion,
+  previewReward,
+  type Replay,
+} from '../engine'
 import { fmt, relativeDay } from '../format'
 import { burst, coinFly, pop } from '../fx'
-import { addEvent, deleteTask, uid } from '../store'
+import { addEvent, deleteTask, uid, useDB } from '../store'
 import type { Task } from '../types'
 import Icon from './Icon'
 import { SelectionBar, useLongPress, useSelection, type Selection } from './useSelection'
@@ -93,6 +100,7 @@ function TaskRow({
   onEdit,
   sel,
 }: RowProps) {
+  const events = useDB().events
   const s = rep.perTask.get(task.id)
   const streak = s?.streak ?? 0
   const available = isAvailable(task, s, now, dayStart)
@@ -120,16 +128,31 @@ function TaskRow({
     else pop(el)
   }
 
+  const undo = (e: MouseEvent<HTMLButtonElement>) => {
+    const target = lastCompletion(events, task.id)
+    if (!target) return
+    addEvent({ id: uid(), ts: Date.now(), kind: 'undo', targetId: target.id })
+    coinFly(e.currentTarget, balanceRef.current, `−${fmt(target.baseReward)}`, true)
+    pop(balanceRef.current, true)
+  }
+
   const bump = (delta: number) => (e: MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget
-    const next = Math.max(0, (s?.count ?? 0) + delta)
-    const bonus = (task.counter?.tiers ?? [])
-      .filter((t) => t.at <= next && !s?.countTiersPaid.has(t.at))
-      .reduce((a, t) => a + t.bonus, 0)
+    const before = s?.count ?? 0
+    const after = Math.min(target, Math.max(0, before + delta))
+
+    // Le solde suit le compteur dans les deux sens : on annonce le même montant.
+    const tiers = task.counter?.tiers ?? []
+    const crossed = (n: number) =>
+      (n >= target ? task.reward : 0) +
+      tiers.filter((t) => t.at <= n).reduce((a, t) => a + t.bonus, 0)
+    const gain = crossed(after) - crossed(before)
+
     addEvent({ id: uid(), ts: Date.now(), kind: 'count', taskId: task.id, delta })
-    if (bonus > 0) {
-      coinFly(el, balanceRef.current, `+${fmt(bonus)}`)
-      burst(el)
+    if (gain !== 0) {
+      coinFly(el, balanceRef.current, `${gain > 0 ? '+' : '−'}${fmt(Math.abs(gain))}`, gain < 0)
+      if (gain > 0) burst(el)
+      else pop(balanceRef.current, true)
     } else pop(el, delta < 0)
   }
 
@@ -196,8 +219,12 @@ function TaskRow({
           </button>
         </div>
       ) : (
-        <button className="task__go" onClick={complete} disabled={!available}>
-          {available ? `+${fmt(previewReward(task, s, now))} ${currency}` : '✓'}
+        <button
+          className={available ? 'task__go' : 'task__go task__go--undo'}
+          onClick={available ? complete : undo}
+          title={available ? undefined : 'Annuler cette validation'}
+        >
+          {available ? `+${fmt(previewReward(task, s, now))} ${currency}` : '↩ ✓'}
         </button>
       )}
     </li>
