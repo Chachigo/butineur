@@ -35,7 +35,12 @@ class CounterWidget : AppWidgetProvider() {
         // Gain du cran courant, pas d'un cran figé : plusieurs taps d'affilée
         // appli fermée doivent tous compter juste.
         val gain = task?.gainAt(Store.displayedCount(context, task)) ?: 0.0
-        Store.pushPending(context, taskId, intent.getIntExtra(EXTRA_DELTA, 1), "count", gain)
+        val delta = intent.getIntExtra(EXTRA_DELTA, 1)
+        Store.pushPending(context, taskId, delta, "count", gain)
+        // Objectif atteint par ce tap : le rappel n'a plus lieu d'être.
+        if (task != null && Store.displayedCount(context, task) >= task.target) {
+            Notifs.cancelForTask(context, task.notifBase)
+        }
         // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
         // Sans rebuild : la liste doit juste relire ses données.
         Widgets.refreshAll(context, rebuild = false)

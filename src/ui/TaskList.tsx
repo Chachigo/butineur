@@ -1,10 +1,11 @@
-import { useRef, useState, type MouseEvent, type RefObject } from 'react'
+import type { MouseEvent, RefObject } from 'react'
 import { computePenalty, dueTsFor, isAvailable, previewReward, type Replay } from '../engine'
 import { fmt, relativeDay } from '../format'
 import { burst, coinFly, pop } from '../fx'
 import { addEvent, deleteTask, uid } from '../store'
 import type { Task } from '../types'
 import Icon from './Icon'
+import { SelectionBar, useLongPress, useSelection, type Selection } from './useSelection'
 
 type Props = {
   tasks: Task[]
@@ -30,42 +31,11 @@ export default function TaskList({
   // Le plus urgent en haut : en retard, puis échéance proche, puis disponible.
   const sorted = [...tasks].sort((a, b) => rank(a, rep, now, dayStart) - rank(b, rep, now, dayStart))
 
-  // `null` = pas en sélection. Un Set vide reste un mode actif : on peut tout décocher.
-  const [selection, setSelection] = useState<Set<string> | null>(null)
-
-  const toggle = (id: string) =>
-    setSelection((prev) => {
-      const next = new Set(prev ?? [])
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-
-  const removeSelected = () => {
-    selection?.forEach(deleteTask)
-    setSelection(null)
-  }
+  const sel = useSelection(sorted, deleteTask)
 
   return (
     <>
-      {selection && (
-        <div className="selbar">
-          <button className="selbar__x" onClick={() => setSelection(null)} aria-label="Quitter la sélection">
-            ✕
-          </button>
-          <span className="selbar__count">
-            {selection.size} sélectionnée{selection.size > 1 ? 's' : ''}
-          </span>
-          <button
-            className="selbar__all"
-            onClick={() => setSelection(new Set(sorted.map((t) => t.id)))}
-          >
-            Tout
-          </button>
-          <button className="btn btn--danger" onClick={removeSelected} disabled={selection.size === 0}>
-            Supprimer
-          </button>
-        </div>
-      )}
+      <SelectionBar sel={sel} noun={['sélectionnée', 'sélectionnées']} />
 
       {sorted.length === 0 && (
         <p className="empty">
@@ -86,14 +56,12 @@ export default function TaskList({
             dayStart={dayStart}
             balanceRef={balanceRef}
             onEdit={onEdit}
-            selection={selection}
-            onToggle={toggle}
-            onStartSelection={(id) => setSelection(new Set([id]))}
+            sel={sel}
           />
         ))}
       </ul>
 
-      {!selection && (
+      {!sel.selecting && (
         <button className="fab" onClick={onNew} aria-label="Nouvelle tâche">
           +
         </button>
@@ -113,12 +81,7 @@ function rank(t: Task, rep: Replay, now: number, dayStart: number): number {
   return 2
 }
 
-type RowProps = Omit<Props, 'tasks' | 'onNew'> & {
-  task: Task
-  selection: Set<string> | null
-  onToggle: (id: string) => void
-  onStartSelection: (id: string) => void
-}
+type RowProps = Omit<Props, 'tasks' | 'onNew'> & { task: Task; sel: Selection }
 
 function TaskRow({
   task,
@@ -128,9 +91,7 @@ function TaskRow({
   dayStart,
   balanceRef,
   onEdit,
-  selection,
-  onToggle,
-  onStartSelection,
+  sel,
 }: RowProps) {
   const s = rep.perTask.get(task.id)
   const streak = s?.streak ?? 0
@@ -178,16 +139,9 @@ function TaskRow({
   // Un compteur à son objectif est fini pour aujourd'hui : on le grise comme le reste.
   const spent = !available || reached
 
-  const selecting = selection !== null
-  const selected = selection?.has(task.id) ?? false
-
-  // Appui long : entrer en sélection multiple sans bouton dédié à l'écran.
-  const press = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const startPress = () => {
-    if (selecting) return
-    press.current = setTimeout(() => onStartSelection(task.id), 450)
-  }
-  const cancelPress = () => clearTimeout(press.current)
+  const selecting = sel.selecting
+  const selected = sel.selection?.has(task.id) ?? false
+  const longPress = useLongPress(() => sel.start(task.id), !selecting)
 
   return (
     <li
@@ -197,12 +151,8 @@ function TaskRow({
     >
       <button
         className="task__body"
-        onClick={() => (selecting ? onToggle(task.id) : onEdit(task))}
-        onPointerDown={startPress}
-        onPointerUp={cancelPress}
-        onPointerLeave={cancelPress}
-        onPointerCancel={cancelPress}
-        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => (selecting ? sel.toggle(task.id) : onEdit(task))}
+        {...longPress}
       >
         {selecting && (
           <span className={`task__tick${selected ? ' task__tick--on' : ''}`} aria-hidden>

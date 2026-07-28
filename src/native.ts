@@ -36,6 +36,8 @@ export type WidgetPayload = {
     target: number
     unit: string
     day: number
+    /** Base des identifiants de notification, pour que le widget puisse les couper. */
+    notifBase: number
     /**
      * Ce que rapporte chaque cran : `gains[i]` est le gain du tap qui fait
      * passer le compte de `i` à `i+1`. Le widget indexe par son compte courant,
@@ -60,6 +62,8 @@ export type WidgetPayload = {
      */
     gain: number
     done: boolean
+    /** Base des identifiants de notification, pour que le widget puisse les couper. */
+    notifBase: number
   }[]
 }
 
@@ -118,6 +122,7 @@ export function widgetPayload(
         unit: t.counter!.unit ?? '',
         day,
         gains: countGains(t, rep),
+        notifBase: notifId(t.id),
       })),
     todo: live
       .filter((t) => isAvailable(t, rep.perTask.get(t.id), now))
@@ -135,6 +140,7 @@ export function widgetPayload(
             // Un compteur : le gain dépend du cran, le natif le lit dans `tasks`.
             gain: 0,
             done,
+            notifBase: notifId(t.id),
           }
         }
         return {
@@ -145,6 +151,7 @@ export function widgetPayload(
           label: `+${fmt(previewReward(t, s, now))}`,
           gain: previewReward(t, s, now),
           done: false,
+          notifBase: notifId(t.id),
         }
       })
       // Ce qui reste à faire d'abord, le plus urgent en tête ; le fini en bas.
@@ -199,8 +206,11 @@ export type NotifSpec = { id: number; title: string; body: string; at: number }
 export function notificationSpecs(rep: Replay, tasks: Task[], now: number, currency: string): NotifSpec[] {
   const live = tasks.filter((t) => !t.deletedAt && !t.archived)
 
+  // `isAvailable` partout : une tâche déjà faite n'a plus rien à rappeler, ni
+  // son échéance ni son rappel. Sans ce filtre, valider une tâche — dans
+  // l'appli comme depuis un widget — laissait la notification partir quand même.
   const deadlines = live
-    .filter((t) => t.due)
+    .filter((t) => t.due && isAvailable(t, rep.perTask.get(t.id), now))
     .map((t) => ({ t, at: dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null, now) }))
     .filter((x): x is { t: Task; at: number } => x.at !== null && x.at > now)
     .map(({ t, at }) => ({

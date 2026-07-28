@@ -48,6 +48,18 @@ class TodoWidget : AppWidgetProvider() {
             Store.todo(context).firstOrNull { it.id == taskId }?.gain ?: 0.0
         }
         Store.pushPending(context, taskId, 1, kind, gain)
+
+        // La tâche est faite : on coupe ses rappels, sinon ils partaient quand
+        // même — l'appli, fermée, ne pouvait pas les déprogrammer elle-même.
+        val counter = Store.task(context, taskId)
+        val fini = if (kind == "count") {
+            counter != null && Store.displayedCount(context, counter) >= counter.target
+        } else true
+        if (fini) {
+            val base = counter?.notifBase
+                ?: Store.todo(context).firstOrNull { it.id == taskId }?.notifBase
+            if (base != null) Notifs.cancelForTask(context, base)
+        }
         // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
         // Sans rebuild : la liste doit juste relire ses données.
         Widgets.refreshAll(context, rebuild = false)

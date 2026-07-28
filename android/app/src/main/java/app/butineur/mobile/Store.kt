@@ -19,6 +19,8 @@ data class CounterTask(
     val day: Long,
     /** Gain de chaque cran, chiffré par le web : `gains[i]` fait passer de i à i+1. */
     val gains: List<Double>,
+    /** Base des identifiants de notification de cette tâche. */
+    val notifBase: Int,
 ) {
     /** Ce que rapporterait le prochain +1, depuis le compte affiché. */
     fun gainAt(count: Int): Double = gains.getOrElse(count) { 0.0 }
@@ -36,6 +38,8 @@ data class TodoTask(
     /** Ce que le prochain tap rapportera, chiffré par le web. */
     val gain: Double,
     val done: Boolean,
+    /** Base des identifiants de notification de cette tâche. */
+    val notifBase: Int,
 )
 
 /**
@@ -113,6 +117,7 @@ object Store {
                     gains = o.optJSONArray("gains").let { g ->
                         (0 until (g?.length() ?: 0)).map { g!!.optDouble(it, 0.0) }
                     },
+                    notifBase = o.optInt("notifBase"),
                 )
             }
         }.getOrDefault(emptyList())
@@ -137,6 +142,7 @@ object Store {
                     label = o.optString("label"),
                     gain = o.optDouble("gain", 0.0),
                     done = o.optBoolean("done"),
+                    notifBase = o.optInt("notifBase"),
                 )
             }
         }.getOrDefault(emptyList())

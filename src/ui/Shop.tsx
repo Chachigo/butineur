@@ -7,6 +7,7 @@ import Icon from './Icon'
 import IconPicker from './IconPicker'
 import NumberInput from './NumberInput'
 import { useCloseOnBack } from './useCloseOnBack'
+import { SelectionBar, useLongPress, useSelection } from './useSelection'
 
 type Props = {
   items: ShopItem[]
@@ -20,6 +21,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
   const [editing, setEditing] = useState<ShopItem | null>(null)
   const [freeAmount, setFreeAmount] = useState('')
   const [freeLabel, setFreeLabel] = useState('')
+  const sel = useSelection(items, deleteShopItem)
 
   /** Refusé par défaut : c'est un garde-fou d'interface, le journal sait aller en négatif. */
   const tooExpensive = (amount: number) => !allowNegative && amount > balance
@@ -44,6 +46,8 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
 
   return (
     <>
+      <SelectionBar sel={sel} noun={['sélectionné', 'sélectionnés']} />
+
       {items.length === 0 && (
         <p className="empty">
           Ta boutique est vide.
@@ -54,33 +58,16 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
 
       <ul className="list">
         {items.map((item) => (
-          <li key={item.id} className="task">
-            <button className="task__body" onClick={() => setEditing(item)}>
-              <Icon className="task__icon" icon={item.icon ?? ''} fallback="🎁" />
-              <span className="task__text">
-                <span className="task__name">{item.name}</span>
-                <span className="task__meta">
-                  <em className="badge">
-                    {fmt(item.price)} {currency}
-                  </em>
-                </span>
-              </span>
-            </button>
-            <button
-              className="task__go task__go--buy"
-              onClick={buy(item)}
-              disabled={tooExpensive(item.price)}
-              title={
-                tooExpensive(item.price)
-                  ? 'Budget insuffisant — activable dans les Réglages'
-                  : item.price > balance
-                    ? 'Ça fera passer ton budget dans le rouge'
-                    : undefined
-              }
-            >
-              {tooExpensive(item.price) ? 'Trop cher' : item.price > balance ? '⚠ Acheter' : 'Acheter'}
-            </button>
-          </li>
+          <ShopRow
+            key={item.id}
+            item={item}
+            currency={currency}
+            balance={balance}
+            tooExpensive={tooExpensive}
+            onBuy={buy(item)}
+            onEdit={() => setEditing(item)}
+            sel={sel}
+          />
         ))}
       </ul>
 
@@ -117,12 +104,77 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
         )}
       </div>
 
-      <button className="fab" onClick={() => setEditing(blankItem())} aria-label="Nouvel article">
-        +
-      </button>
+      {!sel.selecting && (
+        <button className="fab" onClick={() => setEditing(blankItem())} aria-label="Nouvel article">
+          +
+        </button>
+      )}
 
       {editing && <ItemEditor item={editing} onClose={() => setEditing(null)} />}
     </>
+  )
+}
+
+function ShopRow({
+  item,
+  currency,
+  balance,
+  tooExpensive,
+  onBuy,
+  onEdit,
+  sel,
+}: {
+  item: ShopItem
+  currency: string
+  balance: number
+  tooExpensive: (amount: number) => boolean
+  onBuy: (e: MouseEvent<HTMLButtonElement>) => void
+  onEdit: () => void
+  sel: ReturnType<typeof useSelection>
+}) {
+  const selected = sel.selection?.has(item.id) ?? false
+  const longPress = useLongPress(() => sel.start(item.id), !sel.selecting)
+
+  return (
+    <li className={`task${selected ? ' task--picked' : ''}`}>
+      <button
+        className="task__body"
+        onClick={() => (sel.selecting ? sel.toggle(item.id) : onEdit())}
+        {...longPress}
+      >
+        {sel.selecting && (
+          <span className={`task__tick${selected ? ' task__tick--on' : ''}`} aria-hidden>
+            {selected ? '✓' : ''}
+          </span>
+        )}
+        <Icon className="task__icon" icon={item.icon ?? ''} fallback="🎁" />
+        <span className="task__text">
+          <span className="task__name">{item.name}</span>
+          <span className="task__meta">
+            <em className="badge">
+              {fmt(item.price)} {currency}
+            </em>
+          </span>
+        </span>
+      </button>
+
+      {!sel.selecting && (
+        <button
+          className="task__go task__go--buy"
+          onClick={onBuy}
+          disabled={tooExpensive(item.price)}
+          title={
+            tooExpensive(item.price)
+              ? 'Budget insuffisant — activable dans les Réglages'
+              : item.price > balance
+                ? 'Ça fera passer ton budget dans le rouge'
+                : undefined
+          }
+        >
+          {tooExpensive(item.price) ? 'Trop cher' : item.price > balance ? '⚠ Acheter' : 'Acheter'}
+        </button>
+      )}
+    </li>
   )
 }
 
