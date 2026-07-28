@@ -32,7 +32,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   const sauvegarder = async () => {
     try {
       const nom = await exportBackup(db)
-      setMessage({ ok: true, texte: `Sauvegarde créée : ${nom}` })
+      setMessage({ ok: true, texte: `Sauvegarde créée dans Documents : ${nom}` })
     } catch (e) {
       setMessage({ ok: false, texte: `Échec de la sauvegarde : ${(e as Error).message}` })
     }

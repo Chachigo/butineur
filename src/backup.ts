@@ -51,7 +51,15 @@ export async function exportBackup(db: DB): Promise<string> {
     encoding: Encoding.UTF8,
     recursive: true,
   })
-  await Share.share({ title: 'Sauvegarde Butineur', url: uri, dialogTitle: 'Envoyer la sauvegarde' })
+
+  // Le partage est un bonus : le fichier est déjà écrit dans Documents. Refuser
+  // la feuille de partage ne doit donc pas ressembler à une sauvegarde ratée.
+  void Share.share({
+    title: 'Sauvegarde Butineur',
+    url: uri,
+    dialogTitle: 'Envoyer la sauvegarde',
+  }).catch(() => {})
+
   return name
 }
 
