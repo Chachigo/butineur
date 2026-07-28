@@ -36,6 +36,20 @@ function retarget(counter: NonNullable<Task['counter']>, next: number): Tier[] {
   return [...new Map(clamped.map((t) => [t.at, t])).values()].sort((a, b) => a.at - b.at)
 }
 
+const BEFORE_UNITS = { minutes: 1, heures: 60, jours: 1440 } as const
+
+/** `kind` absent = heure fixe : c'était le seul mode avant. */
+const remindKind = (t: Task) =>
+  t.remind && 'kind' in t.remind && t.remind.kind === 'before' ? 'before' : 'time'
+
+/** La plus grande unité qui tombe juste, pour afficher « 2 jours » et non « 2880 minutes ». */
+function beforeUnit(t: Task): keyof typeof BEFORE_UNITS {
+  const m = (t.remind as { minutes?: number })?.minutes ?? 0
+  if (m % BEFORE_UNITS.jours === 0) return 'jours'
+  if (m % BEFORE_UNITS.heures === 0) return 'heures'
+  return 'minutes'
+}
+
 /** Lundi d'abord comme en France ; la valeur reste celle de `Date.getDay()`. */
 const WEEKDAYS: [number, string, string][] = [
   [1, 'L', 'lundi'],
@@ -278,22 +292,73 @@ export default function TaskEditor({ task, onClose }: { task: Task; onClose: () 
             title="Rappel"
             hint="Notification à une heure fixe"
             on={!!t.remind}
-            onToggle={(v) => patch({ remind: v ? { time: '19:00' } : null })}
+            onToggle={(v) => patch({ remind: v ? { kind: 'time', time: '19:00' } : null })}
           >
             {t.remind && (
               <>
                 <div className="row">
-                  <span className="row__label">Chaque jour à</span>
-                  <input
-                    className="input input--time"
-                    type="time"
-                    value={t.remind.time}
-                    onChange={(e) =>
-                      e.target.value && patch({ remind: { time: e.target.value } })
-                    }
-                    aria-label="Heure du rappel"
-                  />
+                  <button
+                    type="button"
+                    className={remindKind(t) === 'time' ? 'chip-btn chip-btn--on' : 'chip-btn'}
+                    onClick={() => patch({ remind: { kind: 'time', time: '19:00' } })}
+                  >
+                    à une heure fixe
+                  </button>
+                  <button
+                    type="button"
+                    className={remindKind(t) === 'before' ? 'chip-btn chip-btn--on' : 'chip-btn'}
+                    disabled={!t.due}
+                    title={t.due ? undefined : 'Active « Date limite » d’abord'}
+                    onClick={() => patch({ remind: { kind: 'before', minutes: 60 } })}
+                  >
+                    avant l’échéance
+                  </button>
                 </div>
+
+                {remindKind(t) === 'time' ? (
+                  <div className="row">
+                    <span className="row__label">Chaque jour à</span>
+                    <input
+                      className="input input--time"
+                      type="time"
+                      value={(t.remind as { time: string }).time}
+                      onChange={(e) =>
+                        e.target.value && patch({ remind: { kind: 'time', time: e.target.value } })
+                      }
+                      aria-label="Heure du rappel"
+                    />
+                  </div>
+                ) : (
+                  <div className="row">
+                    <span className="row__label">Prévenir</span>
+                    <NumberInput
+                      className="input input--xs"
+                      value={Math.round((t.remind as { minutes: number }).minutes / BEFORE_UNITS[beforeUnit(t)])}
+                      min={1}
+                      onChange={(v) =>
+                        patch({ remind: { kind: 'before', minutes: v * BEFORE_UNITS[beforeUnit(t)] } })
+                      }
+                      aria-label="Délai avant l’échéance"
+                    />
+                    <select
+                      className="input input--select"
+                      value={beforeUnit(t)}
+                      onChange={(e) => {
+                        const u = e.target.value as keyof typeof BEFORE_UNITS
+                        const n = Math.round(
+                          (t.remind as { minutes: number }).minutes / BEFORE_UNITS[beforeUnit(t)],
+                        )
+                        patch({ remind: { kind: 'before', minutes: n * BEFORE_UNITS[u] } })
+                      }}
+                      aria-label="Unité du délai"
+                    >
+                      <option value="minutes">minutes avant</option>
+                      <option value="heures">heures avant</option>
+                      <option value="jours">jours avant</option>
+                    </select>
+                  </div>
+                )}
+
                 <p className="hint">
                   Envoyé seulement les jours où la tâche est à faire. Rien tant qu’elle
                   est déjà validée.

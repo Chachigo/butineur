@@ -16,6 +16,7 @@ import Settings from './ui/Settings'
 import Shop from './ui/Shop'
 import TaskEditor, { blankTask } from './ui/TaskEditor'
 import TaskList from './ui/TaskList'
+import { useCloseOnBack } from './ui/useCloseOnBack'
 
 type Tab = 'tasks' | 'shop' | 'history'
 
@@ -31,6 +32,9 @@ export default function App() {
   const [editing, setEditing] = useState<Task | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const balanceRef = useRef<HTMLElement | null>(null)
+
+  // Le retour ramène à l'onglet des tâches avant de songer à quitter l'appli.
+  useCloseOnBack(tab !== 'tasks', () => setTab('tasks'))
 
   // La couleur d'accentuation pilote toute la feuille de style.
   useEffect(() => {

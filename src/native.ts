@@ -223,14 +223,16 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
   // Rappels : rien pour une tâche déjà faite, on la reprogramme au prochain cycle.
   const reminders = live
     .filter((t) => t.remind && isAvailable(t, rep.perTask.get(t.id), now))
-    .map((t) => ({
+    .map((t) => ({ t, at: remindAt(t, rep, now) }))
+    .filter((x): x is { t: Task; at: number } => x.at !== null && x.at > now)
+    .map(({ t, at }) => ({
       // Décalé pour ne pas écraser la notification d'échéance de la même tâche.
       id: notifId(t.id) + 1,
       title: t.name,
       body: t.counter
         ? `Objectif du jour : ${t.counter.target} ${t.counter.unit ?? ''}`.trim()
         : `À faire — ${fmt(previewReward(t, rep.perTask.get(t.id), now))} ${currency}`,
-      at: nextTimeToday(t.remind!.time, now),
+      at,
     }))
 
   // Encouragements : uniquement quand il y a quelque chose à dire.
@@ -242,7 +244,7 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
       id: notifId(t.id) + 2,
       title: t.name,
       body,
-      at: nextTimeToday(t.remind?.time ?? '19:00', now),
+      at: nextTimeToday(t.remind && !('kind' in t.remind && t.remind.kind === 'before') ? t.remind.time : '19:00', now),
     }))
 
   return [...deadlines, ...reminders, ...cheers]
@@ -278,6 +280,23 @@ function cheerFor(t: Task, s: TaskState | undefined): string | null {
   }
 
   return null
+}
+
+/**
+ * Quand sonner le rappel d'une tâche.
+ *
+ * « x avant l'échéance » n'a de sens que s'il y a une échéance, et seulement si
+ * ce moment est encore devant nous : un rappel calé sur une échéance déjà
+ * dépassée n'aurait jamais lieu.
+ */
+function remindAt(t: Task, rep: Replay, now: number): number | null {
+  const r = t.remind!
+  if ('kind' in r && r.kind === 'before') {
+    const due = dueTsFor(t, rep.perTask.get(t.id)?.lastDoneTs ?? null, now)
+    if (due === null) return null
+    return due - r.minutes * 60_000
+  }
+  return nextTimeToday((r as { time: string }).time, now)
 }
 
 /** Prochaine occurrence de « HH:MM » : aujourd'hui si l'heure est à venir, sinon demain. */

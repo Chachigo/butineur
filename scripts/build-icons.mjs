@@ -12,8 +12,10 @@ const SRC = 'node_modules/@phosphor-icons/web/src/regular'
 
 // Choisies pour ce que fait l'appli. Grouper ici sert directement le sélecteur.
 const GROUPS = {
-  Maison: ['broom', 'washing-machine', 'bed', 'shower', 'trash', 'plant', 'dog', 'cat',
-    'fork-knife', 'cooking-pot', 'toilet-paper', 'hammer', 'lightbulb', 'key', 'package', 'shopping-cart'],
+  Maison: ['broom', 'washing-machine', 'bed', 'shower', 'trash', 'trash-simple', 'recycle',
+    'toilet', 'toilet-paper', 'bathtub', 'basket', 'coat-hanger', 'plant', 'dog', 'cat',
+    'fork-knife', 'cooking-pot', 'paint-brush-household', 'hammer', 'wrench', 'screwdriver',
+    'lightbulb', 'key', 'package', 'shopping-cart'],
   Corps: ['barbell', 'person-simple-run', 'person-simple-bike', 'person-simple-walk',
     'heartbeat', 'pill', 'tooth', 'bed', 'first-aid-kit', 'sneaker', 'yin-yang', 'brain'],
   Repas: ['drop', 'coffee', 'apple-logo', 'carrot', 'bread', 'egg', 'wine', 'beer-stein',
@@ -22,6 +24,8 @@ const GROUPS = {
     'graduation-cap', 'chart-line', 'folders', 'envelope', 'clock'],
   Loisirs: ['palette', 'guitar', 'game-controller', 'camera', 'puzzle-piece', 'film-slate',
     'book-open', 'airplane-tilt', 'headphones', 'globe-hemisphere-west', 'television', 'music-notes'],
+  Fête: ['confetti', 'balloon', 'cake', 'champagne', 'gift', 'cheers', 'martini',
+    'beer-bottle', 'disco-ball', 'music-notes', 'star', 'sparkle'],
   Divers: ['star', 'fire', 'check-circle', 'target', 'diamond', 'trophy', 'leaf', 'paw-print',
     'lightning', 'heart', 'bell', 'flag', 'medal', 'rocket', 'sun', 'moon'],
 }

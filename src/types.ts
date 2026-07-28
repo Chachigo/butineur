@@ -23,8 +23,12 @@ export type Task = {
    */
   due: null | { at: string; penalty: Penalty; weekday?: number }
   streak: null | { tiers: Tier[]; multiplier: null | { perStep: number; cap: number } }
-  /** Rappel quotidien à une heure donnée, tant que la tâche est à faire. */
-  remind: null | { time: string }
+  /**
+   * Rappel, tant que la tâche est à faire : soit à une heure fixe chaque jour,
+   * soit un certain temps avant l'échéance. `kind` absent = heure fixe, pour
+   * les tâches créées avant l'ajout du second mode.
+   */
+  remind: null | { kind?: 'time'; time: string } | { kind: 'before'; minutes: number }
   /** Encouragements sur la série en cours. Désactivé par défaut, c'est intrusif. */
   cheer: boolean
   archived: boolean

@@ -22,6 +22,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
   const [freeAmount, setFreeAmount] = useState('')
   const [freeLabel, setFreeLabel] = useState('')
   const sel = useSelection(items, deleteShopItem)
+  useCloseOnBack(sel.selecting, sel.stop)
 
   /** Refusé par défaut : c'est un garde-fou d'interface, le journal sait aller en négatif. */
   const tooExpensive = (amount: number) => !allowNegative && amount > balance

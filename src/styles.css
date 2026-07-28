@@ -986,3 +986,32 @@ button:focus-visible {
     transition: none !important;
   }
 }
+
+/* Petit bouton-choix, pour des options qui tiennent en un mot. */
+.chip-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 9px 6px;
+  border-radius: 9px;
+  background: var(--panel-2);
+  color: var(--dim);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chip-btn--on {
+  background: var(--go);
+  color: var(--go-ink);
+}
+
+.chip-btn:disabled {
+  opacity: 0.4;
+}
+
+.hint--ok {
+  color: var(--go);
+}
+
+.hint--bad {
+  color: var(--bad);
+}

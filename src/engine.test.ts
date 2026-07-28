@@ -13,6 +13,7 @@ import {
   staleOneShots,
   streakAtCap,
 } from './engine'
+import { parseBackup, serialize } from './backup'
 import type { Event, Task } from './types'
 
 // Lundi 5 janvier 2026, midi — loin de tout changement d'heure.
@@ -46,13 +47,12 @@ const done = (days: number, over: Partial<Extract<Event, { kind: 'complete' }>> 
   penaltyFlat: 0,
   ...over,
 })
-const count = (days: number, delta = 1, id = `c${++seq}`): Event => ({
-  id,
-  ts: at(days),
-  kind: 'count',
-  taskId: 't1',
-  delta,
-})
+// Chaque tap décalé de quelques millisecondes : à horodatage égal le moteur
+// départage par identifiant, et « c10 » passerait avant « c9 ».
+const count = (days: number, delta = 1, id?: string): Event => {
+  const n = ++seq
+  return { id: id ?? `c${n}`, ts: at(days) + n, kind: 'count', taskId: 't1', delta }
+}
 
 const daily = { everyDays: 1 }
 
@@ -413,6 +413,38 @@ describe('taps venus des widgets', () => {
 
   it('ignore une tâche supprimée entre-temps', () => {
     expect(pendingToEvents([{ kind: 'complete', taskId: 'zzz', delta: 1, ts: at(0) }], [], [], ids)).toEqual([])
+  })
+})
+
+describe('sauvegarde', () => {
+  const db = {
+    tasks: [task({ name: 'Vaisselle' })],
+    shopItems: [],
+    events: [done(0)],
+    settings: {
+      currency: '€',
+      budgetLabel: 'budget loisirs',
+      accent: '#4ade80',
+      dayStart: 0,
+      defaultReward: 10,
+      allowNegative: false,
+      serverUrl: '',
+      serverToken: '',
+    },
+  }
+
+  it('fait l’aller-retour sans rien perdre', () => {
+    const relu = parseBackup(serialize(db))
+    expect(relu.tasks).toEqual(db.tasks)
+    expect(relu.events).toEqual(db.events)
+    expect(relu.settings.currency).toBe('€')
+  })
+
+  it('refuse un fichier étranger plutôt que d’écraser la base', () => {
+    expect(() => parseBackup('pas du json')).toThrow(/JSON/)
+    expect(() => parseBackup('{"app":"autre"}')).toThrow(/Butineur/)
+    expect(() => parseBackup('{"app":"butineur","format":99}')).toThrow(/inconnu/)
+    expect(() => parseBackup('{"app":"butineur","format":1,"db":{}}')).toThrow(/incomplète/)
   })
 })
 

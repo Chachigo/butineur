@@ -83,5 +83,13 @@ export const deleteShopItem = (id: string) =>
     ),
   }))
 
+/**
+ * Remplace toute la base par une sauvegarde. Les réglages absents reprennent
+ * leurs valeurs par défaut, pour qu'une sauvegarde plus ancienne reste lisible.
+ */
+export function replaceAll(next: DB) {
+  update(() => ({ ...EMPTY, ...next, settings: { ...EMPTY.settings, ...next.settings } }))
+}
+
 export const setSettings = (patch: Partial<DB['settings']>) =>
   update((d) => ({ ...d, settings: { ...d.settings, ...patch } }))

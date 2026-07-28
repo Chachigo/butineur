@@ -12,6 +12,7 @@ import { burst, coinFly, pop } from '../fx'
 import { addEvent, deleteTask, uid, useDB } from '../store'
 import type { Task } from '../types'
 import Icon from './Icon'
+import { useCloseOnBack } from './useCloseOnBack'
 import { SelectionBar, useLongPress, useSelection, type Selection } from './useSelection'
 
 type Props = {
@@ -39,6 +40,7 @@ export default function TaskList({
   const sorted = [...tasks].sort((a, b) => rank(a, rep, now, dayStart) - rank(b, rep, now, dayStart))
 
   const sel = useSelection(sorted, deleteTask)
+  useCloseOnBack(sel.selecting, sel.stop)
 
   return (
     <>

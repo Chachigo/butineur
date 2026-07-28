@@ -14,8 +14,10 @@
   "dependencies": {
     "@capacitor/android": "^8.4.2",
     "@capacitor/core": "^8.4.2",
+    "@capacitor/filesystem": "^8.1.2",
     "@capacitor/local-notifications": "^8.2.1",
     "@capacitor/preferences": "^8.0.1",
+    "@capacitor/share": "^8.0.1",
     "@phosphor-icons/web": "^2.1.2",
     "canvas-confetti": "^1.9.3",
     "idb-keyval": "^6.2.2",

@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { addEvent, setSettings, uid, useDB } from '../store'
+import { useRef, useState } from 'react'
+import { exportBackup, parseBackup } from '../backup'
+import { addEvent, replaceAll, setSettings, uid, useDB } from '../store'
 import NumberInput from './NumberInput'
 import { useCloseOnBack } from './useCloseOnBack'
 
@@ -25,6 +26,29 @@ const ACCENTS = [
 export default function Settings({ onClose }: { onClose: () => void }) {
   const db = useDB()
   const [adjust, setAdjust] = useState('')
+  const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null)
+  const fichier = useRef<HTMLInputElement>(null)
+
+  const sauvegarder = async () => {
+    try {
+      const nom = await exportBackup(db)
+      setMessage({ ok: true, texte: `Sauvegarde créée : ${nom}` })
+    } catch (e) {
+      setMessage({ ok: false, texte: `Échec de la sauvegarde : ${(e as Error).message}` })
+    }
+  }
+
+  const restaurer = async (f: File) => {
+    try {
+      const db = parseBackup(await f.text())
+      // Remplacement complet : mélanger deux bases ferait doublonner le journal
+      // et donc le solde. Une restauration remet l'appareil dans un état connu.
+      replaceAll(db)
+      setMessage({ ok: true, texte: `Restauré : ${db.tasks.length} tâches, ${db.events.length} événements.` })
+    } catch (e) {
+      setMessage({ ok: false, texte: (e as Error).message })
+    }
+  }
 
   useCloseOnBack(true, onClose)
 
@@ -95,6 +119,39 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             <span className="field__suffix">{db.settings.currency}</span>
           </div>
           <p className="hint">Pré-remplie à la création d’une nouvelle tâche.</p>
+        </section>
+
+        <section className="card">
+          <h2 className="card__title">Sauvegarde</h2>
+          <p className="hint">
+            Tâches, boutique, historique et réglages dans un seul fichier. Le solde
+            n’y est pas : il se recalcule du journal.
+          </p>
+          <div className="row">
+            <button className="btn btn--go" onClick={sauvegarder}>
+              Sauvegarder
+            </button>
+            <button className="btn" onClick={() => fichier.current?.click()}>
+              Restaurer…
+            </button>
+          </div>
+          <input
+            ref={fichier}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              e.target.value = ''
+              if (f) void restaurer(f)
+            }}
+          />
+          {message && (
+            <p className={message.ok ? 'hint hint--ok' : 'hint hint--bad'}>{message.texte}</p>
+          )}
+          <p className="hint">
+            Restaurer <strong>remplace</strong> tout ce qui est sur cet appareil.
+          </p>
         </section>
 
         <section className="card">
