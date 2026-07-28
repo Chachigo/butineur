@@ -7,7 +7,7 @@ import {
   previewReward,
   type Replay,
 } from '../engine'
-import { fmt, relativeDay } from '../format'
+import { fmt, relativeDay, rythmeLabel } from '../format'
 import { burst, coinFly, pop } from '../fx'
 import { addEvent, deleteTask, uid, useDB } from '../store'
 import type { Task } from '../types'
@@ -188,7 +188,7 @@ function TaskRow({
         <span className="task__text">
           <span className="task__name">{task.name || 'Sans nom'}</span>
           <span className="task__meta">
-            {task.repeat && <em className="badge">tous les {task.repeat.everyDays} j</em>}
+            {task.repeat && <em className="badge">{rythmeLabel(task.repeat)}</em>}
             {streak > 1 && <em className="badge badge--streak">série {streak} 🔥</em>}
             {/* Une série perdue se dit une fois, tant qu'elle n'est pas relancée. */}
             {streak === 0 && (s?.brokenStreak ?? 0) > 1 && (

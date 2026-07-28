@@ -1,4 +1,5 @@
-import { DAY, dayNum } from './engine'
+import { DAY, dayNum, rythme } from './engine'
+import type { Task } from './types'
 
 /** Montants arrondis au dixième — les multiplicateurs produisent des décimales. */
 export function fmt(n: number): string {
@@ -33,6 +34,22 @@ export function relativeDay(ts: number, now = Date.now()): string {
   if (d < 0) return `en retard de ${-d} j`
   if (d <= 7) return `dans ${d} j`
   return `le ${formatDate(ts)}`
+}
+
+const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+
+/** Le rythme en toutes lettres — le badge de la liste dit la même chose que l'éditeur. */
+export function rythmeLabel(repeat: NonNullable<Task['repeat']>): string {
+  switch (rythme(repeat)) {
+    case 'jour':
+      return 'chaque jour'
+    case 'semaine':
+      return `chaque ${JOURS[repeat.weekday! % 7]}`
+    case 'mois':
+      return `le ${repeat.monthday} du mois`
+    case 'glissant':
+      return `tous les ${repeat.everyDays} j`
+  }
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
