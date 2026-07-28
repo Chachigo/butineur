@@ -118,6 +118,25 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
   const entries: LedgerEntry[] = []
   let balance = 0
 
+  /**
+   * Une correction ne s'écrit pas dans l'historique : elle efface la ligne
+   * qu'elle corrige. On retient donc où chaque gain de compteur a été inscrit —
+   * clé « objectif » ou « palier N » d'une tâche — pour pouvoir l'enlever si
+   * l'utilisateur redescend.
+   */
+  const paidLine = new Map<string, number>()
+  const erased = new Set<number>()
+
+  const credit = (key: string, entry: LedgerEntry) => {
+    paidLine.set(key, entries.length)
+    entries.push(entry)
+  }
+  const refund = (key: string) => {
+    const i = paidLine.get(key)
+    if (i !== undefined) erased.add(i)
+    paidLine.delete(key)
+  }
+
   const stateOf = (id: string): TaskState => {
     let s = perTask.get(id)
     if (!s) perTask.set(id, (s = freshState()))
@@ -180,10 +199,23 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
         s.targetPaid = true
         s.lastTargetTs = e.ts
         base = task!.reward
+        credit(`${e.taskId}:objectif`, {
+          eventId: `${e.id}:objectif`,
+          ts: e.ts,
+          kind: 'count',
+          taskId: e.taskId,
+          label: `${label} — objectif atteint`,
+          base,
+          penalty: 0,
+          multiplierBonus: 0,
+          tierBonus: 0,
+          total: base,
+        })
       } else if (!reached && s.targetPaid) {
         s.targetPaid = false
         s.lastTargetTs = null
         base = -(task?.reward ?? 0)
+        refund(`${e.taskId}:objectif`)
       }
 
       // Même symétrie sur les paliers intermédiaires.
@@ -194,34 +226,25 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
         if (crossed && !paid) {
           s.countTiersPaid.add(t.at)
           tierBonus += t.bonus
+          credit(`${e.taskId}:palier${t.at}`, {
+            eventId: `${e.id}:palier${t.at}`,
+            ts: e.ts,
+            kind: 'count',
+            taskId: e.taskId,
+            label: `${label} — palier ${t.at}`,
+            base: 0,
+            penalty: 0,
+            multiplierBonus: 0,
+            tierBonus: t.bonus,
+            total: t.bonus,
+          })
         } else if (!crossed && paid) {
           s.countTiersPaid.delete(t.at)
           tierBonus -= t.bonus
+          refund(`${e.taskId}:palier${t.at}`)
         }
       }
-      const gained = base + tierBonus
-      balance += gained
-      // Un simple +1 n'entre pas dans l'historique : seuls les taps qui
-      // rapportent quelque chose méritent une ligne, sinon elle est noyée.
-      if (gained !== 0) {
-        entries.push({
-          eventId: e.id,
-          ts: e.ts,
-          kind: 'count',
-          taskId: e.taskId,
-          label:
-            base > 0
-              ? `${label} — objectif atteint`
-              : base < 0
-                ? `${label} — objectif annulé`
-                : `${label} — palier`,
-          base,
-          penalty: 0,
-          multiplierBonus: 0,
-          tierBonus,
-          total: gained,
-        })
-      }
+      balance += base + tierBonus
       continue
     }
 
@@ -299,8 +322,10 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     }
   }
 
-  entries.reverse()
-  return { balance, perTask, entries }
+  // Les lignes corrigées disparaissent, elles n'ont plus rien à raconter.
+  const kept = entries.filter((_, i) => !erased.has(i))
+  kept.reverse()
+  return { balance, perTask, entries: kept }
 }
 
 /**

@@ -253,6 +253,21 @@ describe('annulation', () => {
     expect(perTask.get('t1')!.streak).toBe(1)
   })
 
+  it('ne laisse aucune trace dans l’historique', () => {
+    const e = done(0)
+    const annule: Event = { id: 'u5', ts: at(0), kind: 'undo', targetId: e.id }
+    const { entries } = replay([e, annule], [t], at(0))
+    // Ni la validation, ni une ligne « annulé » : la correction efface, elle n'écrit pas.
+    expect(entries).toEqual([])
+  })
+
+  it('efface la ligne du compteur redescendu sous son objectif', () => {
+    const c = task({ reward: 10, counter: { target: 2, unit: '', tiers: [] } })
+    const monte = [count(0), count(0)]
+    expect(replay(monte, [c], at(0)).entries).toHaveLength(1)
+    expect(replay([...monte, count(0, -1)], [c], at(0)).entries).toEqual([])
+  })
+
   it('reste sans effet si on annule deux fois', () => {
     const e = done(0)
     const u1: Event = { id: 'u3', ts: at(0), kind: 'undo', targetId: e.id }

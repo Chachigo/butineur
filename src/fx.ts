@@ -9,8 +9,21 @@ const center = (el: HTMLElement) => {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
 }
 
-/** La pièce s'envole de la tâche validée vers le solde. ~380 ms. */
-export function coinFly(from: HTMLElement | null, to: HTMLElement | null, label: string, negative = false) {
+/**
+ * La pièce s'envole entre la tâche et le solde. ~380 ms.
+ *
+ * Le sens suit l'argent : un gain va vers le solde, une perte en part. Les
+ * appelants passent toujours les deux extrémités dans le même ordre, c'est le
+ * signe qui décide — sinon chaque site d'appel devrait y penser.
+ */
+export function coinFly(
+  task: HTMLElement | null,
+  balance: HTMLElement | null,
+  label: string,
+  negative = false,
+) {
+  const from = negative ? balance : task
+  const to = negative ? task : balance
   if (!from || !to || reduced()) return
   const a = center(from)
   const b = center(to)
