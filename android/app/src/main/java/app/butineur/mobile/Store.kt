@@ -82,11 +82,11 @@ object Store {
         return format(raw + pendingGain(ctx))
     }
 
-    /** Même rendu que `fmt` côté web : arrondi au dixième, virgule décimale. */
+    /** Même rendu que `fmt` côté web : arrondi au centime, virgule décimale. */
     private fun format(n: Double): String {
-        val r = Math.round(n * 10) / 10.0
+        val r = Math.round(n * 100) / 100.0
         return if (r == Math.floor(r)) r.toLong().toString()
-        else String.format(java.util.Locale.FRANCE, "%.1f", r)
+        else String.format(java.util.Locale.FRANCE, "%.2f", r)
     }
 
     fun currency(ctx: Context): String = prefs(ctx).getString(KEY_CURRENCY, null) ?: ""

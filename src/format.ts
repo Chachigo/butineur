@@ -1,10 +1,14 @@
 import { DAY, dayNum, rythme } from './engine'
 import type { Task } from './types'
 
-/** Montants arrondis au dixième — les multiplicateurs produisent des décimales. */
+/**
+ * Montants au centime — les multiplicateurs produisent des décimales, et le
+ * dixième arrondissait de vraies différences à l'identique. Un compte rond
+ * reste écrit rond : « 10 € », pas « 10,00 € ».
+ */
 export function fmt(n: number): string {
-  const r = Math.round(n * 10) / 10
-  return Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ',')
+  const r = Math.round(n * 100) / 100
+  return Number.isInteger(r) ? String(r) : r.toFixed(2).replace('.', ',')
 }
 
 export const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n))
