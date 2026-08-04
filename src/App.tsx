@@ -17,6 +17,7 @@ import Settings from './ui/Settings'
 import Shop from './ui/Shop'
 import TaskEditor, { blankTask } from './ui/TaskEditor'
 import TaskList from './ui/TaskList'
+import TaskStats from './ui/TaskStats'
 import { useCloseOnBack } from './ui/useCloseOnBack'
 
 type Tab = 'tasks' | 'shop' | 'history'
@@ -31,6 +32,7 @@ export default function App() {
   const db = useDB()
   const [tab, setTab] = useState<Tab>('tasks')
   const [editing, setEditing] = useState<Task | null>(null)
+  const [stats, setStats] = useState<Task | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const balanceRef = useRef<HTMLElement | null>(null)
 
@@ -67,9 +69,10 @@ export default function App() {
     [db.events, db.tasks, now, db.settings.dayStart],
   )
   const visibleTasks = useMemo(
-    () => db.tasks.filter((t) => !t.deletedAt && !t.archived),
+    () => db.tasks.filter((t) => !t.deletedAt && !t.archived && !t.template),
     [db.tasks],
   )
+  const modeles = useMemo(() => db.tasks.filter((t) => !t.deletedAt && t.template), [db.tasks])
 
   // Les taps faits sur un widget, appli fermée, rejoignent le journal. Même
   // mécanique append-only que le reste : rien ne se perd, rien ne double.
@@ -158,6 +161,8 @@ export default function App() {
             dayStart={db.settings.dayStart}
             balanceRef={balanceRef}
             onEdit={setEditing}
+            onStats={setStats}
+            modeles={modeles}
             onNew={() => setEditing(blankTask(db.settings.defaultReward))}
           />
         )}
@@ -172,6 +177,21 @@ export default function App() {
         )}
         {tab === 'history' && <History entries={rep.entries} currency={db.settings.currency} />}
       </main>
+
+      {stats && (
+        <TaskStats
+          task={stats}
+          rep={rep}
+          now={now}
+          currency={db.settings.currency}
+          dayStart={db.settings.dayStart}
+          onEdit={() => {
+            setEditing(stats)
+            setStats(null)
+          }}
+          onClose={() => setStats(null)}
+        />
+      )}
 
       {editing && (
         <TaskEditor

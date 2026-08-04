@@ -41,6 +41,12 @@ export type Task = {
     | { kind: 'before'; minutes: number }
   /** Encouragements sur la série en cours. Désactivé par défaut, c'est intrusif. */
   cheer: boolean
+  /**
+   * Modèle de tâche rapide : absent de la liste et des widgets, il attend dans
+   * une barre de raccourcis qu'on le ressorte. Pour ce qui revient souvent sans
+   * être régulier — les courses, la lessive.
+   */
+  template?: boolean
   archived: boolean
   updatedAt: number
   deletedAt: number | null

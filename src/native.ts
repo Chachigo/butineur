@@ -101,7 +101,7 @@ export function widgetPayload(
   now: number,
 ): WidgetPayload {
   const day = dayNum(now, settings.dayStart)
-  const live = tasks.filter((t) => !t.deletedAt && !t.archived)
+  const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template)
   const { currency } = settings
 
   return {
@@ -204,7 +204,7 @@ export async function takeNewTaskRequest(): Promise<boolean> {
 export type NotifSpec = { id: number; title: string; body: string; at: number }
 
 export function notificationSpecs(rep: Replay, tasks: Task[], now: number, currency: string): NotifSpec[] {
-  const live = tasks.filter((t) => !t.deletedAt && !t.archived)
+  const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template)
 
   // `isAvailable` partout : une tâche déjà faite n'a plus rien à rappeler, ni
   // son échéance ni son rappel. Sans ce filtre, valider une tâche — dans

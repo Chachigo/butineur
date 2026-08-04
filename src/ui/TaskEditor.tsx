@@ -192,6 +192,19 @@ export default function TaskEditor({
           </label>
 
           <Section
+            title="Tâche rapide"
+            hint="Un bouton pour la reposer dans la liste"
+            on={!!t.template}
+            // Un modèle attend d'être ressorti : ni rythme ni échéance à tenir.
+            onToggle={(v) => patch({ template: v, repeat: v ? null : t.repeat })}
+          >
+            <p className="hint">
+              Rangée hors de la liste, elle apparaît en raccourci au-dessus. Taper
+              dessus en crée une copie à faire aujourd'hui.
+            </p>
+          </Section>
+
+          <Section
             title="Répétitive"
             on={!!t.repeat}
             onToggle={(v) =>

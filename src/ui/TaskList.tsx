@@ -10,7 +10,7 @@ import {
 import { now as clock } from '../debug'
 import { fmt, relativeDay, rythmeLabel } from '../format'
 import { burst, coinFly, pop } from '../fx'
-import { addEvent, deleteTask, uid, useDB } from '../store'
+import { addEvent, deleteTask, saveTask, uid, useDB } from '../store'
 import type { Task } from '../types'
 import Icon from './Icon'
 import { useCloseOnBack } from './useCloseOnBack'
@@ -24,6 +24,10 @@ type Props = {
   dayStart: number
   balanceRef: RefObject<HTMLElement | null>
   onEdit: (t: Task) => void
+  /** Une tâche qui revient a une histoire : le clic l'ouvre au lieu de l'éditeur. */
+  onStats: (t: Task) => void
+  /** Modèles de tâches rapides, à ressortir d'un bouton. */
+  modeles: Task[]
   onNew: () => void
 }
 
@@ -35,6 +39,8 @@ export default function TaskList({
   dayStart,
   balanceRef,
   onEdit,
+  onStats,
+  modeles,
   onNew,
 }: Props) {
   // Le plus urgent en haut : en retard, puis échéance proche, puis disponible.
@@ -68,6 +74,21 @@ export default function TaskList({
     <>
       <SelectionBar sel={sel} noun={['sélectionnée', 'sélectionnées']} />
 
+      {/* Ce qui revient souvent sans être régulier : un bouton le repose dans la liste. */}
+      {!sel.selecting && modeles.length > 0 && (
+        <div className="rapides">
+          {modeles.map((m) => (
+            <button
+              key={m.id}
+              className="rapide"
+              onClick={() => saveTask({ ...m, id: uid(), template: false, updatedAt: 0 })}
+            >
+              <Icon icon={m.icon ?? ''} fallback="✓" /> {m.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {affichees.length === 0 && (
         <p className="empty">
           Aucune tâche pour l’instant.
@@ -88,6 +109,7 @@ export default function TaskList({
             dayStart={dayStart}
             balanceRef={balanceRef}
             onEdit={onEdit}
+            onStats={onStats}
             sel={sel}
           />
         ))}
@@ -113,7 +135,7 @@ function rank(t: Task, rep: Replay, now: number, dayStart: number): number {
   return 2
 }
 
-type RowProps = Omit<Props, 'tasks' | 'onNew'> & {
+type RowProps = Omit<Props, 'tasks' | 'onNew' | 'modeles'> & {
   task: Task
   sel: Selection
   /** Fige l'ordre de la liste le temps que le doigt quitte l'écran. */
@@ -128,6 +150,7 @@ function TaskRow({
   dayStart,
   balanceRef,
   onEdit,
+  onStats,
   sel,
   onValider,
 }: RowProps) {
@@ -208,7 +231,7 @@ function TaskRow({
     >
       <button
         className="task__body"
-        onClick={() => (selecting ? sel.toggle(task.id) : onEdit(task))}
+        onClick={() => (selecting ? sel.toggle(task.id) : task.repeat ? onStats(task) : onEdit(task))}
         {...longPress}
       >
         {selecting && (
