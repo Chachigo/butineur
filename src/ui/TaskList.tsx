@@ -195,7 +195,9 @@ function TaskRow({
               <em className="badge badge--broken">série {s!.brokenStreak} perdue 💔</em>
             )}
             {due !== null && (
-              <em className={`badge${late ? ' badge--late' : ''}`}>{relativeDay(due, now)}</em>
+              <em className={`badge${late ? ' badge--late' : ''}`}>
+                {relativeDay(due, now, dayStart)}
+              </em>
             )}
             {!available && !task.repeat && <em className="badge">terminée</em>}
           </span>

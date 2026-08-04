@@ -19,10 +19,38 @@ persister un total dérivé est à repenser.
 | `src/types.ts` | tout le modèle, commenté — à lire en premier |
 | `src/engine.ts` | pur, déterministe, sans React ni I/O. Le chemin argent. |
 | `src/engine.test.ts` | `npm test`. Toute règle de calcul touchée s'y teste. |
-| `src/store.ts` | état global : `useDB()`, `update()`, persistance idb-keyval débouncée |
+| `src/store.ts` | état global : `useDB()`, `update()`, persistance idb-keyval débouncée, `migrate()` au chargement |
 | `src/native.ts` | pont widgets/notifs : écrit dans `@capacitor/preferences`, draine les taps |
-| `src/ui/` | composants. `TaskEditor.tsx` est le gros morceau (600 l.). |
+| `src/format.ts` | tout l'affichage : montants, dates, libellé de rythme |
+| `src/ui/` | composants. `TaskEditor.tsx` est le gros morceau (700 l.). |
 | `android/…/mobile/*.kt` | les 3 widgets + `Store.kt`, seul code natif |
+
+Côté `ui/` : `TaskList` (liste + validation), `Shop` (boutique + dépense libre),
+`History` (journal en lecture seule), `Settings`, `IconPicker` (deux banques :
+emoji, et glyphes Phosphor préfixés `ph:` — voir `Icon.tsx`), plus les
+utilitaires `NumberInput`, `TierEditor`, `useSelection`, `useCloseOnBack`.
+
+## Le rythme et les cycles
+
+Une tâche répétitive découpe le temps en **cycles**, et une validation remplit
+le cycle en cours. Tout part de `cycleFor()` : `{ from, end }` — `from` ouvre la
+disponibilité, `end` est l'échéance. `isAvailable()` et `dueTsFor()` en sortent
+tous les deux, ils ne peuvent donc pas se contredire.
+
+- **Le rythme se déduit des champs**, il n'est pas stocké : `rythme(repeat)`
+  rend `jour` / `semaine` / `mois` / `glissant` selon `weekday`, `monthday` et
+  `everyDays`. Un seul menu à l'écran, donc aucune combinaison contradictoire.
+- **L'échéance appartient au rythme.** `due` ne porte plus que l'heure (`at`,
+  dont seul le jour compte pour une ponctuelle) et la pénalité, optionnelle.
+  Une répétitive en reçoit une d'office au chargement, sans pénalité.
+- **`pendingDue` est dérivé au rejeu** et n'avance qu'à la validation, jamais
+  avec le temps : c'est ce qui fait qu'une tâche faite en avance ne rapproche
+  pas l'échéance suivante, et qu'un retard ne saute pas un cycle.
+- **La série ne regarde ni l'échéance ni la pénalité** : seulement l'écart entre
+  deux validations (`gap > everyDays + 1`). Les deux sanctions sont
+  indépendantes, c'est voulu.
+- `everyDays` reste le rythme en jours dans tous les cas — il règle aussi les
+  périodes de compteur et la tolérance de série (mensuel = 31, `ponytail:`).
 
 ## Widgets
 

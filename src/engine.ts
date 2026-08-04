@@ -14,9 +14,26 @@ export function dayNum(ts: number, dayStart = 0): number {
   return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY)
 }
 
-/** Période d'un compteur : tranche de `everyDays` jours alignée sur le calendrier. */
+/** Tranche de `everyDays` jours alignée sur le calendrier. */
 export function periodKey(ts: number, everyDays: number, dayStart = 0): number {
   return Math.floor(dayNum(ts, dayStart) / Math.max(1, everyDays))
+}
+
+/**
+ * Période d'un compteur : la fenêtre au bout de laquelle il repart à zéro.
+ *
+ * Sans rythme, il n'y en a pas — un compteur ponctuel garde son avancement
+ * jusqu'à ce qu'il aboutisse, il n'a aucune raison de se vider au coup de
+ * minuit. Sinon c'est le cycle de la tâche, donc une remise à zéro à
+ * l'échéance et pas sur une grille indépendante d'elle.
+ */
+export function counterPeriod(task: Task | undefined, ts: number, dayStart = 0): number {
+  if (!task?.repeat) return 0
+  // Un cycle glissant n'a pas de grille tant que rien n'est validé, et un
+  // compteur ne produit pas de validation : on garde les tranches de N jours.
+  return rythme(task.repeat) === 'glissant'
+    ? periodKey(ts, task.repeat.everyDays, dayStart)
+    : firstCycleEnd(task, ts, dayStart)
 }
 
 const everyDaysOf = (task: Task | undefined) => Math.max(1, task?.repeat?.everyDays ?? 1)
@@ -288,7 +305,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
 
     if (e.kind === 'count') {
       const target = task?.counter?.target ?? Infinity
-      const k = periodKey(e.ts, everyDaysOf(task), dayStart)
+      const k = counterPeriod(task, e.ts, dayStart)
       if (s.periodKey !== k) {
         s.periodKey = k
         s.count = 0
@@ -421,7 +438,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     const s = stateOf(t.id)
     const every = everyDaysOf(t)
     if (t.counter) {
-      const k = periodKey(now, every, dayStart)
+      const k = counterPeriod(t, now, dayStart)
       if (s.periodKey !== k) {
         s.periodKey = k
         s.count = 0

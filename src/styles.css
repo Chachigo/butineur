@@ -337,11 +337,14 @@ body::after {
   color: #241a00;
 }
 
-/* Tâche déjà faite : le bouton propose de revenir en arrière. */
+/* Tâche déjà faite : le bouton propose de revenir en arrière. Deux glyphes en
+   13 px se ratent au doigt — on vise la cible tactile minimale de 44 px. */
 .task__go--undo {
   background: var(--panel-2);
   color: var(--dim);
-  font-size: 13px;
+  font-size: 18px;
+  min-width: 64px;
+  min-height: 44px;
 }
 
 .task__counter {
@@ -557,6 +560,13 @@ body:has(.sheet) .fab {
 }
 
 /* --- feuille modale --- */
+
+/* Un panneau ouvert fige la page en dessous : sans ça, la liste défile sous le
+   formulaire et on perd de vue ce qu'on est en train de modifier. */
+body:has(.sheet) {
+  overflow: hidden;
+}
+
 .sheet {
   position: fixed;
   inset: 0;

@@ -25,9 +25,15 @@ export const formatDateTime = (ts: number) => dtTime.format(ts)
 /** « dimanche 2 août à 20:00 » — l'échéance en toutes lettres, dans l'éditeur. */
 export const formatDueLong = (ts: number) => dtDue.format(ts)
 
-/** « aujourd'hui », « demain », « il y a 3 j » — pour les échéances. */
-export function relativeDay(ts: number, now = Date.now()): string {
-  const d = dayNum(ts) - dayNum(now)
+/**
+ * « aujourd'hui », « demain », « il y a 3 j » — pour les échéances.
+ *
+ * `dayStart` compris : avec une journée qui commence à 1 h, une échéance de
+ * 23 h 59 lue à 0 h 30 appartient encore à aujourd'hui. Sans lui, elle passait
+ * à « hier » au coup de minuit alors que la journée n'était pas finie.
+ */
+export function relativeDay(ts: number, now = Date.now(), dayStart = 0): string {
+  const d = dayNum(ts, dayStart) - dayNum(now, dayStart)
   if (d === 0) return "aujourd'hui"
   if (d === 1) return 'demain'
   if (d === -1) return 'hier'

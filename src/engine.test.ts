@@ -253,20 +253,47 @@ describe('compteur', () => {
   })
 
   it('repaie l’objectif à chaque nouvelle période', () => {
+    const quotidien = { ...t, repeat: daily }
     const jour1 = [...Array(8)].map(() => count(0))
     const jour2 = [...Array(8)].map(() => count(1))
-    expect(replay([...jour1, ...jour2], [t], at(1)).balance).toBe(26)
+    expect(replay([...jour1, ...jour2], [quotidien], at(1)).balance).toBe(26)
   })
 
   it('repart à zéro à la période suivante', () => {
-    const { perTask, balance } = replay([count(0), count(0), count(1)], [t], at(1))
+    const quotidien = { ...t, repeat: daily }
+    const { perTask, balance } = replay([count(0), count(0), count(1)], [quotidien], at(1))
     expect(perTask.get('t1')!.count).toBe(1)
     expect(balance).toBe(0)
   })
 
   it('remet le compteur à zéro même sans événement aujourd’hui', () => {
-    const { perTask } = replay([count(0), count(0)], [t], at(3))
+    const quotidien = { ...t, repeat: daily }
+    const { perTask } = replay([count(0), count(0)], [quotidien], at(3))
     expect(perTask.get('t1')!.count).toBe(0)
+  })
+
+  // La remise à zéro suit le cycle de la tâche, pas le calendrier : c'est ce
+  // qui distingue « 8 verres par jour » de « 30 km ce mois-ci ».
+  it('garde son avancement d’un jour à l’autre sans répétition', () => {
+    const { perTask } = replay([count(0), count(0)], [t], at(5))
+    expect(perTask.get('t1')!.count).toBe(2)
+  })
+
+  it('ne repaie jamais l’objectif sans répétition', () => {
+    const huit = [...Array(8)].map(() => count(0))
+    const encore = [...Array(8)].map(() => count(1))
+    expect(replay([...huit, ...encore], [t], at(1)).balance).toBe(13)
+  })
+
+  it('ne repart qu’au changement de cycle sur une hebdomadaire', () => {
+    // T0 = lundi 5 janvier, échéance le dimanche : le cycle court jusqu'au 11.
+    // Mercredi 7 et jeudi 8 sont dans le même cycle, mais dans deux tranches
+    // de sept jours différentes — c'est le cycle qui doit gagner.
+    const hebdo = { ...t, repeat: { everyDays: 7, weekday: 0 } }
+    const dans = replay([count(2), count(3)], [hebdo], at(3))
+    expect(dans.perTask.get('t1')!.count).toBe(2)
+    const apres = replay([count(2), count(3)], [hebdo], at(8)) // mardi suivant
+    expect(apres.perTask.get('t1')!.count).toBe(0)
   })
 })
 
