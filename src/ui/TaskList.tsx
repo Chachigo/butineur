@@ -1,4 +1,4 @@
-import type { MouseEvent, RefObject } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
 import {
   computePenalty,
   dueTsFor,
@@ -40,14 +40,35 @@ export default function TaskList({
   // Le plus urgent en haut : en retard, puis échéance proche, puis disponible.
   const sorted = [...tasks].sort((a, b) => rank(a, rep, now, dayStart) - rank(b, rep, now, dayStart))
 
-  const sel = useSelection(sorted, deleteTask)
+  /*
+   * Une tâche validée descend en bas de liste — mais pas tout de suite. Sinon
+   * la suivante remonte sous le doigt, et un second tap un peu rapide valide
+   * une tâche qu'on ne visait pas. L'ordre affiché se fige deux secondes.
+   */
+  const [gele, setGele] = useState<string[] | null>(null)
+  const minuteur = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const figer = () => {
+    setGele(sorted.map((t) => t.id))
+    clearTimeout(minuteur.current)
+    minuteur.current = setTimeout(() => setGele(null), 2000)
+  }
+  useEffect(() => () => clearTimeout(minuteur.current), [])
+
+  const place = (id: string) => {
+    const i = gele!.indexOf(id)
+    // Une tâche créée entre-temps n'était pas dans l'ordre figé : elle passe en fin.
+    return i === -1 ? gele!.length : i
+  }
+  const affichees = gele ? [...tasks].sort((a, b) => place(a.id) - place(b.id)) : sorted
+
+  const sel = useSelection(affichees, deleteTask)
   useCloseOnBack(sel.selecting, sel.stop)
 
   return (
     <>
       <SelectionBar sel={sel} noun={['sélectionnée', 'sélectionnées']} />
 
-      {sorted.length === 0 && (
+      {affichees.length === 0 && (
         <p className="empty">
           Aucune tâche pour l’instant.
           <br />
@@ -56,10 +77,11 @@ export default function TaskList({
       )}
 
       <ul className="list">
-        {sorted.map((t) => (
+        {affichees.map((t) => (
           <TaskRow
             key={t.id}
             task={t}
+            onValider={figer}
             rep={rep}
             now={now}
             currency={currency}
@@ -91,7 +113,12 @@ function rank(t: Task, rep: Replay, now: number, dayStart: number): number {
   return 2
 }
 
-type RowProps = Omit<Props, 'tasks' | 'onNew'> & { task: Task; sel: Selection }
+type RowProps = Omit<Props, 'tasks' | 'onNew'> & {
+  task: Task
+  sel: Selection
+  /** Fige l'ordre de la liste le temps que le doigt quitte l'écran. */
+  onValider: () => void
+}
 
 function TaskRow({
   task,
@@ -102,6 +129,7 @@ function TaskRow({
   balanceRef,
   onEdit,
   sel,
+  onValider,
 }: RowProps) {
   const events = useDB().events
   const s = rep.perTask.get(task.id)
@@ -112,6 +140,7 @@ function TaskRow({
 
   const complete = (e: MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget
+    onValider()
     const ts = clock()
     const { factor, flat } = computePenalty(task, ts, s)
     const gain = previewReward(task, s, ts)
@@ -134,6 +163,7 @@ function TaskRow({
   const undo = (e: MouseEvent<HTMLButtonElement>) => {
     const target = lastCompletion(events, task.id)
     if (!target) return
+    onValider()
     addEvent({ id: uid(), ts: clock(), kind: 'undo', targetId: target.id })
     coinFly(e.currentTarget, balanceRef.current, `−${fmt(target.baseReward)}`, true)
     pop(balanceRef.current, true)
@@ -141,6 +171,7 @@ function TaskRow({
 
   const bump = (delta: number) => (e: MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget
+    onValider()
     const before = s?.count ?? 0
     const after = Math.min(target, Math.max(0, before + delta))
 

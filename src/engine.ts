@@ -216,6 +216,30 @@ export type Replay = {
   entries: LedgerEntry[]
 }
 
+/**
+ * Fait avancer la série d'un cran, avec un jour de tolérance au-delà du rythme.
+ *
+ * Atteindre l'objectif d'un compteur compte pour une validation : sans ça, le
+ * réglage « Bonus de série » ne servait à rien sur ces tâches — trois jours à
+ * 3/3 laissaient la série à zéro.
+ */
+function avancerSerie(s: TaskState, ts: number, every: number, day: (t: number) => number): void {
+  if (s.lastDoneTs === null) {
+    s.streak = 1
+    return
+  }
+  const gap = day(ts) - day(s.lastDoneTs)
+  // gap === 0 : refait le même jour, la série ne bouge pas.
+  if (gap <= 0) return
+  if (gap <= every + 1) s.streak += 1
+  else {
+    // On garde ce qu'on vient de perdre : l'interface doit pouvoir le dire.
+    s.brokenStreak = s.streak
+    s.streak = 1
+    s.streakTiersPaid.clear()
+  }
+}
+
 const freshState = (): TaskState => ({
   streak: 0,
   lastDoneTs: null,
@@ -326,6 +350,12 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
         s.targetPaid = true
         s.lastTargetTs = e.ts
         base = task!.reward
+        // Atteindre l'objectif vaut validation : c'est ce qui fait vivre la
+        // série d'un compteur. Les bonus de série, eux, restent réservés aux
+        // validations tant que la règle des compteurs partiels n'est pas tranchée.
+        avancerSerie(s, e.ts, everyDaysOf(task), day)
+        s.lastDoneTs = e.ts
+        s.bestStreak = Math.max(s.bestStreak, s.streak)
         credit(`${e.taskId}:objectif`, {
           eventId: `${e.id}:objectif`,
           ts: e.ts,
@@ -377,22 +407,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
 
     // --- validation d'une tâche ---
     const every = everyDaysOf(task)
-    if (s.lastDoneTs === null) {
-      s.streak = 1
-    } else {
-      const gap = day(e.ts) - day(s.lastDoneTs)
-      if (gap > 0) {
-        // Un jour de tolérance sur la fenêtre attendue.
-        if (gap <= every + 1) s.streak += 1
-        else {
-          // On garde ce qu'on vient de perdre : l'interface doit pouvoir le dire.
-          s.brokenStreak = s.streak
-          s.streak = 1
-          s.streakTiersPaid.clear()
-        }
-      }
-      // gap === 0 : revalidé le même jour, la série ne bouge pas.
-    }
+    avancerSerie(s, e.ts, every, day)
 
     let tierBonus = 0
     for (const t of task?.streak?.tiers ?? []) {

@@ -210,7 +210,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
           </p>
         </section>
 
-        {atelier && <Atelier />}
+        {atelier && <Atelier onClose={() => setTaps(0)} />}
 
         <footer className="about">
           <a className="link" href="https://github.com/Chachigo/butineur" target="_blank" rel="noreferrer">
@@ -231,7 +231,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
  * vérifier en dix secondes ce qui demanderait des jours. Tout ce qu'il ajoute
  * au journal est repris par un `undo`, jamais effacé.
  */
-function Atelier() {
+function Atelier({ onClose }: { onClose: () => void }) {
   const db = useDB()
   const [taskId, setTaskId] = useState('')
   const [n, setN] = useState(5)
@@ -244,7 +244,13 @@ function Atelier() {
 
   return (
     <section className="card">
-      <h2 className="card__title">Atelier</h2>
+      <div className="row">
+        <h2 className="card__title">Atelier</h2>
+        {/* Une fois vu, on doit pouvoir le refermer sans relancer l'appli. */}
+        <button className="link" onClick={onClose}>
+          Masquer
+        </button>
+      </div>
 
       <p className="hint">
         Décalage d’horloge — l’appli croit qu’on est plus tard, tout le reste en

@@ -515,6 +515,40 @@ describe('sauvegarde', () => {
   })
 })
 
+describe('série d’un compteur', () => {
+  // Atteindre l'objectif est la validation d'un compteur : sans ça, « Bonus de
+  // série » ne servait à rien sur ces tâches.
+  const boire = task({
+    reward: 5,
+    repeat: daily,
+    counter: { target: 3, unit: 'verres', tiers: [] },
+    streak: { tiers: [{ at: 3, bonus: 10 }], multiplier: null },
+  })
+  const jour = (d: number) => [count(d), count(d), count(d)]
+
+  it('monte d’un cran par objectif atteint', () => {
+    const { perTask } = replay([...jour(0), ...jour(1), ...jour(2)], [boire], at(2))
+    expect(perTask.get('t1')!.streak).toBe(3)
+  })
+
+  it('ne monte pas deux fois pour le même jour', () => {
+    const { perTask } = replay([...jour(0), count(0, -1), count(0)], [boire], at(0))
+    expect(perTask.get('t1')!.streak).toBe(1)
+  })
+
+  it('se rompt quand un jour est sauté', () => {
+    const { perTask } = replay([...jour(0), ...jour(1), ...jour(5)], [boire], at(5))
+    const s = perTask.get('t1')!
+    expect(s.streak).toBe(1)
+    expect(s.brokenStreak).toBe(2)
+  })
+
+  it('ne paie toujours que l’objectif, pas les bonus de série', () => {
+    // Trois objectifs à 5 : le palier de série reste réservé aux validations.
+    expect(replay([...jour(0), ...jour(1), ...jour(2)], [boire], at(2)).balance).toBe(15)
+  })
+})
+
 describe('atelier de debug', () => {
   const t = task({ repeat: daily, streak: { tiers: [{ at: 3, bonus: 5 }], multiplier: null } })
 
