@@ -296,6 +296,16 @@ function remindAt(t: Task, rep: Replay, now: number): number | null {
     if (due === null) return null
     return due - r.minutes * 60_000
   }
+  if ('kind' in r && r.kind === 'jour') {
+    // Le jour de l'échéance à l'heure dite — pas les jours sans échéance,
+    // c'est ce qui le distingue du rappel quotidien.
+    const due = dueTsFor(t, rep.perTask.get(t.id), now)
+    if (due === null) return null
+    const [h, m] = r.time.split(':').map(Number)
+    const d = new Date(due)
+    d.setHours(h || 0, m || 0, 0, 0)
+    return +d
+  }
   return nextTimeToday((r as { time: string }).time, now)
 }
 

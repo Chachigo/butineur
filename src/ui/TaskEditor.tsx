@@ -47,8 +47,10 @@ function retarget(counter: NonNullable<Task['counter']>, next: number): Tier[] {
 const BEFORE_UNITS = { minutes: 1, heures: 60, jours: 1440 } as const
 
 /** `kind` absent = heure fixe : c'était le seul mode avant. */
-const remindKind = (t: Task) =>
-  t.remind && 'kind' in t.remind && t.remind.kind === 'before' ? 'before' : 'time'
+const remindKind = (t: Task): 'time' | 'jour' | 'before' =>
+  t.remind && 'kind' in t.remind && (t.remind.kind === 'before' || t.remind.kind === 'jour')
+    ? t.remind.kind
+    : 'time'
 
 /** La plus grande unité qui tombe juste, pour afficher « 2 jours » et non « 2880 minutes ». */
 function beforeUnit(t: Task): keyof typeof BEFORE_UNITS {
@@ -450,6 +452,20 @@ export default function TaskEditor({
                   </button>
                   <button
                     type="button"
+                    className={remindKind(t) === 'jour' ? 'chip-btn chip-btn--on' : 'chip-btn'}
+                    // Même besoin d'échéance que « avant » : on la pose au lieu
+                    // de laisser un bouton sans effet.
+                    onClick={() =>
+                      patch({
+                        remind: { kind: 'jour', time: '09:00' },
+                        due: t.due ?? { at: defaultDue(), penalty: { kind: 'none' } },
+                      })
+                    }
+                  >
+                    le jour même
+                  </button>
+                  <button
+                    type="button"
                     className={remindKind(t) === 'before' ? 'chip-btn chip-btn--on' : 'chip-btn'}
                     // Sans date limite il n'y avait rien à devancer, et le bouton
                     // restait mort sans le dire. On pose l'échéance manquante —
@@ -470,6 +486,21 @@ export default function TaskEditor({
                   </p>
                 )}
 
+                {remindKind(t) === 'jour' && (
+                  <div className="row">
+                    <span className="row__label">Le jour de l’échéance à</span>
+                    <input
+                      className="input input--time"
+                      type="time"
+                      value={(t.remind as { time: string }).time}
+                      onChange={(e) =>
+                        e.target.value && patch({ remind: { kind: 'jour', time: e.target.value } })
+                      }
+                      aria-label="Heure du rappel"
+                    />
+                  </div>
+                )}
+
                 {remindKind(t) === 'time' ? (
                   <div className="row">
                     <span className="row__label">Chaque jour à</span>
@@ -483,7 +514,7 @@ export default function TaskEditor({
                       aria-label="Heure du rappel"
                     />
                   </div>
-                ) : (
+                ) : remindKind(t) === 'before' ? (
                   <div className="row">
                     <span className="row__label">Prévenir</span>
                     <NumberInput
@@ -512,7 +543,7 @@ export default function TaskEditor({
                       <option value="jours">jours avant</option>
                     </select>
                   </div>
-                )}
+                ) : null}
 
                 <p className="hint">
                   Envoyé seulement les jours où la tâche est à faire. Rien tant qu’elle

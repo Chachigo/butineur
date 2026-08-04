@@ -397,6 +397,14 @@ body::after {
 }
 
 /* --- historique --- */
+
+/* Le crayon dit qu'une ligne se corrige — seules les dépenses libres en ont un. */
+.entry__edit {
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .list--history {
   gap: 6px;
 }
