@@ -59,6 +59,7 @@ export function fakeStreak(task: Task, n: number, at = now()): Event[] {
     baseReward: task.reward,
     penaltyFactor: 1,
     penaltyFlat: 0,
+    repeat: task.repeat,
   }))
 }
 

@@ -570,6 +570,33 @@ describe('série d’un compteur', () => {
   })
 })
 
+describe('le passé ne se recalcule pas', () => {
+  // Quotidienne validée trois jours d'affilée, puis passée à « tous les 5 jours ».
+  const quotidienne = task({ repeat: daily, streak: { tiers: [], multiplier: null } })
+  const evts = [
+    done(0, { repeat: { everyDays: 1 } }),
+    done(1, { repeat: { everyDays: 1 } }),
+    done(2, { repeat: { everyDays: 1 } }),
+  ]
+
+  it('garde la série qu’avait le rythme d’alors', () => {
+    const rallongee = { ...quotidienne, repeat: { everyDays: 5 } }
+    expect(replay(evts, [rallongee], at(2)).perTask.get('t1')!.streak).toBe(3)
+  })
+
+  it('ne répare pas une série cassée en rallongeant le rythme', () => {
+    // Trois jours espacés de 4 : la série était rompue sous le rythme quotidien.
+    const espaces = [0, 4, 8].map((d) => done(d, { repeat: { everyDays: 1 } }))
+    const rallongee = { ...quotidienne, repeat: { everyDays: 5 } }
+    expect(replay(espaces, [rallongee], at(8)).perTask.get('t1')!.streak).toBe(1)
+  })
+
+  it('retombe sur le rythme actuel pour un événement d’avant le gel', () => {
+    const anciens = [done(0), done(1), done(2)] // sans `repeat` figé
+    expect(replay(anciens, [quotidienne], at(2)).perTask.get('t1')!.streak).toBe(3)
+  })
+})
+
 describe('atelier de debug', () => {
   const t = task({ repeat: daily, streak: { tiers: [{ at: 3, bonus: 5 }], multiplier: null } })
 

@@ -76,6 +76,13 @@ export type Event =
       baseReward: number
       penaltyFactor: number
       penaltyFlat: number
+      /**
+       * Rythme de la tâche au moment du tap, figé pour la même raison que la
+       * récompense : passer une tâche de 60 à 31 jours ne doit pas recalculer
+       * les échéances passées ni réparer — ou casser — une série d'hier.
+       * Absent sur les événements d'avant : on retombe alors sur le rythme actuel.
+       */
+      repeat?: { everyDays: number; weekday?: number; monthday?: number } | null
     }
   | { id: string; ts: number; kind: 'count'; taskId: string; delta: number }
   | { id: string; ts: number; kind: 'spend'; amount: number; label: string; shopItemId?: string }

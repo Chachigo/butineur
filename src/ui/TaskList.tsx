@@ -175,6 +175,7 @@ function TaskRow({
       baseReward: task.reward,
       penaltyFactor: factor,
       penaltyFlat: flat,
+      repeat: task.repeat,
     })
     coinFly(el, balanceRef.current, `+${fmt(gain)}`)
     // Confettis seulement quand un palier de série tombe.

@@ -252,6 +252,16 @@ function avancerSerie(s: TaskState, ts: number, every: number, day: (t: number) 
   }
 }
 
+/**
+ * La tâche telle qu'elle était au moment du tap. Un événement d'avant ce
+ * gel ne porte pas de rythme : il retombe sur la définition courante, faute
+ * de mieux.
+ */
+const commeAlors = (
+  task: Task | undefined,
+  repeat: Extract<Event, { kind: 'complete' }>['repeat'],
+): Task | undefined => (task && repeat !== undefined ? { ...task, repeat } : task)
+
 const freshState = (): TaskState => ({
   streak: 0,
   lastDoneTs: null,
@@ -419,7 +429,10 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     }
 
     // --- validation d'une tâche ---
-    const every = everyDaysOf(task)
+    // Le rythme figé sur l'événement prime : modifier la tâche aujourd'hui ne
+    // doit ni réparer ni casser ce qui s'est joué hier.
+    const alors = commeAlors(task, e.repeat)
+    const every = everyDaysOf(alors)
     avancerSerie(s, e.ts, every, day)
 
     let tierBonus = 0
@@ -432,8 +445,8 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
 
     // Le cycle rempli, on passe au suivant. Calculé ici et pas à la lecture :
     // il dépend de l'échéance qui était en cours, donc de tout l'historique.
-    if (task?.repeat) {
-      s.pendingDue = nextCycleEnd(task, s.pendingDue ?? firstCycleEnd(task, e.ts, dayStart), e.ts)
+    if (alors?.repeat) {
+      s.pendingDue = nextCycleEnd(alors, s.pendingDue ?? firstCycleEnd(alors, e.ts, dayStart), e.ts)
     }
 
     const penalized = Math.max(0, e.baseReward * e.penaltyFactor - e.penaltyFlat)
@@ -598,6 +611,7 @@ export function pendingToEvents(
         baseReward: task.reward,
         penaltyFactor: factor,
         penaltyFlat: flat,
+        repeat: task.repeat,
       })
     } else {
       added.push({ id: newId(), ts: p.ts, kind: 'count', taskId: p.taskId, delta: p.delta })
