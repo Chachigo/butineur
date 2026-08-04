@@ -1144,3 +1144,43 @@ button:focus-visible {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* --- présentation --- */
+.tuto {
+  text-align: center;
+  padding: 28px 24px 8px;
+}
+
+.tuto__emoji {
+  font-size: 52px;
+  line-height: 1;
+}
+
+.tuto__titre {
+  margin: 14px 0 6px;
+  font-size: 20px;
+}
+
+.tuto__texte {
+  margin: 0;
+  color: var(--dim);
+  line-height: 1.6;
+}
+
+.tuto__points {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.tuto__point {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--panel-2);
+}
+
+.tuto__point--on {
+  background: var(--go);
+}

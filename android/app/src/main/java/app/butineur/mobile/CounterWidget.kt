@@ -71,12 +71,26 @@ class CounterWidget : AppWidgetProvider() {
             v.setOnClickPendingIntent(R.id.counter_name, BalanceWidget.openApp(ctx))
 
             val count = Store.displayedCount(ctx, task)
-            v.setTextViewText(R.id.counter_value, "$count/${task.target} ${task.unit}".trim())
+            val fini = count >= task.target
+            /*
+             * Un widget ne sait pas animer : `RemoteViews` n'expose ni
+             * transition ni boucle. Ce qu'on peut faire, et qui se voit au
+             * rafraîchissement qui suit le tap, c'est fêter l'objectif — la
+             * ligne passe à l'accent et gagne son 🎉.
+             */
+            v.setTextViewText(
+                R.id.counter_value,
+                "$count/${task.target} ${task.unit}".trim() + if (fini) "  🎉" else "",
+            )
+            v.setTextColor(
+                R.id.counter_value,
+                if (fini) Store.accent(ctx) else ctx.getColor(R.color.widget_dim),
+            )
 
             // Objectif atteint : la coche remplace le +, et le bouton n'incrémente
             // plus — le moteur plafonne de toute façon le compteur à l'objectif.
             val accent = Store.accent(ctx)
-            if (count >= task.target) {
+            if (fini) {
                 v.setTextViewText(R.id.counter_plus, "✓")
                 v.setInt(R.id.counter_plus, "setBackgroundResource", R.drawable.widget_btn)
                 v.tint(R.id.counter_plus, ctx.getColor(R.color.widget_panel))

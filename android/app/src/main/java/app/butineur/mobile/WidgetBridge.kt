@@ -33,6 +33,28 @@ class WidgetBridge : Plugin() {
     fun drainPending(call: PluginCall) {
         call.resolve(JSObject().put("items", Store.drainPending(context)))
     }
+
+    /**
+     * Propose d'épingler un widget sur l'écran d'accueil.
+     *
+     * C'est le lanceur qui décide : il affiche sa propre confirmation, et
+     * certains refusent tout net. On rend donc ce qu'on sait — demandé ou non —
+     * pour que le web puisse expliquer la marche à suivre au lieu de rester
+     * muet. `kind` vaut « compteur » ou « liste ».
+     */
+    @PluginMethod
+    fun requestPin(call: PluginCall) {
+        val cible = when (call.getString("kind")) {
+            "liste" -> TodoWidget::class.java
+            "solde" -> BalanceWidget::class.java
+            else -> CounterWidget::class.java
+        }
+        val mgr = AppWidgetManager.getInstance(context)
+        val demande = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            mgr.isRequestPinAppWidgetSupported &&
+            mgr.requestPinAppWidget(ComponentName(context, cible), null, null)
+        call.resolve(JSObject().put("asked", demande))
+    }
 }
 
 /**

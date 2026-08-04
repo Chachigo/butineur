@@ -11,6 +11,7 @@ export const isNative = Capacitor.isNativePlatform()
 interface WidgetBridgePlugin {
   refresh(): Promise<void>
   drainPending(): Promise<{ items: Pending[] }>
+  requestPin(options: { kind: string }): Promise<{ asked: boolean }>
 }
 
 const WidgetBridge = registerPlugin<WidgetBridgePlugin>('WidgetBridge')
@@ -178,6 +179,17 @@ export async function pushWidgetState(p: WidgetPayload): Promise<void> {
   await Preferences.set({ key: 'widgetTasks', value: JSON.stringify(p.tasks) })
   await Preferences.set({ key: 'widgetTodo', value: JSON.stringify(p.todo) })
   await WidgetBridge.refresh()
+}
+
+/**
+ * Propose d'épingler un widget sur l'écran d'accueil. Rend `false` quand le
+ * lanceur ne sait pas faire — il en reste beaucoup — pour qu'on puisse dire
+ * quoi faire à la main plutôt que de laisser un bouton sans effet.
+ */
+export async function pinWidget(kind: 'compteur' | 'liste' | 'solde'): Promise<boolean> {
+  if (!isNative) return false
+  const { asked } = await WidgetBridge.requestPin({ kind })
+  return asked
 }
 
 /** Les taps faits sur un widget appli fermée, à verser au journal. */

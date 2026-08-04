@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { exportBackup, parseBackup } from '../backup'
+import { pinWidget } from '../native'
 import {
   atelierOuvert,
   fakeStreak,
@@ -33,7 +34,7 @@ const ACCENTS = [
   ['#f87171', 'Rouge'],
 ]
 
-export default function Settings({ onClose }: { onClose: () => void }) {
+export default function Settings({ onClose, onTuto }: { onClose: () => void; onTuto: () => void }) {
   const db = useDB()
   const [adjust, setAdjust] = useState('')
   const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null)
@@ -178,6 +179,34 @@ export default function Settings({ onClose }: { onClose: () => void }) {
         </section>
 
         <section className="card">
+          <h2 className="card__title">Écran d’accueil</h2>
+          <p className="hint">
+            Trois widgets : le solde, un compteur, et la liste des tâches à valider
+            sans ouvrir l’appli.
+          </p>
+          <div className="row">
+            {(['solde', 'compteur', 'liste'] as const).map((k) => (
+              <button
+                key={k}
+                className="btn"
+                onClick={async () =>
+                  setMessage(
+                    (await pinWidget(k))
+                      ? { ok: true, texte: 'Ton lanceur prend le relais — confirme chez lui.' }
+                      : {
+                          ok: false,
+                          texte: 'Ton lanceur ne sait pas le faire : passe par un appui long sur l’écran d’accueil.',
+                        },
+                  )
+                }
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="card">
           <h2 className="card__title">Apparence</h2>
           <p className="hint">Couleur d’accentuation — appliquée aussi aux widgets.</p>
           <div className="swatches">
@@ -230,6 +259,19 @@ export default function Settings({ onClose }: { onClose: () => void }) {
         </section>
 
         {atelier && <Atelier onClose={fermer} />}
+
+        <section className="card">
+          <h2 className="card__title">Aide</h2>
+          <button
+            className="btn"
+            onClick={() => {
+              onClose()
+              onTuto()
+            }}
+          >
+            Revoir la présentation
+          </button>
+        </section>
 
         <footer className="about">
           <a className="link" href="https://github.com/Chachigo/butineur" target="_blank" rel="noreferrer">

@@ -18,6 +18,7 @@ import Shop from './ui/Shop'
 import TaskEditor, { blankTask } from './ui/TaskEditor'
 import TaskList from './ui/TaskList'
 import TaskStats from './ui/TaskStats'
+import Tuto, { tutoVu } from './ui/Tuto'
 import { useCloseOnBack } from './ui/useCloseOnBack'
 
 type Tab = 'tasks' | 'shop' | 'history'
@@ -33,6 +34,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('tasks')
   const [editing, setEditing] = useState<Task | null>(null)
   const [stats, setStats] = useState<Task | null>(null)
+  const [tuto, setTuto] = useState(() => !tutoVu())
   const [settingsOpen, setSettingsOpen] = useState(false)
   const balanceRef = useRef<HTMLElement | null>(null)
 
@@ -115,7 +117,9 @@ export default function App() {
   )
   useEffect(() => void syncNotifications(JSON.parse(notifKey)), [notifKey])
 
-  if (settingsOpen) return <Settings onClose={() => setSettingsOpen(false)} />
+  if (settingsOpen) {
+    return <Settings onClose={() => setSettingsOpen(false)} onTuto={() => setTuto(true)} />
+  }
 
   return (
     <div className="app">
@@ -177,6 +181,8 @@ export default function App() {
         )}
         {tab === 'history' && <History entries={rep.entries} currency={db.settings.currency} />}
       </main>
+
+      {tuto && <Tuto onClose={() => setTuto(false)} />}
 
       {stats && (
         <TaskStats
