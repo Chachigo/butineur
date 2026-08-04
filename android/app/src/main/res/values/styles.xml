@@ -13,6 +13,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- L'appli est sombre : icônes de la barre d'état en clair, sinon elles
+             disparaissent sur le bandeau que le web peint derrière. -->
+        <item name="android:statusBarColor">#0e0e14</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
 

@@ -8,6 +8,8 @@
 .ph-glyph {
   font-family: 'Phosphor';
   line-height: 1;
+  /* Un trait monochrome : autant qu'il porte la couleur choisie. */
+  color: var(--go);
 }
 
 :root {
@@ -19,7 +21,6 @@
   --dim: #8f8fa8;
   --go: #4ade80;
   --go-ink: #04180c;
-  --warn: #fbbf24;
   --bad: #f87171;
   --streak: #fb923c;
   --r: 14px;
@@ -333,8 +334,8 @@ body::after {
 }
 
 .task__go--buy {
-  background: var(--warn);
-  color: #241a00;
+  background: var(--go);
+  color: var(--go-ink);
 }
 
 /* Tâche déjà faite : le bouton propose de revenir en arrière. Deux glyphes en
@@ -451,9 +452,13 @@ body::after {
 /* --- dépense libre --- */
 .free {
   margin-top: 20px;
-  padding: 14px;
+}
+
+/* Une dépense hors catalogue est rare : un bouton, pas un formulaire permanent. */
+.free__open {
+  width: 100%;
   background: var(--panel);
-  border-radius: var(--r);
+  color: var(--dim);
 }
 
 /* --- bouton flottant --- */
@@ -540,6 +545,11 @@ body::after {
 
 /* Un panneau est ouvert : le bouton flottant recouvrait « Enregistrer ». */
 body:has(.sheet) .fab {
+  display: none;
+}
+
+/* Clavier ouvert : le bouton flottant recouvrait le champ, il s'efface. */
+body.kbd .fab {
   display: none;
 }
 
@@ -1024,4 +1034,32 @@ button:focus-visible {
 
 .hint--bad {
   color: var(--bad);
+}
+
+/* --- atelier de debug --- */
+
+/* Un décalage d'horloge oublié passerait pour un bug : il se voit et se coupe d'un tap. */
+.timewarp {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--bad) 22%, var(--panel));
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* --- pied des réglages --- */
+.about {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 16px 24px;
+}
+
+.about__version {
+  color: var(--dim);
+  font-size: 12px;
+  padding: 8px 0;
 }

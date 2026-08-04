@@ -14,6 +14,7 @@ import {
   streakAtCap,
 } from './engine'
 import { parseBackup, serialize } from './backup'
+import { fakeStreak, undoDebugEvents } from './debug'
 import type { Event, Task } from './types'
 
 // Lundi 5 janvier 2026, midi — loin de tout changement d'heure.
@@ -511,6 +512,29 @@ describe('sauvegarde', () => {
     expect(() => parseBackup('{"app":"autre"}')).toThrow(/Butineur/)
     expect(() => parseBackup('{"app":"butineur","format":99}')).toThrow(/inconnu/)
     expect(() => parseBackup('{"app":"butineur","format":1,"db":{}}')).toThrow(/incomplète/)
+  })
+})
+
+describe('atelier de debug', () => {
+  const t = task({ repeat: daily, streak: { tiers: [{ at: 3, bonus: 5 }], multiplier: null } })
+
+  it('fabrique une vraie série, calculée par le moteur', () => {
+    const { perTask } = replay(fakeStreak(t, 5, at(0)), [t], at(0))
+    expect(perTask.get('t1')!.streak).toBe(5)
+  })
+
+  it('rend le solde intact une fois les événements retirés', () => {
+    const faux = fakeStreak(t, 5, at(0))
+    expect(replay(faux, [t], at(0)).balance).toBeGreaterThan(0)
+    const propre = [...faux, ...undoDebugEvents(faux, at(0))]
+    expect(replay(propre, [t], at(0)).balance).toBe(0)
+    expect(replay(propre, [t], at(0)).entries).toEqual([])
+  })
+
+  it('n’annule pas deux fois ce qui l’est déjà', () => {
+    const faux = fakeStreak(t, 3, at(0))
+    const premier = undoDebugEvents(faux, at(0))
+    expect(undoDebugEvents([...faux, ...premier], at(0))).toEqual([])
   })
 })
 

@@ -30,7 +30,7 @@ export default function IconPicker({
   fallback: string
 }) {
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<Tab>('ph')
+  const [tab, setTab] = useState<Tab>('emoji')
 
   useCloseOnBack(open, () => setOpen(false))
 
@@ -63,19 +63,19 @@ export default function IconPicker({
             <nav className="tabs tabs--inner" role="tablist">
               <button
                 role="tab"
-                aria-selected={tab === 'ph'}
-                className={tab === 'ph' ? 'tab tab--on' : 'tab'}
-                onClick={() => setTab('ph')}
-              >
-                Icônes
-              </button>
-              <button
-                role="tab"
                 aria-selected={tab === 'emoji'}
                 className={tab === 'emoji' ? 'tab tab--on' : 'tab'}
                 onClick={() => setTab('emoji')}
               >
                 Emoji
+              </button>
+              <button
+                role="tab"
+                aria-selected={tab === 'ph'}
+                className={tab === 'ph' ? 'tab tab--on' : 'tab'}
+                onClick={() => setTab('ph')}
+              >
+                Icônes
               </button>
             </nav>
 

@@ -7,6 +7,7 @@ import {
   previewReward,
   type Replay,
 } from '../engine'
+import { now as clock } from '../debug'
 import { fmt, relativeDay, rythmeLabel } from '../format'
 import { burst, coinFly, pop } from '../fx'
 import { addEvent, deleteTask, uid, useDB } from '../store'
@@ -111,7 +112,7 @@ function TaskRow({
 
   const complete = (e: MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget
-    const ts = Date.now()
+    const ts = clock()
     const { factor, flat } = computePenalty(task, ts, s)
     const gain = previewReward(task, s, ts)
     addEvent({
@@ -133,7 +134,7 @@ function TaskRow({
   const undo = (e: MouseEvent<HTMLButtonElement>) => {
     const target = lastCompletion(events, task.id)
     if (!target) return
-    addEvent({ id: uid(), ts: Date.now(), kind: 'undo', targetId: target.id })
+    addEvent({ id: uid(), ts: clock(), kind: 'undo', targetId: target.id })
     coinFly(e.currentTarget, balanceRef.current, `−${fmt(target.baseReward)}`, true)
     pop(balanceRef.current, true)
   }
@@ -150,7 +151,7 @@ function TaskRow({
       tiers.filter((t) => t.at <= n).reduce((a, t) => a + t.bonus, 0)
     const gain = crossed(after) - crossed(before)
 
-    addEvent({ id: uid(), ts: Date.now(), kind: 'count', taskId: task.id, delta })
+    addEvent({ id: uid(), ts: clock(), kind: 'count', taskId: task.id, delta })
     if (gain !== 0) {
       coinFly(el, balanceRef.current, `${gain > 0 ? '+' : '−'}${fmt(Math.abs(gain))}`, gain < 0)
       if (gain > 0) burst(el)

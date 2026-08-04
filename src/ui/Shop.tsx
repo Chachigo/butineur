@@ -1,4 +1,5 @@
 import { useState, type MouseEvent, type RefObject } from 'react'
+import { now as clock } from '../debug'
 import { fmt } from '../format'
 import { coinFly, pop } from '../fx'
 import { addEvent, deleteShopItem, saveShopItem, uid, useDB } from '../store'
@@ -19,6 +20,7 @@ type Props = {
 
 export default function Shop({ items, balance, currency, allowNegative, balanceRef }: Props) {
   const [editing, setEditing] = useState<ShopItem | null>(null)
+  const [freeOpen, setFreeOpen] = useState(false)
   const [freeAmount, setFreeAmount] = useState('')
   const [freeLabel, setFreeLabel] = useState('')
   const sel = useSelection(items, deleteShopItem)
@@ -29,7 +31,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
 
   const spend = (amount: number, label: string, shopItemId: string | undefined, el: HTMLElement) => {
     if (!(amount > 0) || tooExpensive(amount)) return
-    addEvent({ id: uid(), ts: Date.now(), kind: 'spend', amount, label, shopItemId })
+    addEvent({ id: uid(), ts: clock(), kind: 'spend', amount, label, shopItemId })
     coinFly(el, balanceRef.current, `−${fmt(amount)}`, true)
     pop(balanceRef.current, true)
   }
@@ -43,6 +45,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
     spend(amount, freeLabel.trim() || 'Dépense', undefined, e.currentTarget)
     setFreeAmount('')
     setFreeLabel('')
+    setFreeOpen(false)
   }
 
   return (
@@ -73,37 +76,73 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
       </ul>
 
       <div className="free">
-        <p className="hint">Dépense hors catalogue</p>
-        <div className="field__row">
-          <input
-            className="input"
-            value={freeLabel}
-            onChange={(e) => setFreeLabel(e.target.value)}
-            placeholder="Pour quoi ?"
-            aria-label="Libellé de la dépense"
-          />
-          <input
-            className="input input--sm"
-            inputMode="decimal"
-            value={freeAmount}
-            onChange={(e) => setFreeAmount(e.target.value)}
-            placeholder="0"
-            aria-label="Montant"
-          />
-          <button
-            className="btn btn--go"
-            onClick={spendFree}
-            disabled={
-              !(+freeAmount.replace(',', '.') > 0) || tooExpensive(+freeAmount.replace(',', '.'))
-            }
-          >
-            Dépenser
-          </button>
-        </div>
-        {tooExpensive(+freeAmount.replace(',', '.')) && (
-          <p className="hint">Budget insuffisant. Autorise le négatif dans les Réglages si tu veux forcer.</p>
-        )}
+        <button className="btn free__open" onClick={() => setFreeOpen(true)}>
+          Autre dépense…
+        </button>
       </div>
+
+      {freeOpen && (
+        <div className="sheet" onClick={() => setFreeOpen(false)}>
+          <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
+            <header className="sheet__head">
+              <h2>Autre dépense</h2>
+              <button className="sheet__x" onClick={() => setFreeOpen(false)} aria-label="Fermer">
+                ✕
+              </button>
+            </header>
+
+            <div className="sheet__body">
+              <label className="field">
+                <span className="field__label">Pour quoi ?</span>
+                <input
+                  className="input"
+                  value={freeLabel}
+                  onChange={(e) => setFreeLabel(e.target.value)}
+                  placeholder="Cinéma, resto…"
+                  aria-label="Libellé de la dépense"
+                  autoFocus
+                />
+              </label>
+
+              <label className="field">
+                <span className="field__label">Montant</span>
+                <span className="field__row">
+                  <input
+                    className="input input--sm"
+                    inputMode="decimal"
+                    value={freeAmount}
+                    onChange={(e) => setFreeAmount(e.target.value)}
+                    placeholder="0"
+                    aria-label="Montant"
+                  />
+                  <span className="field__suffix">{currency}</span>
+                </span>
+              </label>
+
+              {tooExpensive(+freeAmount.replace(',', '.')) && (
+                <p className="hint hint--bad">
+                  Budget insuffisant. Autorise le négatif dans les Réglages si tu veux forcer.
+                </p>
+              )}
+            </div>
+
+            <footer className="sheet__foot">
+              <button className="btn" onClick={() => setFreeOpen(false)}>
+                Annuler
+              </button>
+              <button
+                className="btn btn--go"
+                onClick={spendFree}
+                disabled={
+                  !(+freeAmount.replace(',', '.') > 0) || tooExpensive(+freeAmount.replace(',', '.'))
+                }
+              >
+                Dépenser
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
 
       {!sel.selecting && (
         <button className="fab" onClick={() => setEditing(blankItem())} aria-label="Nouvel article">

@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { exportBackup, parseBackup } from '../backup'
-import { addEvent, replaceAll, setSettings, uid, useDB } from '../store'
+import { fakeStreak, isDebugEvent, now as clock, setTimeOffset, timeOffset, undoDebugEvents } from '../debug'
+import { DAY } from '../engine'
+import { addEvent, replaceAll, setSettings, uid, update, useDB } from '../store'
 import NumberInput from './NumberInput'
 import { useCloseOnBack } from './useCloseOnBack'
 
@@ -27,6 +29,8 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   const db = useDB()
   const [adjust, setAdjust] = useState('')
   const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null)
+  const [taps, setTaps] = useState(0)
+  const atelier = taps >= 7
   const fichier = useRef<HTMLInputElement>(null)
 
   const sauvegarder = async () => {
@@ -55,7 +59,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   const applyAdjust = () => {
     const amount = +adjust.replace(',', '.')
     if (!amount) return
-    addEvent({ id: uid(), ts: Date.now(), kind: 'adjust', amount, label: 'Correction manuelle' })
+    addEvent({ id: uid(), ts: clock(), kind: 'adjust', amount, label: 'Correction manuelle' })
     setAdjust('')
   }
 
@@ -205,7 +209,109 @@ export default function Settings({ onClose }: { onClose: () => void }) {
             du journal.
           </p>
         </section>
+
+        {atelier && <Atelier />}
+
+        <footer className="about">
+          <a className="link" href="https://github.com/Chachigo/butineur" target="_blank" rel="noreferrer">
+            Butineur sur GitHub
+          </a>
+          {/* Sept tapes sur la version : l'atelier de debug n'a pas à s'afficher tout seul. */}
+          <button className="about__version" onClick={() => setTaps((n) => n + 1)}>
+            version {__VERSION__}
+          </button>
+        </footer>
       </div>
     </div>
+  )
+}
+
+/**
+ * Atelier de debug : voyager dans le temps et fabriquer des séries, pour
+ * vérifier en dix secondes ce qui demanderait des jours. Tout ce qu'il ajoute
+ * au journal est repris par un `undo`, jamais effacé.
+ */
+function Atelier() {
+  const db = useDB()
+  const [taskId, setTaskId] = useState('')
+  const [n, setN] = useState(5)
+
+  const repetitives = db.tasks.filter((t) => !t.deletedAt && t.repeat)
+  const cible = repetitives.find((t) => t.id === taskId) ?? repetitives[0]
+  const faux = db.events.filter((e) => isDebugEvent(e.id)).length
+
+  const decaler = (ms: number) => setTimeOffset(timeOffset() + ms)
+
+  return (
+    <section className="card">
+      <h2 className="card__title">Atelier</h2>
+
+      <p className="hint">
+        Décalage d’horloge — l’appli croit qu’on est plus tard, tout le reste en
+        découle.
+      </p>
+      <div className="row">
+        <button className="btn" onClick={() => decaler(3_600_000)}>
+          +1 h
+        </button>
+        <button className="btn" onClick={() => decaler(DAY)}>
+          +1 j
+        </button>
+        <button className="btn" onClick={() => decaler(7 * DAY)}>
+          +7 j
+        </button>
+        <button className="btn" onClick={() => setTimeOffset(0)} disabled={!timeOffset()}>
+          Présent
+        </button>
+      </div>
+
+      {repetitives.length > 0 && (
+        <>
+          <p className="hint">Fabriquer une série sur une tâche répétitive.</p>
+          <div className="row">
+            <select
+              className="input input--select"
+              value={cible?.id ?? ''}
+              onChange={(e) => setTaskId(e.target.value)}
+              aria-label="Tâche à simuler"
+            >
+              {repetitives.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <NumberInput
+              className="input input--xs"
+              value={n}
+              min={1}
+              max={60}
+              onChange={setN}
+              aria-label="Longueur de la série"
+            />
+            <button
+              className="btn btn--go"
+              onClick={() =>
+                cible &&
+                update((d) => ({ ...d, events: [...d.events, ...fakeStreak(cible, n)] }))
+              }
+            >
+              Simuler
+            </button>
+          </div>
+        </>
+      )}
+
+      <div className="row">
+        <span className="row__label">{faux} événement(s) fabriqué(s)</span>
+        <button
+          className="btn btn--danger"
+          disabled={!faux}
+          onClick={() => update((d) => ({ ...d, events: [...d.events, ...undoDebugEvents(d.events)] }))}
+        >
+          Tout retirer
+        </button>
+      </div>
+    </section>
   )
 }

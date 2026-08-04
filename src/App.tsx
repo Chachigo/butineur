@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { pendingToEvents, replay, staleOneShots } from './engine'
+import { now as clock, setTimeOffset, timeOffset } from './debug'
+import { DAY, pendingToEvents, replay, staleOneShots } from './engine'
 import {
   drainPending,
   notificationSpecs,
@@ -41,10 +42,22 @@ export default function App() {
     document.documentElement.style.setProperty('--go', db.settings.accent)
   }, [db.settings.accent])
 
-  // Fait basculer les échéances et les périodes de compteur au fil du temps.
-  const [now, setNow] = useState(() => Date.now())
+  // Clavier ouvert : le bouton flottant recouvre le champ de saisie. La
+  // WebView ne le dit pas, mais elle rétrécit le viewport — c'est le signal.
   useEffect(() => {
-    const i = setInterval(() => setNow(Date.now()), 60_000)
+    const vv = window.visualViewport
+    if (!vv) return
+    const onResize = () =>
+      document.body.classList.toggle('kbd', vv.height < window.innerHeight * 0.75)
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [])
+
+  // Fait basculer les échéances et les périodes de compteur au fil du temps.
+  // `clock()` porte le décalage de l'atelier de debug, nul en usage normal.
+  const [now, setNow] = useState(() => clock())
+  useEffect(() => {
+    const i = setInterval(() => setNow(clock()), 60_000)
     return () => clearInterval(i)
   }, [])
 
@@ -103,6 +116,14 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Un décalage oublié ressemblerait à un bug : il s'annonce, et se coupe d'un tap. */}
+      {timeOffset() !== 0 && (
+        <button className="timewarp" onClick={() => setTimeOffset(0)}>
+          ⏱ debug : {timeOffset() > 0 ? '+' : '−'}
+          {Math.round(Math.abs(timeOffset()) / DAY)} j — revenir au présent
+        </button>
+      )}
+
       <Balance
         value={rep.balance}
         currency={db.settings.currency}
