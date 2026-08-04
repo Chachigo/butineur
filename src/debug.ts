@@ -11,8 +11,21 @@ import type { Event, Task } from './types'
  * lot 3.
  */
 const KEY = 'debugOffset'
+const KEY_OUVERT = 'debugOuvert'
 
 export const timeOffset = (): number => Number(localStorage.getItem(KEY)) || 0
+
+/**
+ * L'atelier reste ouvert jusqu'à ce qu'on le referme : retaper sept fois à
+ * chaque passage dans les réglages serait pénible. Comme le décalage, ça vit
+ * dans `localStorage` — c'est propre à l'appareil, pas à la base.
+ */
+export const atelierOuvert = (): boolean => localStorage.getItem(KEY_OUVERT) === '1'
+
+export function setAtelierOuvert(ouvert: boolean): void {
+  if (ouvert) localStorage.setItem(KEY_OUVERT, '1')
+  else localStorage.removeItem(KEY_OUVERT)
+}
 
 /** L'heure que voit l'appli. Sans décalage, c'est `Date.now()` tout court. */
 export const now = (): number => Date.now() + timeOffset()

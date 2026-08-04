@@ -1,6 +1,14 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { exportBackup, parseBackup } from '../backup'
-import { fakeStreak, now as clock, setTimeOffset, timeOffset, undoDebugEvents } from '../debug'
+import {
+  atelierOuvert,
+  fakeStreak,
+  now as clock,
+  setAtelierOuvert,
+  setTimeOffset,
+  timeOffset,
+  undoDebugEvents,
+} from '../debug'
 import { DAY } from '../engine'
 import { addEvent, quitterAtelier, replaceAll, setSettings, uid, update, useDB } from '../store'
 import NumberInput from './NumberInput'
@@ -30,7 +38,18 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   const [adjust, setAdjust] = useState('')
   const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null)
   const [taps, setTaps] = useState(0)
-  const atelier = taps >= 7
+  const [atelier, setAtelier] = useState(atelierOuvert)
+  useEffect(() => {
+    if (taps >= 7 && !atelier) {
+      setAtelier(true)
+      setAtelierOuvert(true)
+    }
+  }, [taps, atelier])
+  const fermer = () => {
+    setTaps(0)
+    setAtelier(false)
+    setAtelierOuvert(false)
+  }
   const fichier = useRef<HTMLInputElement>(null)
 
   const sauvegarder = async () => {
@@ -210,7 +229,7 @@ export default function Settings({ onClose }: { onClose: () => void }) {
           </p>
         </section>
 
-        {atelier && <Atelier onClose={() => setTaps(0)} />}
+        {atelier && <Atelier onClose={fermer} />}
 
         <footer className="about">
           <a className="link" href="https://github.com/Chachigo/butineur" target="_blank" rel="noreferrer">
