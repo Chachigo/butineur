@@ -8,8 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "android": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-/usr/libexec/android-studio/jbr} ./gradlew installDebug",
-    "android:apk": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-/usr/libexec/android-studio/jbr} ./gradlew assembleDebug"
+    "android": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-$HOME/.local/jdk/current} ./gradlew installDebug",
+    "android:apk": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-$HOME/.local/jdk/current} ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",
