@@ -423,7 +423,8 @@ export default function TaskEditor({
                   {/* La série, elle, ne se négocie pas : elle tombe au cycle manqué. */}
                   {t.streak && (
                     <p className="hint">
-                      Sans rapport avec la série : un cycle manqué la casse de toute façon.
+                      Sans rapport avec la série : elle tolère un jour de retard, au-delà
+                      elle casse.
                     </p>
                   )}
                 </>

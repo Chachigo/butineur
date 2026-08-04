@@ -188,9 +188,30 @@ describe('série', () => {
     expect(s.bestStreak).toBe(3)
   })
 
-  it('tolère un jour de retard sans casser la série', () => {
-    const { perTask } = replay([done(0), done(2)], [t], at(2))
-    expect(perTask.get('t1')!.streak).toBe(2)
+  it('gèle la série sur un cycle manqué au lieu de la casser', () => {
+    const { perTask } = replay([done(0), done(1), done(3)], [t], at(3))
+    const s = perTask.get('t1')!
+    expect(s.streak).toBe(2) // le rattrapage tient la série, sans la faire monter
+    expect(s.frozen).toBe(false) // rattrapée, donc dégelée
+  })
+
+  it('annonce le gel dès que le cycle passe, sans attendre une validation', () => {
+    const { perTask } = replay([done(0), done(1)], [t], at(3))
+    const s = perTask.get('t1')!
+    expect(s.streak).toBe(2)
+    expect(s.frozen).toBe(true)
+  })
+
+  it('casse au deuxième cycle manqué', () => {
+    const { perTask } = replay([done(0), done(1)], [t], at(5))
+    const s = perTask.get('t1')!
+    expect(s.streak).toBe(0)
+    expect(s.brokenStreak).toBe(2)
+  })
+
+  it('ne monte plus une série quotidienne faite un jour sur deux', () => {
+    const { perTask } = replay([done(0), done(2), done(4), done(6), done(8)], [t], at(8))
+    expect(perTask.get('t1')!.streak).toBe(1)
   })
 })
 

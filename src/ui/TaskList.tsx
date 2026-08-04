@@ -221,7 +221,11 @@ function TaskRow({
           <span className="task__name">{task.name || 'Sans nom'}</span>
           <span className="task__meta">
             {task.repeat && <em className="badge">{rythmeLabel(task.repeat)}</em>}
-            {streak > 1 && <em className="badge badge--streak">série {streak} 🔥</em>}
+            {streak > 1 && (
+              <em className={`badge ${s?.frozen ? 'badge--frozen' : 'badge--streak'}`}>
+                série {streak} {s?.frozen ? '🧊' : '🔥'}
+              </em>
+            )}
             {/* Une série perdue se dit une fois, tant qu'elle n'est pas relancée. */}
             {streak === 0 && (s?.brokenStreak ?? 0) > 1 && (
               <em className="badge badge--broken">série {s!.brokenStreak} perdue 💔</em>

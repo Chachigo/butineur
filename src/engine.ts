@@ -217,7 +217,12 @@ export type Replay = {
 }
 
 /**
- * Fait avancer la série d'un cran, avec un jour de tolérance au-delà du rythme.
+ * Fait avancer la série d'un cran.
+ *
+ * Un cycle manqué ne casse pas : il **gèle** la série, conservée mais figée.
+ * C'est le deuxième cycle manqué qui la rompt. Sans ce palier, un jour de
+ * tolérance valait un cycle entier sur une tâche quotidienne : la faire un
+ * jour sur deux suffisait à monter une série « quotidienne » à l'infini.
  *
  * Atteindre l'objectif d'un compteur compte pour une validation : sans ça, le
  * réglage « Bonus de série » ne servait à rien sur ces tâches — trois jours à
@@ -226,16 +231,23 @@ export type Replay = {
 function avancerSerie(s: TaskState, ts: number, every: number, day: (t: number) => number): void {
   if (s.lastDoneTs === null) {
     s.streak = 1
+    s.frozen = false
     return
   }
   const gap = day(ts) - day(s.lastDoneTs)
   // gap === 0 : refait le même jour, la série ne bouge pas.
   if (gap <= 0) return
-  if (gap <= every + 1) s.streak += 1
-  else {
+  if (gap <= every) {
+    s.streak += 1
+    s.frozen = false
+  } else if (gap <= 2 * every) {
+    // Rattrapé après un cycle manqué : la série tient, mais ne gagne rien.
+    s.frozen = false
+  } else {
     // On garde ce qu'on vient de perdre : l'interface doit pouvoir le dire.
     s.brokenStreak = s.streak
     s.streak = 1
+    s.frozen = false
     s.streakTiersPaid.clear()
   }
 }
@@ -248,6 +260,7 @@ const freshState = (): TaskState => ({
   periodKey: null,
   targetPaid: false,
   lastTargetTs: null,
+  frozen: false,
   brokenStreak: 0,
   bestStreak: 0,
   countTiersPaid: new Set(),
@@ -461,12 +474,18 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
         s.countTiersPaid = new Set()
       }
     }
-    if (s.lastDoneTs !== null && today - day(s.lastDoneTs) > every + 1) {
-      // La fenêtre est passée sans validation : la série est perdue maintenant,
-      // pas à la prochaine validation. C'est ce qui permet de l'annoncer.
-      if (s.streak > 0) s.brokenStreak = s.streak
-      s.streak = 0
-      s.streakTiersPaid.clear()
+    // Le gel comme la rupture se voient sans attendre la prochaine validation :
+    // c'est le simple passage du temps qui les prononce.
+    if (s.lastDoneTs !== null) {
+      const ecart = today - day(s.lastDoneTs)
+      if (ecart > 2 * every) {
+        if (s.streak > 0) s.brokenStreak = s.streak
+        s.streak = 0
+        s.frozen = false
+        s.streakTiersPaid.clear()
+      } else if (ecart > every) {
+        s.frozen = true
+      }
     }
   }
 

@@ -307,6 +307,11 @@ body::after {
   color: var(--streak);
 }
 
+/* Série en gel : un cycle manqué, le suivant décide. */
+.badge--frozen {
+  color: #7dd3fc;
+}
+
 .badge--late {
   color: var(--bad);
 }

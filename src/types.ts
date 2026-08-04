@@ -129,6 +129,11 @@ export type TaskState = {
   targetPaid: boolean
   /** Dernier moment où l'objectif d'un compteur a été atteint, toutes périodes confondues. */
   lastTargetTs: number | null
+  /**
+   * Un cycle manqué met la série en gel : elle est conservée mais n'avance
+   * plus. Le cycle suivant la dégèle, ou la casse s'il est manqué aussi.
+   */
+  frozen: boolean
   /** Longueur de la série qui vient d'être perdue, tant qu'on ne l'a pas relancée. */
   brokenStreak: number
   /** Plus longue série jamais tenue sur cette tâche. */
