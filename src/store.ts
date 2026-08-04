@@ -1,4 +1,5 @@
 import { get, set } from 'idb-keyval'
+import { PREFIX, setTimeOffset, timeOffset, undoDebugEvents } from './debug'
 import { defaultDue } from './format'
 import { useSyncExternalStore } from 'react'
 import type { DB, Event, ShopItem, Task } from './types'
@@ -34,6 +35,23 @@ function persist() {
 }
 
 export const uid = () => crypto.randomUUID()
+
+/** Écrit sans attendre le débounce — un rechargement ne doit rien perdre. */
+export async function flush(): Promise<void> {
+  clearTimeout(timer)
+  await set(KEY, db)
+}
+
+/**
+ * Quitter l'atelier : tout ce qui a été fabriqué ou validé pendant le décalage
+ * est repris, puis on revient au présent. Sans ça, une validation faite
+ * « demain » restait dans le journal avec une date à venir.
+ */
+export async function quitterAtelier(): Promise<void> {
+  update((d) => ({ ...d, events: [...d.events, ...undoDebugEvents(d.events)] }))
+  await flush()
+  setTimeOffset(0)
+}
 
 /**
  * Deux rattrapages, appliqués au chargement et à la restauration pour qu'une
@@ -80,7 +98,13 @@ export function update(fn: (d: DB) => DB) {
 const upsert = <T extends { id: string }>(list: T[], item: T): T[] =>
   list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item]
 
-export const addEvent = (e: Event) => update((d) => ({ ...d, events: [...d.events, e] }))
+/**
+ * Un événement écrit pendant un décalage d'horloge est marqué : il n'a pas eu
+ * lieu, et « revenir au présent » doit pouvoir le reprendre.
+ */
+const marquer = (e: Event): Event => (timeOffset() ? { ...e, id: PREFIX + e.id } : e)
+
+export const addEvent = (e: Event) => update((d) => ({ ...d, events: [...d.events, marquer(e)] }))
 
 export const saveTask = (t: Task) =>
   update((d) => ({ ...d, tasks: upsert(d.tasks, { ...t, updatedAt: Date.now() }) }))

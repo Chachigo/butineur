@@ -28,7 +28,7 @@ export function setTimeOffset(ms: number): void {
 }
 
 /** Les événements fabriqués se reconnaissent à leur identifiant, pour pouvoir les retirer. */
-const PREFIX = 'dbg-'
+export const PREFIX = 'dbg-'
 export const isDebugEvent = (id: string) => id.startsWith(PREFIX)
 
 /**
@@ -50,15 +50,18 @@ export function fakeStreak(task: Task, n: number, at = now()): Event[] {
 }
 
 /**
- * De quoi annuler tout ce que l'atelier a fabriqué. On n'efface rien du
- * journal — on empile des `undo`, exactement comme le bouton d'annulation :
- * le solde revient au centime près et la règle d'or tient.
+ * De quoi annuler tout ce que l'atelier a laissé : ce qu'il a fabriqué, et ce
+ * qu'on a validé pendant que l'horloge était décalée — ces événements-là
+ * portent une date à venir, qu'aucun geste réel ne peut produire.
+ *
+ * On n'efface rien du journal, on empile des `undo`, exactement comme le
+ * bouton d'annulation : le solde revient au centime près et la règle d'or tient.
  */
 export function undoDebugEvents(events: Event[], at = Date.now()): Event[] {
   const annules = new Set(events.filter((e) => e.kind === 'undo').map((e) => e.targetId))
   return events
     // Les annulations portent le même préfixe : sans ce garde-fou, chaque clic
     // annulerait les annulations précédentes et le journal enflerait sans fin.
-    .filter((e) => e.kind !== 'undo' && isDebugEvent(e.id) && !annules.has(e.id))
+    .filter((e) => e.kind !== 'undo' && (isDebugEvent(e.id) || e.ts > at) && !annules.has(e.id))
     .map((e, i) => ({ id: `${PREFIX}undo-${at}-${i}`, ts: at, kind: 'undo' as const, targetId: e.id }))
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { now as clock, setTimeOffset, timeOffset } from './debug'
+import { now as clock, timeOffset } from './debug'
 import { DAY, pendingToEvents, replay, staleOneShots } from './engine'
 import {
   drainPending,
@@ -9,7 +9,7 @@ import {
   takeNewTaskRequest,
   widgetPayload,
 } from './native'
-import { deleteTask, uid, update, useDB } from './store'
+import { deleteTask, quitterAtelier, uid, update, useDB } from './store'
 import type { Task } from './types'
 import Balance from './ui/Balance'
 import History from './ui/History'
@@ -118,7 +118,7 @@ export default function App() {
     <div className="app">
       {/* Un décalage oublié ressemblerait à un bug : il s'annonce, et se coupe d'un tap. */}
       {timeOffset() !== 0 && (
-        <button className="timewarp" onClick={() => setTimeOffset(0)}>
+        <button className="timewarp" onClick={() => void quitterAtelier()}>
           ⏱ debug : {timeOffset() > 0 ? '+' : '−'}
           {Math.round(Math.abs(timeOffset()) / DAY)} j — revenir au présent
         </button>

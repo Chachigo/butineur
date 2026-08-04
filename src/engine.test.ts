@@ -565,6 +565,14 @@ describe('atelier de debug', () => {
     expect(replay(propre, [t], at(0)).entries).toEqual([])
   })
 
+  it('reprend aussi ce qui a été validé pendant le décalage', () => {
+    // Une validation datée de demain ne peut venir que d'une horloge décalée.
+    const demain = done(1)
+    const propre = [demain, ...undoDebugEvents([demain], at(0))]
+    expect(replay(propre, [t], at(0)).balance).toBe(0)
+    expect(replay(propre, [t], at(0)).entries).toEqual([])
+  })
+
   it('n’annule pas deux fois ce qui l’est déjà', () => {
     const faux = fakeStreak(t, 3, at(0))
     const premier = undoDebugEvents(faux, at(0))

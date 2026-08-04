@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import { exportBackup, parseBackup } from '../backup'
-import { fakeStreak, isDebugEvent, now as clock, setTimeOffset, timeOffset, undoDebugEvents } from '../debug'
+import { fakeStreak, now as clock, setTimeOffset, timeOffset, undoDebugEvents } from '../debug'
 import { DAY } from '../engine'
-import { addEvent, replaceAll, setSettings, uid, update, useDB } from '../store'
+import { addEvent, quitterAtelier, replaceAll, setSettings, uid, update, useDB } from '../store'
 import NumberInput from './NumberInput'
 import { useCloseOnBack } from './useCloseOnBack'
 
@@ -238,7 +238,7 @@ function Atelier({ onClose }: { onClose: () => void }) {
 
   const repetitives = db.tasks.filter((t) => !t.deletedAt && t.repeat)
   const cible = repetitives.find((t) => t.id === taskId) ?? repetitives[0]
-  const faux = db.events.filter((e) => isDebugEvent(e.id)).length
+  const faux = undoDebugEvents(db.events).length
 
   const decaler = (ms: number) => setTimeOffset(timeOffset() + ms)
 
@@ -266,7 +266,7 @@ function Atelier({ onClose }: { onClose: () => void }) {
         <button className="btn" onClick={() => decaler(7 * DAY)}>
           +7 j
         </button>
-        <button className="btn" onClick={() => setTimeOffset(0)} disabled={!timeOffset()}>
+        <button className="btn" onClick={() => void quitterAtelier()} disabled={!timeOffset()}>
           Présent
         </button>
       </div>
@@ -308,8 +308,12 @@ function Atelier({ onClose }: { onClose: () => void }) {
         </>
       )}
 
+      <p className="hint">
+        Revenir au présent reprend tout ce qui a été fabriqué ou validé pendant
+        le décalage — rien ne reste daté dans le futur.
+      </p>
       <div className="row">
-        <span className="row__label">{faux} événement(s) fabriqué(s)</span>
+        <span className="row__label">{faux} événement(s) de test à retirer</span>
         <button
           className="btn btn--danger"
           disabled={!faux}
