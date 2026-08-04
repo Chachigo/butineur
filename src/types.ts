@@ -117,6 +117,8 @@ export type Settings = {
   defaultReward: number
   /** Le journal sait tenir un solde négatif ; l'interface le refuse par défaut. */
   allowNegative: boolean
+  /** Premier jour de la semaine dans le graphe des statistiques. 1 = lundi. */
+  weekStart: 0 | 1
   /** Renseignés au lot 3. */
   serverUrl: string
   serverToken: string

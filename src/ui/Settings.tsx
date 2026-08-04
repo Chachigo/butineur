@@ -179,6 +179,25 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
         </section>
 
         <section className="card">
+          <h2 className="card__title">Statistiques</h2>
+          <div className="row">
+            <span className="row__label">Premier jour de la semaine</span>
+            <button
+              className={`btn${db.settings.weekStart === 1 ? ' btn--go' : ''}`}
+              onClick={() => setSettings({ weekStart: 1 })}
+            >
+              Lundi
+            </button>
+            <button
+              className={`btn${db.settings.weekStart === 0 ? ' btn--go' : ''}`}
+              onClick={() => setSettings({ weekStart: 0 })}
+            >
+              Dimanche
+            </button>
+          </div>
+        </section>
+
+        <section className="card">
           <h2 className="card__title">Écran d’accueil</h2>
           <p className="hint">
             Trois widgets : le solde, un compteur, et la liste des tâches à valider

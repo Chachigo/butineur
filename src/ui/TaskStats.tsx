@@ -1,4 +1,4 @@
-import { dayNum, dueTsFor, rewardAtStreak, type Replay } from '../engine'
+import { dueTsFor, rewardAtStreak, type Replay } from '../engine'
 import { fmt, formatDueLong, rythmeLabel } from '../format'
 import type { Task } from '../types'
 import Icon from './Icon'
@@ -80,8 +80,6 @@ export default function TaskStats({
               .
             </p>
           )}
-
-          <Graphe rep={rep} taskId={task.id} now={now} dayStart={dayStart} />
         </div>
 
         <footer className="sheet__foot">
@@ -103,43 +101,3 @@ const Chiffre = ({ valeur, legende }: { valeur: string; legende: string }) => (
     <span className="stats__label">{legende}</span>
   </div>
 )
-
-/**
- * Les dix dernières semaines, une case par jour — la vue d'ensemble que trois
- * chiffres ne donnent pas. Une case allumée = au moins une ligne ce jour-là.
- */
-function Graphe({
-  rep,
-  taskId,
-  now,
-  dayStart,
-}: {
-  rep: Replay
-  taskId: string
-  now: number
-  dayStart: number
-}) {
-  const SEMAINES = 10
-  const aujourdhui = dayNum(now, dayStart)
-  const faits = new Set(
-    rep.entries.filter((e) => e.taskId === taskId).map((e) => dayNum(e.ts, dayStart)),
-  )
-
-  // On termine sur aujourd'hui : la dernière colonne est la semaine en cours.
-  const jours = Array.from({ length: SEMAINES * 7 }, (_, i) => aujourdhui - (SEMAINES * 7 - 1 - i))
-
-  return (
-    <>
-      <p className="hint">Les {SEMAINES} dernières semaines</p>
-      <div className="graphe">
-        {jours.map((j) => (
-          <span
-            key={j}
-            className={`graphe__jour${faits.has(j) ? ' graphe__jour--on' : ''}`}
-            title={new Date((j + 0.5) * 86_400_000).toLocaleDateString('fr-FR')}
-          />
-        ))}
-      </div>
-    </>
-  )
-}

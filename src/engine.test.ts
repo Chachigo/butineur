@@ -195,6 +195,13 @@ describe('série', () => {
     expect(s.frozen).toBe(false) // rattrapée, donc dégelée
   })
 
+  it('ne gèle pas tant que le cycle du jour est encore ouvert', () => {
+    const { perTask } = replay([done(0), done(1)], [t], at(2))
+    const s = perTask.get('t1')!
+    expect(s.streak).toBe(2)
+    expect(s.frozen).toBe(false) // le jour 2 est le cycle en cours, pas un cycle manqué
+  })
+
   it('annonce le gel dès que le cycle passe, sans attendre une validation', () => {
     const { perTask } = replay([done(0), done(1)], [t], at(3))
     const s = perTask.get('t1')!
@@ -516,6 +523,7 @@ describe('sauvegarde', () => {
       dayStart: 0,
       defaultReward: 10,
       allowNegative: false,
+      weekStart: 1 as const,
       serverUrl: '',
       serverToken: '',
     },

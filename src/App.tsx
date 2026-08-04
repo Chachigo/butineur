@@ -15,18 +15,20 @@ import Balance from './ui/Balance'
 import History from './ui/History'
 import Settings from './ui/Settings'
 import Shop from './ui/Shop'
+import Stats from './ui/Stats'
 import TaskEditor, { blankTask } from './ui/TaskEditor'
 import TaskList from './ui/TaskList'
 import TaskStats from './ui/TaskStats'
 import Tuto, { tutoVu } from './ui/Tuto'
 import { useCloseOnBack } from './ui/useCloseOnBack'
 
-type Tab = 'tasks' | 'shop' | 'history'
+type Tab = 'tasks' | 'shop' | 'history' | 'stats'
 
 const TABS: [Tab, string][] = [
   ['tasks', 'Tâches'],
   ['shop', 'Boutique'],
   ['history', 'Historique'],
+  ['stats', 'Stats'],
 ]
 
 export default function App() {
@@ -180,6 +182,14 @@ export default function App() {
           />
         )}
         {tab === 'history' && <History entries={rep.entries} currency={db.settings.currency} />}
+        {tab === 'stats' && (
+          <Stats
+            entries={rep.entries}
+            now={now}
+            dayStart={db.settings.dayStart}
+            weekStart={db.settings.weekStart}
+          />
+        )}
       </main>
 
       {tuto && <Tuto onClose={() => setTuto(false)} />}

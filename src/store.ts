@@ -17,6 +17,7 @@ const EMPTY: DB = {
     dayStart: 0,
     defaultReward: 10,
     allowNegative: false,
+    weekStart: 1,
     serverUrl: '',
     serverToken: '',
   },

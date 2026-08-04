@@ -78,13 +78,7 @@ export default function TaskList({
       {!sel.selecting && modeles.length > 0 && (
         <div className="rapides">
           {modeles.map((m) => (
-            <button
-              key={m.id}
-              className="rapide"
-              onClick={() => saveTask({ ...m, id: uid(), template: false, updatedAt: 0 })}
-            >
-              <Icon icon={m.icon ?? ''} fallback="✓" /> {m.name}
-            </button>
+            <Rapide key={m.id} modele={m} onEdit={onEdit} />
           ))}
         </div>
       )}
@@ -121,6 +115,20 @@ export default function TaskList({
         </button>
       )}
     </>
+  )
+}
+
+/** Le modèle a son propre bouton, en dehors de la liste : appui long pour l'éditer, tap pour le reposer. */
+function Rapide({ modele, onEdit }: { modele: Task; onEdit: (t: Task) => void }) {
+  const longPress = useLongPress(() => onEdit(modele), true)
+  return (
+    <button
+      className="rapide"
+      onClick={() => saveTask({ ...modele, id: uid(), template: false, updatedAt: 0 })}
+      {...longPress}
+    >
+      <Icon icon={modele.icon ?? ''} fallback="✓" /> {modele.name}
+    </button>
   )
 }
 
