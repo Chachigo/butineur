@@ -64,7 +64,13 @@ class CounterConfigActivity : AppCompatActivity() {
                 val txt = v.findViewById<TextView>(R.id.item_icon)
                 val img = v.findViewById<ImageView>(R.id.item_icon_img)
                 val bmp = if (t.iconPh && t.icon.isNotEmpty()) {
-                    Glyph.bitmap(this@CounterConfigActivity, t.icon, 26, getColor(R.color.widget_text))
+                    Glyph.bitmap(
+                        this@CounterConfigActivity,
+                        t.icon,
+                        26,
+                        getColor(R.color.widget_text),
+                        Store.accent(this@CounterConfigActivity),
+                    )
                 } else null
                 if (bmp != null) {
                     img.setImageBitmap(bmp)

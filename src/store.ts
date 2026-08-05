@@ -1,6 +1,7 @@
 import { get, set } from 'idb-keyval'
 import { PREFIX, setTimeOffset, timeOffset, undoDebugEvents } from './debug'
 import { defaultDue } from './format'
+import { PHOSPHOR_MIGRATE } from './ui/icons.generated'
 import { useSyncExternalStore } from 'react'
 import type { DB, Event, ShopItem, Task } from './types'
 
@@ -56,30 +57,48 @@ export async function quitterAtelier(): Promise<void> {
 }
 
 /**
- * Deux rattrapages, appliqués au chargement et à la restauration pour qu'une
+ * La police Phosphor est passée en duotone : une icône y vaut deux caractères
+ * au lieu d'un. Sans ce rattrapage, une icône choisie avant le changement ne
+ * dessinerait plus que sa silhouette de fond, sans son détail.
+ */
+const migrerIcone = (icon?: string): string | undefined => {
+  if (!icon?.startsWith('ph:')) return icon
+  const chars = icon.slice(3)
+  return [...chars].length > 1 ? icon : `ph:${PHOSPHOR_MIGRATE[chars] ?? chars}`
+}
+
+/**
+ * Trois rattrapages, appliqués au chargement et à la restauration pour qu'une
  * sauvegarde plus ancienne reste lisible :
  *
  * - le jour de la semaine a déménagé de `due` vers `repeat` — c'est le rythme
  *   qui le porte, pas l'échéance ;
  * - une tâche répétitive a forcément une échéance à chaque tour, elle porte
- *   donc toujours un `due` : sans pénalité, il ne fait qu'afficher la date.
+ *   donc toujours un `due` : sans pénalité, il ne fait qu'afficher la date ;
+ * - les icônes Phosphor passent au duotone, cf. [migrerIcone].
  */
 const migrate = (tasks: Task[] = []): Task[] =>
   tasks.map((t) => {
     const { weekday, ...reste } = (t.due ?? {}) as Task['due'] & { weekday?: number }
-    let next = t
+    let next = { ...t, icon: migrerIcone(t.icon) }
     if (weekday != null && t.repeat) {
-      next = { ...t, due: reste as Task['due'], repeat: { ...t.repeat, everyDays: 7, weekday } }
+      next = { ...next, due: reste as Task['due'], repeat: { ...t.repeat, everyDays: 7, weekday } }
     }
     if (!next.repeat || next.due || next.counter) return next
     return { ...next, due: { at: defaultDue(), penalty: { kind: 'none' } } }
   })
 
+const migrateDB = (d: DB): DB => ({
+  ...d,
+  tasks: migrate(d.tasks),
+  shopItems: (d.shopItems ?? []).map((s) => ({ ...s, icon: migrerIcone(s.icon) })),
+})
+
 /** Appelé une fois avant le premier rendu. */
 export async function load() {
   const saved = await get<DB>(KEY)
   db = saved
-    ? { ...EMPTY, ...saved, tasks: migrate(saved.tasks), settings: { ...EMPTY.settings, ...saved.settings } }
+    ? migrateDB({ ...EMPTY, ...saved, settings: { ...EMPTY.settings, ...saved.settings } })
     : EMPTY
   emit()
 }
@@ -137,12 +156,7 @@ export const deleteShopItem = (id: string) =>
  * leurs valeurs par défaut, pour qu'une sauvegarde plus ancienne reste lisible.
  */
 export function replaceAll(next: DB) {
-  update(() => ({
-    ...EMPTY,
-    ...next,
-    tasks: migrate(next.tasks),
-    settings: { ...EMPTY.settings, ...next.settings },
-  }))
+  update(() => migrateDB({ ...EMPTY, ...next, settings: { ...EMPTY.settings, ...next.settings } }))
 }
 
 export const setSettings = (patch: Partial<DB['settings']>) =>

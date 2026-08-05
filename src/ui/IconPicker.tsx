@@ -85,17 +85,17 @@ export default function IconPicker({
                     <section key={label}>
                       <p className="hint">{label}</p>
                       <div className="iconpick__grid">
-                        {icons.map(([name, char]) => (
+                        {icons.map(([name, chars]) => (
                           <button
                             key={name}
                             type="button"
                             title={name}
-                            className={`iconpick__cell ph-glyph${
-                              value === phosphor(char) ? ' iconpick__cell--on' : ''
+                            className={`iconpick__cell${
+                              value === phosphor(chars) ? ' iconpick__cell--on' : ''
                             }`}
-                            onClick={() => choose(phosphor(char))}
+                            onClick={() => choose(phosphor(chars))}
                           >
-                            {char}
+                            <Icon icon={phosphor(chars)} fallback="" />
                           </button>
                         ))}
                       </div>

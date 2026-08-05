@@ -72,7 +72,7 @@ fun RemoteViews.setIcon(
     sizeDp: Int,
 ) {
     val bmp = if (isPhosphor && icon.isNotEmpty()) {
-        Glyph.bitmap(ctx, icon, sizeDp, ctx.getColor(R.color.widget_text))
+        Glyph.bitmap(ctx, icon, sizeDp, ctx.getColor(R.color.widget_text), Store.accent(ctx))
     } else null
 
     if (bmp != null) {

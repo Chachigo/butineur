@@ -5,11 +5,24 @@
   font-display: block;
 }
 
+/*
+ * Duotone : deux glyphes à la même place, le fond puis le détail. Le `-1em`
+ * ramène le second sur le premier — c'est la technique de Phosphor lui-même,
+ * la police n'a pas de glyphe bicolore.
+ */
 .ph-glyph {
   font-family: 'Phosphor';
   line-height: 1;
-  /* Un trait monochrome : autant qu'il porte la couleur choisie. */
+  white-space: nowrap;
+}
+
+.ph-glyph__fond {
   color: var(--go);
+}
+
+.ph-glyph__detail {
+  margin-left: -1em;
+  color: var(--text);
 }
 
 :root {
