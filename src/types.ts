@@ -119,6 +119,8 @@ export type Settings = {
   allowNegative: boolean
   /** Premier jour de la semaine dans le graphe des statistiques. 1 = lundi. */
   weekStart: 0 | 1
+  /** L'onglet Stats peut être masqué pour qui n'en a pas l'usage. */
+  showStats: boolean
   /** Renseignés au lot 3. */
   serverUrl: string
   serverToken: string

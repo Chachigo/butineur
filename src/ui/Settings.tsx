@@ -180,6 +180,14 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
 
         <section className="card">
           <h2 className="card__title">Statistiques</h2>
+          <label className="row row--check">
+            <input
+              type="checkbox"
+              checked={db.settings.showStats}
+              onChange={(e) => setSettings({ showStats: e.target.checked })}
+            />
+            <span className="row__label">Afficher l’onglet Stats</span>
+          </label>
           <div className="row">
             <span className="row__label">Premier jour de la semaine</span>
             <button

@@ -509,6 +509,38 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
 }
 
 /**
+ * Cycles manqués sur l'historique d'une tâche répétitive : l'écart entre deux
+ * validations consécutives (ou la dernière et maintenant) au-delà d'un cycle.
+ * Simplification pour un chiffre d'affichage global : utilise le rythme
+ * actuel de la tâche, pas celui figé sur chaque événement comme le fait le
+ * rejeu — une répétitive change rarement de rythme, et rien ici ne touche au
+ * solde.
+ */
+export function missedCycles(tasks: Task[], entries: LedgerEntry[], now: number, dayStart = 0): number {
+  let total = 0
+  for (const task of tasks) {
+    if (!task.repeat) continue
+    const every = Math.max(1, task.repeat.everyDays)
+    const jours = entries
+      .filter(
+        (e) =>
+          e.taskId === task.id && (e.kind === 'complete' || (e.kind === 'count' && e.label.endsWith('objectif atteint'))),
+      )
+      .map((e) => dayNum(e.ts, dayStart))
+      .sort((a, b) => a - b)
+
+    for (let i = 1; i < jours.length; i++) {
+      total += Math.max(0, Math.floor((jours[i] - jours[i - 1] - 1) / every))
+    }
+    const dernier = jours[jours.length - 1]
+    if (dernier !== undefined) {
+      total += Math.max(0, Math.floor((dayNum(now, dayStart) - dernier - 1) / every))
+    }
+  }
+  return total
+}
+
+/**
  * Ce que rapporterait la tâche à la n-ième validation d'affilée, à l'heure.
  * Sert à simuler l'effet d'un multiplicateur avant de le régler.
  */

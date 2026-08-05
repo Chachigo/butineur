@@ -43,6 +43,12 @@ export default function App() {
   // Le retour ramène à l'onglet des tâches avant de songer à quitter l'appli.
   useCloseOnBack(tab !== 'tasks', () => setTab('tasks'))
 
+  const tabs = db.settings.showStats ? TABS : TABS.filter(([id]) => id !== 'stats')
+  // L'onglet peut disparaître pendant qu'on le consulte, depuis les réglages.
+  useEffect(() => {
+    if (tab === 'stats' && !db.settings.showStats) setTab('tasks')
+  }, [tab, db.settings.showStats])
+
   // La couleur d'accentuation pilote toute la feuille de style.
   useEffect(() => {
     document.documentElement.style.setProperty('--go', db.settings.accent)
@@ -141,7 +147,7 @@ export default function App() {
       />
 
       <nav className="tabs" role="tablist">
-        {TABS.map(([id, label]) => (
+        {tabs.map(([id, label]) => (
           <button
             key={id}
             role="tab"
@@ -184,8 +190,11 @@ export default function App() {
         {tab === 'history' && <History entries={rep.entries} currency={db.settings.currency} />}
         {tab === 'stats' && (
           <Stats
+            tasks={visibleTasks}
             entries={rep.entries}
+            perTask={rep.perTask}
             now={now}
+            currency={db.settings.currency}
             dayStart={db.settings.dayStart}
             weekStart={db.settings.weekStart}
           />

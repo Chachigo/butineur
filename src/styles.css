@@ -1080,12 +1080,13 @@ button:focus-visible {
 /* --- fiche d'une tâche --- */
 .stats {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 6px;
 }
 
 .stats__cell {
-  flex: 1;
+  flex: 1 1 28%;
   padding: 12px 8px;
   border-radius: var(--r);
   background: var(--panel-2);

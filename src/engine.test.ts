@@ -6,6 +6,7 @@ import {
   dayNum,
   daysUntilWorthless,
   dueTsFor,
+  missedCycles,
   pendingToEvents,
   replay,
   rewardAfterDays,
@@ -219,6 +220,24 @@ describe('série', () => {
   it('ne monte plus une série quotidienne faite un jour sur deux', () => {
     const { perTask } = replay([done(0), done(2), done(4), done(6), done(8)], [t], at(8))
     expect(perTask.get('t1')!.streak).toBe(1)
+  })
+})
+
+describe('cycles manqués', () => {
+  const t = task({ repeat: daily })
+
+  it('compte zéro sur une série sans trou', () => {
+    const events = [done(0), done(1), done(2), done(3)]
+    const { entries } = replay(events, [t], at(3))
+    expect(missedCycles([t], entries, at(3))).toBe(0)
+  })
+
+  it('compte les jours sautés entre deux validations, et depuis la dernière', () => {
+    // 0, 1, puis 5 : les jours 2, 3, 4 sont manqués.
+    const { entries } = replay([done(0), done(1), done(5)], [t], at(5))
+    expect(missedCycles([t], entries, at(5))).toBe(3)
+    // Observé à 10 sans nouvelle validation : 6, 7, 8, 9 s'ajoutent.
+    expect(missedCycles([t], entries, at(10))).toBe(7)
   })
 })
 
@@ -524,6 +543,7 @@ describe('sauvegarde', () => {
       defaultReward: 10,
       allowNegative: false,
       weekStart: 1 as const,
+      showStats: true,
       serverUrl: '',
       serverToken: '',
     },

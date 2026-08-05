@@ -18,6 +18,7 @@ const EMPTY: DB = {
     defaultReward: 10,
     allowNegative: false,
     weekStart: 1,
+    showStats: true,
     serverUrl: '',
     serverToken: '',
   },
