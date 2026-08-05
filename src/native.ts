@@ -1,7 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import { Preferences } from '@capacitor/preferences'
-import { dayNum, dueTsFor, isAvailable, previewReward, type Replay } from './engine'
+import { dayNum, dueTsFor, isAvailable, previewReward, upcomingDues, type Replay } from './engine'
 import { fmt } from './format'
 import type { Pending, Settings, Task, TaskState } from './types'
 import { iconChar, isPhosphor } from './ui/Icon'
@@ -215,6 +215,17 @@ export async function takeNewTaskRequest(): Promise<boolean> {
 
 export type NotifSpec = { id: number; title: string; body: string; at: number }
 
+/**
+ * Combien de cycles d'avance on programme.
+ *
+ * Rien ne tourne en arrière-plan : une notification n'existe que si elle a été
+ * posée pendant que l'appli était ouverte. En n'en posant qu'une, un rappel
+ * cessait dès qu'il avait sonné, jusqu'à la prochaine ouverture. On en pose
+ * donc plusieurs — la couverture suit le rythme de la tâche, quatre jours pour
+ * une quotidienne, quatre mois pour une mensuelle.
+ */
+const CYCLES_AVANCE = 4
+
 export function notificationSpecs(rep: Replay, tasks: Task[], now: number, currency: string): NotifSpec[] {
   const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template)
 
@@ -223,29 +234,33 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
   // l'appli comme depuis un widget — laissait la notification partir quand même.
   const deadlines = live
     .filter((t) => t.due && isAvailable(t, rep.perTask.get(t.id), now))
-    .map((t) => ({ t, at: dueTsFor(t, rep.perTask.get(t.id), now) }))
-    .filter((x): x is { t: Task; at: number } => x.at !== null && x.at > now)
-    .map(({ t, at }) => ({
-      id: notifId(t.id),
-      title: t.name,
-      body: `Échéance maintenant — ${fmt(t.reward)} ${currency} en jeu`,
-      at,
-    }))
+    .flatMap((t) =>
+      upcomingDues(t, rep.perTask.get(t.id), now, 0, CYCLES_AVANCE)
+        .filter((at) => at > now)
+        .map((at, i) => ({
+          id: notifId(t.id) + i * 3,
+          title: t.name,
+          body: `Échéance maintenant — ${fmt(t.reward)} ${currency} en jeu`,
+          at,
+        })),
+    )
 
   // Rappels : rien pour une tâche déjà faite, on la reprogramme au prochain cycle.
   const reminders = live
     .filter((t) => t.remind && isAvailable(t, rep.perTask.get(t.id), now))
-    .map((t) => ({ t, at: remindAt(t, rep, now) }))
-    .filter((x): x is { t: Task; at: number } => x.at !== null && x.at > now)
-    .map(({ t, at }) => ({
-      // Décalé pour ne pas écraser la notification d'échéance de la même tâche.
-      id: notifId(t.id) + 1,
-      title: t.name,
-      body: t.counter
-        ? `Objectif du jour : ${t.counter.target} ${t.counter.unit ?? ''}`.trim()
-        : `À faire — ${fmt(previewReward(t, rep.perTask.get(t.id), now))} ${currency}`,
-      at,
-    }))
+    .flatMap((t) =>
+      remindTimes(t, rep, now)
+        .filter((at) => at > now)
+        .map((at, i) => ({
+          // Décalé pour ne pas écraser la notification d'échéance de la même tâche.
+          id: notifId(t.id) + i * 3 + 1,
+          title: t.name,
+          body: t.counter
+            ? `Objectif du jour : ${t.counter.target} ${t.counter.unit ?? ''}`.trim()
+            : `À faire — ${fmt(previewReward(t, rep.perTask.get(t.id), now))} ${currency}`,
+          at,
+        })),
+    )
 
   // Encouragements : uniquement quand il y a quelque chose à dire.
   const cheers = live
@@ -295,30 +310,36 @@ function cheerFor(t: Task, s: TaskState | undefined): string | null {
 }
 
 /**
- * Quand sonner le rappel d'une tâche.
+ * Quand sonner le rappel d'une tâche, sur les prochains cycles.
  *
- * « x avant l'échéance » n'a de sens que s'il y a une échéance, et seulement si
- * ce moment est encore devant nous : un rappel calé sur une échéance déjà
- * dépassée n'aurait jamais lieu.
+ * « x avant l'échéance » et « le jour même » n'ont de sens que s'il y a une
+ * échéance : sans elle, il n'y a rien à quoi les accrocher. Le rappel à heure
+ * fixe, lui, ne dépend pas du rythme — ce sont les prochains jours.
  */
-function remindAt(t: Task, rep: Replay, now: number): number | null {
+function remindTimes(t: Task, rep: Replay, now: number): number[] {
   const r = t.remind!
+  const dues = () => upcomingDues(t, rep.perTask.get(t.id), now, 0, CYCLES_AVANCE)
+
   if ('kind' in r && r.kind === 'before') {
-    const due = dueTsFor(t, rep.perTask.get(t.id), now)
-    if (due === null) return null
-    return due - r.minutes * 60_000
+    return dues().map((due) => due - r.minutes * 60_000)
   }
   if ('kind' in r && r.kind === 'jour') {
     // Le jour de l'échéance à l'heure dite — pas les jours sans échéance,
     // c'est ce qui le distingue du rappel quotidien.
-    const due = dueTsFor(t, rep.perTask.get(t.id), now)
-    if (due === null) return null
     const [h, m] = r.time.split(':').map(Number)
-    const d = new Date(due)
-    d.setHours(h || 0, m || 0, 0, 0)
-    return +d
+    return dues().map((due) => {
+      const d = new Date(due)
+      d.setHours(h || 0, m || 0, 0, 0)
+      return +d
+    })
   }
-  return nextTimeToday((r as { time: string }).time, now)
+
+  const premier = nextTimeToday((r as { time: string }).time, now)
+  return Array.from({ length: CYCLES_AVANCE }, (_, i) => {
+    const d = new Date(premier)
+    d.setDate(d.getDate() + i)
+    return +d
+  })
 }
 
 /** Prochaine occurrence de « HH:MM » : aujourd'hui si l'heure est à venir, sinon demain. */

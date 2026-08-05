@@ -13,6 +13,7 @@ import {
   rewardAtStreak,
   staleOneShots,
   streakAtCap,
+  upcomingDues,
 } from './engine'
 import { parseBackup, serialize } from './backup'
 import { fakeStreak, undoDebugEvents } from './debug'
@@ -144,6 +145,27 @@ describe('cycles', () => {
       const suivante = dueTsFor(t, janvier, at(26))!
       expect(new Date(suivante).getMonth()).toBe(1) // février
       expect(new Date(suivante).getDate()).toBe(28)
+    })
+  })
+
+  describe('échéances à venir', () => {
+    it('suit la grille du calendrier, un dimanche après l’autre', () => {
+      const t = task({ repeat: { everyDays: 7, weekday: 0 }, due })
+      const dues = upcomingDues(t, undefined, at(0), 0, 4)
+      expect(dues).toHaveLength(4)
+      expect(dues.every((d) => new Date(d).getDay() === 0)).toBe(true)
+      expect(dues.map((d) => dayNum(d) - dayNum(at(0)))).toEqual([6, 13, 20, 27])
+    })
+
+    it('avance du rythme en glissant', () => {
+      const t = task({ repeat: { everyDays: 3 }, due })
+      const dues = upcomingDues(t, undefined, at(0), 0, 3)
+      expect(dues.map((d) => dayNum(d) - dayNum(at(0)))).toEqual([0, 3, 6])
+    })
+
+    it('n’en rend qu’une pour une ponctuelle, et aucune sans date limite', () => {
+      expect(upcomingDues(task({ due }), undefined, at(0))).toHaveLength(1)
+      expect(upcomingDues(task({ repeat: { everyDays: 1 } }), undefined, at(0))).toEqual([])
     })
   })
 })

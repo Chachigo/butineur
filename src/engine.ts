@@ -176,6 +176,32 @@ export function dueTsFor(
 }
 
 /**
+ * Les `n` prochaines échéances, la courante comprise.
+ *
+ * Sert à programmer des rappels plusieurs cycles d'avance, pour qu'ils
+ * continuent de tomber sans qu'on ait à ouvrir l'appli. On y **suppose chaque
+ * cycle tenu à temps** : `pendingDue` n'avance qu'à la validation, il n'existe
+ * donc pas de « cycle suivant » tant que le courant n'est pas rempli. Une
+ * supposition sans risque ici — rien de tout ça ne touche au solde, et le
+ * moindre passage dans l'appli reprogramme tout sur l'état réel.
+ */
+export function upcomingDues(
+  task: Task,
+  s: TaskState | undefined,
+  now = Date.now(),
+  dayStart = 0,
+  n = 4,
+): number[] {
+  const first = dueTsFor(task, s, now, dayStart)
+  if (first === null) return []
+  if (!task.repeat) return [first]
+
+  const dues = [first]
+  while (dues.length < n) dues.push(nextCycleEnd(task, dues[dues.length - 1], dues[dues.length - 1]))
+  return dues
+}
+
+/**
  * Pénalité de retard, figée sur l'événement à la validation.
  * `factor` multiplie la récompense, `flat` en retire un montant fixe.
  */
