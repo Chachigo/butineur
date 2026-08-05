@@ -273,22 +273,27 @@ function TaskRow({
       </button>
 
       {selecting ? null : task.counter ? (
-        <div className="task__counter">
-          <button className="round" onClick={bump(-1)} disabled={count === 0} aria-label="Retirer">
-            −
-          </button>
-          <span className={`task__count${reached ? ' task__count--ok' : ''}`}>
-            {count}
-            <span className="task__target">/{target}</span>
+        <div className="task__counter-wrap">
+          <div className="task__counter">
+            <button className="round" onClick={bump(-1)} disabled={count === 0} aria-label="Retirer">
+              −
+            </button>
+            <span className={`task__count${reached ? ' task__count--ok' : ''}`}>
+              {count}
+              <span className="task__target">/{target}</span>
+            </span>
+            <button
+              className="round round--go"
+              onClick={bump(1)}
+              disabled={reached}
+              aria-label="Ajouter"
+            >
+              {reached ? '✓' : '+'}
+            </button>
+          </div>
+          <span className="task__counter-reward">
+            {fmt(task.reward)} {currency}
           </span>
-          <button
-            className="round round--go"
-            onClick={bump(1)}
-            disabled={reached}
-            aria-label="Ajouter"
-          >
-            {reached ? '✓' : '+'}
-          </button>
         </div>
       ) : (
         <button

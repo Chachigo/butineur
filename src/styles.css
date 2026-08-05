@@ -353,11 +353,23 @@ body::after {
   min-height: 44px;
 }
 
+.task__counter-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+}
+
 .task__counter {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px;
+}
+
+.task__counter-reward {
+  font-size: 11px;
+  color: var(--dim);
 }
 
 .round {
