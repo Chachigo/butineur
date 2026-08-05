@@ -11,6 +11,10 @@
  * une police à un seul caractère. On stocke les deux à la suite dans la
  * valeur de l'icône (`ph:` + fond + détail) : web et Android dessinent l'un
  * sur l'autre, sans jamais avoir besoin de connaître le nom de l'icône.
+ *
+ * La police copiée ici est la complète ; `scripts/subset-font.py` la réduit
+ * ensuite aux seules icônes retenues. Passer par `npm run icons`, qui enchaîne
+ * les deux — sinon on embarque 1510 icônes pour celles qu'on utilise.
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs'
 
@@ -24,22 +28,38 @@ const SRC_REGULAR = 'node_modules/@phosphor-icons/web/src/regular'
 // sinon elle apparaissait deux fois dans le sélecteur, sélectionnée aux deux
 // endroits à la fois.
 const GROUPS = {
-  Maison: ['broom', 'washing-machine', 'bed', 'shower', 'trash', 'trash-simple', 'recycle',
-    'toilet', 'toilet-paper', 'bathtub', 'basket', 'coat-hanger', 'plant', 'dog', 'cat',
-    'fork-knife', 'cooking-pot', 'paint-brush-household', 'hammer', 'wrench', 'screwdriver',
-    'lightbulb', 'key', 'package', 'shopping-cart'],
+  Maison: ['broom', 'washing-machine', 'bed', 'shower', 'bathtub', 'toilet', 'toilet-paper',
+    'towel', 'trash', 'trash-simple', 'recycle', 'basket', 'bag', 'couch', 'fan', 'wall',
+    'paint-brush-household', 'paint-roller', 'hammer', 'wrench', 'screwdriver', 'lightbulb',
+    'key', 'package', 'shopping-cart'],
   Corps: ['barbell', 'person-simple-run', 'person-simple-bike', 'person-simple-walk',
-    'heartbeat', 'pill', 'tooth', 'first-aid-kit', 'sneaker', 'yin-yang', 'brain'],
-  Repas: ['drop', 'coffee', 'apple-logo', 'carrot', 'bread', 'egg', 'wine', 'beer-stein',
-    'hamburger', 'bowl-food', 'orange-slice'],
-  Travail: ['briefcase', 'laptop', 'books', 'pencil', 'note', 'calendar-dots', 'phone',
-    'graduation-cap', 'chart-line', 'folders', 'envelope', 'clock'],
-  Loisirs: ['palette', 'guitar', 'game-controller', 'camera', 'puzzle-piece', 'film-slate',
-    'book-open', 'airplane-tilt', 'headphones', 'globe-hemisphere-west', 'television', 'music-notes'],
-  Fête: ['confetti', 'balloon', 'cake', 'champagne', 'gift', 'cheers', 'martini',
-    'beer-bottle', 'disco-ball', 'sparkle'],
-  Divers: ['star', 'fire', 'check-circle', 'target', 'diamond', 'trophy', 'leaf', 'paw-print',
-    'lightning', 'heart', 'bell', 'flag', 'medal', 'rocket', 'sun', 'moon'],
+    'brain', 'eye', 'hair-dryer', 'yin-yang'],
+  Santé: ['bandaids', 'first-aid-kit', 'heartbeat', 'pill', 'syringe', 'tooth', 'face-mask',
+    'cigarette-slash', 'flask', 'test-tube'],
+  Repas: ['drop', 'coffee', 'apple-logo', 'carrot', 'bread', 'egg', 'cheese', 'cherries',
+    'hamburger', 'pizza', 'ice-cream', 'bowl-food', 'bowl-steam', 'onigiri', 'orange-slice',
+    'cooking-pot', 'chef-hat', 'fork-knife', 'jar-label'],
+  Fête: ['confetti', 'balloon', 'cake', 'champagne', 'gift', 'cheers', 'martini', 'brandy',
+    'wine', 'beer-stein', 'beer-bottle', 'disco-ball'],
+  Travail: ['briefcase', 'books', 'pencil', 'note', 'note-pencil', 'push-pin', 'calendar-dots',
+    'calendar-check', 'calendar-star', 'clock', 'phone', 'envelope', 'chat-dots',
+    'chat-circle-dots', 'video-conference', 'voicemail', 'graduation-cap', 'chart-line',
+    'gavel', 'factory'],
+  Informatique: ['laptop', 'desktop', 'desktop-tower', 'code', 'password', 'hard-drives',
+    'floppy-disk-back', 'file', 'folder-simple', 'folders', 'download', 'video', 'head-circuit'],
+  Loisirs: ['palette', 'guitar', 'music-note', 'music-notes', 'microphone-stage', 'headphones',
+    'game-controller', 'puzzle-piece', 'lego', 'camera', 'video-camera', 'film-slate',
+    'television', 'book-open', 'globe-hemisphere-west', 'binoculars', 'ticket', 'yarn',
+    'beach-ball', 'bowling-ball'],
+  Transport: ['airplane-tilt', 'bicycle', 'bus', 'car-profile', 'van', 'sailboat', 'suitcase',
+    'gas-pump', 'engine', 'tire', 'car-battery', 'bridge'],
+  Vêtements: ['t-shirt', 'pants', 'dress', 'sock', 'sneaker', 'boot', 'high-heel',
+    'coat-hanger', 'eyeglasses', 'watch'],
+  Animaux: ['dog', 'cat', 'rabbit', 'bird', 'cow', 'butterfly', 'paw-print', 'bone', 'feather'],
+  Nature: ['plant', 'leaf', 'sun', 'moon', 'rainbow', 'mountains', 'tent', 'umbrella'],
+  Divers: ['star', 'sparkle', 'fire', 'lightning', 'heart', 'check-circle', 'check-fat',
+    'target', 'diamond', 'trophy', 'medal', 'flag', 'bell', 'rocket', 'ghost', 'info',
+    'user', 'coins', 'vault', 'scales'],
 }
 
 const tous = Object.values(GROUPS).flat()
