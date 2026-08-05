@@ -20,23 +20,33 @@ const SRC = 'node_modules/@phosphor-icons/web/src/duotone'
 const SRC_REGULAR = 'node_modules/@phosphor-icons/web/src/regular'
 
 // Choisies pour ce que fait l'appli. Grouper ici sert directement le sélecteur.
+// Une icône n'appartient qu'à un seul groupe — le contrôle plus bas le garantit,
+// sinon elle apparaissait deux fois dans le sélecteur, sélectionnée aux deux
+// endroits à la fois.
 const GROUPS = {
   Maison: ['broom', 'washing-machine', 'bed', 'shower', 'trash', 'trash-simple', 'recycle',
     'toilet', 'toilet-paper', 'bathtub', 'basket', 'coat-hanger', 'plant', 'dog', 'cat',
     'fork-knife', 'cooking-pot', 'paint-brush-household', 'hammer', 'wrench', 'screwdriver',
     'lightbulb', 'key', 'package', 'shopping-cart'],
   Corps: ['barbell', 'person-simple-run', 'person-simple-bike', 'person-simple-walk',
-    'heartbeat', 'pill', 'tooth', 'bed', 'first-aid-kit', 'sneaker', 'yin-yang', 'brain'],
+    'heartbeat', 'pill', 'tooth', 'first-aid-kit', 'sneaker', 'yin-yang', 'brain'],
   Repas: ['drop', 'coffee', 'apple-logo', 'carrot', 'bread', 'egg', 'wine', 'beer-stein',
-    'hamburger', 'cake', 'bowl-food', 'orange-slice'],
+    'hamburger', 'bowl-food', 'orange-slice'],
   Travail: ['briefcase', 'laptop', 'books', 'pencil', 'note', 'calendar-dots', 'phone',
     'graduation-cap', 'chart-line', 'folders', 'envelope', 'clock'],
   Loisirs: ['palette', 'guitar', 'game-controller', 'camera', 'puzzle-piece', 'film-slate',
     'book-open', 'airplane-tilt', 'headphones', 'globe-hemisphere-west', 'television', 'music-notes'],
   Fête: ['confetti', 'balloon', 'cake', 'champagne', 'gift', 'cheers', 'martini',
-    'beer-bottle', 'disco-ball', 'music-notes', 'star', 'sparkle'],
+    'beer-bottle', 'disco-ball', 'sparkle'],
   Divers: ['star', 'fire', 'check-circle', 'target', 'diamond', 'trophy', 'leaf', 'paw-print',
     'lightning', 'heart', 'bell', 'flag', 'medal', 'rocket', 'sun', 'moon'],
+}
+
+const tous = Object.values(GROUPS).flat()
+const doublons = tous.filter((name, i) => tous.indexOf(name) !== i)
+if (doublons.length) {
+  console.error(`Icônes dans plusieurs groupes : ${[...new Set(doublons)].join(', ')}`)
+  process.exit(1)
 }
 
 const css = readFileSync(`${SRC}/style.css`, 'utf8')
