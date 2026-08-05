@@ -7,9 +7,18 @@ Ce n'est pas de l'argent réel — c'est une enveloppe de dépense que tu t'auto
 ensuite pour tes loisirs. Faire le ménage finance une soirée ciné.
 
 <p align="center">
-  <img src="docs/screenshot-taches.png" width="290" alt="Liste des tâches">
-  <img src="docs/screenshot-editeur.png" width="290" alt="Éditeur avec simulation de série">
+  <img src="docs/demo/01-taches.png" width="240" alt="Liste des tâches">
+  <img src="docs/demo/04-editeur-serie.png" width="240" alt="Éditeur : simulation du bonus de série">
+  <img src="docs/demo/07-stats.png" width="240" alt="Statistiques et graphe de régularité">
 </p>
+
+<p align="center">
+  <img src="docs/demo/02-fiche.png" width="240" alt="Fiche d'une tâche">
+  <img src="docs/demo/05-boutique.png" width="240" alt="Boutique">
+  <img src="docs/demo/06-historique.png" width="240" alt="Historique">
+</p>
+
+<p align="center"><em>Captures prises sur des données de démo — <code>npm run screenshots</code>.</em></p>
 
 ## Ce que ça fait
 
@@ -54,7 +63,12 @@ npm run dev          # navigateur
 npm run test         # le moteur de récompenses (chemin argent)
 npm run android      # build + installe sur le téléphone branché
 npm run android:apk  # APK seul, sans appareil
+npm run screenshots  # captures du README, sur des données de démo
 ```
+
+`npm run screenshots` a besoin du serveur de dev (`npm run dev`) et de
+`chromium-browser`. Il écrit un jeu de tâches fictives dans une session
+jetable — jamais tes vraies données.
 
 Prérequis Android : un JDK 21 et le SDK Android. `android/local.properties` et le
 `JAVA_HOME` du script pointent vers une machine précise — à adapter.

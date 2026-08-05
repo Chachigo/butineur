@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "icons": "node scripts/build-icons.mjs && python3 scripts/subset-font.py",
+    "screenshots": "node scripts/screenshots.mjs",
     "android": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-$HOME/.local/jdk/current} ./gradlew installDebug",
     "android:apk": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-$HOME/.local/jdk/current} ./gradlew assembleDebug"
   },

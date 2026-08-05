@@ -63,9 +63,10 @@ ajoutée côté web doit être lue à l'identique dans `Store.kt`.
 ## Commandes
 
 ```bash
-npm run dev      # navigateur
-npm test         # moteur
-npm run android  # build + cap sync + installe sur le tel branché
+npm run dev          # navigateur
+npm test             # moteur
+npm run android      # build + cap sync + installe sur le tel branché
+npm run screenshots  # captures du README, sur des données de démo (dev server requis)
 ```
 
 ## Conventions
