@@ -83,8 +83,30 @@ export type Event =
        * Absent sur les événements d'avant : on retombe alors sur le rythme actuel.
        */
       repeat?: { everyDays: number; weekday?: number; monthday?: number } | null
+      /**
+       * Bonus de série au moment du tap. Même gel, et il manquait : relever le
+       * multiplicateur revalorisait d'un coup toutes les validations passées,
+       * et ajouter un palier le payait rétroactivement.
+       */
+      streak?: Task['streak']
     }
-  | { id: string; ts: number; kind: 'count'; taskId: string; delta: number }
+  | {
+      id: string
+      ts: number
+      kind: 'count'
+      taskId: string
+      delta: number
+      /**
+       * Le compteur tel qu'il était au tap. Rien n'y était figé : changer la
+       * récompense revalorisait les objectifs déjà atteints, relever l'objectif
+       * reprenait ce qu'ils avaient versé, et changer le rythme redécoupait les
+       * périodes passées. Absents sur les événements d'avant ce gel : repli sur
+       * la tâche actuelle, faute de mieux.
+       */
+      baseReward?: number
+      counter?: Task['counter']
+      repeat?: Task['repeat']
+    }
   | { id: string; ts: number; kind: 'spend'; amount: number; label: string; shopItemId?: string }
   | { id: string; ts: number; kind: 'adjust'; amount: number; label: string }
   /**

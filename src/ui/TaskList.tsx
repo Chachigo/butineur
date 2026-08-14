@@ -189,6 +189,7 @@ function TaskRow({
       penaltyFactor: factor,
       penaltyFlat: flat,
       repeat: task.repeat,
+      streak: task.streak,
     })
     coinFly(el, balanceRef.current, `+${fmt(gain)}`)
     // Confettis seulement quand un palier de série tombe.
@@ -219,7 +220,16 @@ function TaskRow({
       tiers.filter((t) => t.at <= n).reduce((a, t) => a + t.bonus, 0)
     const gain = crossed(after) - crossed(before)
 
-    addEvent({ id: uid(), ts: clock(), kind: 'count', taskId: task.id, delta })
+    addEvent({
+      id: uid(),
+      ts: clock(),
+      kind: 'count',
+      taskId: task.id,
+      delta,
+      baseReward: task.reward,
+      counter: task.counter,
+      repeat: task.repeat,
+    })
     if (gain !== 0) {
       coinFly(el, balanceRef.current, `${gain > 0 ? '+' : '−'}${fmt(Math.abs(gain))}`, gain < 0)
       if (gain > 0) burst(el)

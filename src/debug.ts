@@ -60,6 +60,7 @@ export function fakeStreak(task: Task, n: number, at = now()): Event[] {
     penaltyFactor: 1,
     penaltyFlat: 0,
     repeat: task.repeat,
+    streak: task.streak,
   }))
 }
 

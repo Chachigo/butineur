@@ -88,11 +88,36 @@ const migrate = (tasks: Task[] = []): Task[] =>
     return { ...next, due: { at: defaultDue(), penalty: { kind: 'none' } } }
   })
 
-const migrateDB = (d: DB): DB => ({
-  ...d,
-  tasks: migrate(d.tasks),
-  shopItems: (d.shopItems ?? []).map((s) => ({ ...s, icon: migrerIcone(s.icon) })),
-})
+/**
+ * Fige sur les anciens événements ce dont le solde dépend, avec la définition
+ * actuelle de la tâche.
+ *
+ * C'est déjà celle que le rejeu leur applique faute de mieux : le solde ne
+ * bouge donc pas d'un centime au passage. Mais à partir de là, éditer la tâche
+ * ne les touche plus — sans ce rattrapage, le gel ne protégerait que ce qui est
+ * validé après la mise à jour, et tout l'historique resterait réinscriptible.
+ */
+const gelerEvents = (events: Event[] = [], tasks: Task[]): Event[] => {
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  return events.map((e) => {
+    const t = 'taskId' in e ? byId.get(e.taskId) : undefined
+    if (!t) return e
+    // `...e` en dernier : ce qui est déjà figé sur l'événement l'emporte.
+    if (e.kind === 'complete') return { repeat: t.repeat, streak: t.streak, ...e }
+    if (e.kind === 'count') return { baseReward: t.reward, counter: t.counter, repeat: t.repeat, ...e }
+    return e
+  })
+}
+
+const migrateDB = (d: DB): DB => {
+  const tasks = migrate(d.tasks)
+  return {
+    ...d,
+    tasks,
+    events: gelerEvents(d.events, tasks),
+    shopItems: (d.shopItems ?? []).map((s) => ({ ...s, icon: migrerIcone(s.icon) })),
+  }
+}
 
 /** Appelé une fois avant le premier rendu. */
 export async function load() {

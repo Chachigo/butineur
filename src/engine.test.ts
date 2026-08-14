@@ -537,7 +537,20 @@ describe('taps venus des widgets', () => {
   it('convertit un incrément en événement de compteur', () => {
     const t = task({ counter: { target: 8, unit: '', tiers: [] } })
     const got = pendingToEvents([{ kind: 'count', taskId: 't1', delta: 1, ts: at(0) }], [t], [], () => 'p0')
-    expect(got).toEqual([{ id: 'p0', ts: at(0), kind: 'count', taskId: 't1', delta: 1 }])
+    // Le compteur est figé sur l'événement au versement : éditer la tâche
+    // ensuite ne doit pas rejouer ce tap-là.
+    expect(got).toEqual([
+      {
+        id: 'p0',
+        ts: at(0),
+        kind: 'count',
+        taskId: 't1',
+        delta: 1,
+        baseReward: 10,
+        counter: { target: 8, unit: '', tiers: [] },
+        repeat: null,
+      },
+    ])
   })
 
   it('applique la pénalité de l’heure du tap, pas de celle du versement', () => {
@@ -662,6 +675,74 @@ describe('le passé ne se recalcule pas', () => {
   it('retombe sur le rythme actuel pour un événement d’avant le gel', () => {
     const anciens = [done(0), done(1), done(2)] // sans `repeat` figé
     expect(replay(anciens, [quotidienne], at(2)).perTask.get('t1')!.streak).toBe(3)
+  })
+
+  describe('les bonus de série', () => {
+    const petit = { tiers: [], multiplier: { perStep: 0.1, cap: 2 } }
+    const bonus = [done(0, { streak: petit }), done(1, { streak: petit }), done(2, { streak: petit })]
+
+    it('ne revalorise pas les validations passées quand le multiplicateur monte', () => {
+      // 10 + 11 + 12 = 33, quel que soit le réglage d'aujourd'hui.
+      const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
+      expect(replay(bonus, [gros], at(2)).balance).toBeCloseTo(33)
+    })
+
+    it('ne paie pas rétroactivement un palier ajouté après coup', () => {
+      const avecPalier = task({ repeat: daily, streak: { tiers: [{ at: 2, bonus: 50 }], multiplier: null } })
+      expect(replay(bonus, [avecPalier], at(2)).balance).toBeCloseTo(33)
+    })
+
+    it('applique le nouveau réglage à la validation suivante', () => {
+      // Ce que Cléa demande : le passé ne bouge pas, la suite en profite.
+      const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
+      const suite = [...bonus, done(3, { streak: gros.streak })]
+      expect(replay(suite, [gros], at(3)).balance).toBeCloseTo(33 + 40)
+    })
+
+    it('ne casse pas la série au passage', () => {
+      const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
+      expect(replay(bonus, [gros], at(2)).perTask.get('t1')!.streak).toBe(3)
+    })
+
+    it('retombe sur les bonus actuels pour un événement d’avant le gel', () => {
+      const anciens = [done(0), done(1), done(2)] // sans `streak` figé
+      const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
+      expect(replay(anciens, [gros], at(2)).balance).toBeCloseTo(10 + 20 + 30)
+    })
+  })
+
+  describe('les compteurs', () => {
+    const objectif = { target: 3, unit: '', tiers: [{ at: 2, bonus: 4 }] }
+    const cnt = task({ repeat: daily, counter: objectif, streak: null })
+    const gele = { baseReward: 10, counter: objectif, repeat: daily }
+    // Objectif atteint le jour 0 : 10 € pour l'objectif, 4 € pour le palier.
+    const taps = [count(0, 1), count(0, 1), count(0, 1)].map((e) => ({ ...e, ...gele }))
+
+    it('ne revalorise pas un objectif déjà atteint quand la récompense change', () => {
+      expect(replay(taps, [{ ...cnt, reward: 100 }], at(1)).balance).toBeCloseTo(14)
+    })
+
+    it('ne reprend pas un objectif déjà atteint quand on relève la cible', () => {
+      const plusHaut = { ...cnt, counter: { ...objectif, target: 10 } }
+      expect(replay(taps, [plusHaut], at(1)).balance).toBeCloseTo(14)
+    })
+
+    it('ne repaie pas un palier dont on a changé le montant', () => {
+      const plusCher = { ...cnt, counter: { ...objectif, tiers: [{ at: 2, bonus: 40 }] } }
+      expect(replay(taps, [plusCher], at(1)).balance).toBeCloseTo(14)
+    })
+
+    it('reprend exactement ce qui a été versé quand on redescend', () => {
+      // Le retrait tombe après le changement de récompense : c'est le montant
+      // réellement crédité qui repart, pas celui de la tâche d'aujourd'hui.
+      const retrait = { ...count(0, -1), baseReward: 100, counter: objectif, repeat: daily }
+      expect(replay([...taps, retrait], [{ ...cnt, reward: 100 }], at(1)).balance).toBeCloseTo(4)
+    })
+
+    it('retombe sur le compteur actuel pour un événement d’avant le gel', () => {
+      const anciens = [count(0, 1), count(0, 1), count(0, 1)] // sans gel
+      expect(replay(anciens, [{ ...cnt, reward: 100 }], at(1)).balance).toBeCloseTo(104)
+    })
   })
 })
 

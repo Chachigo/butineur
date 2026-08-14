@@ -292,14 +292,29 @@ function avancerSerie(s: TaskState, ts: number, every: number, day: (t: number) 
 }
 
 /**
- * La tâche telle qu'elle était au moment du tap. Un événement d'avant ce
- * gel ne porte pas de rythme : il retombe sur la définition courante, faute
- * de mieux.
+ * La tâche telle qu'elle était au moment du tap.
+ *
+ * L'événement fige tout ce dont le solde dépend — récompense, rythme, bonus de
+ * série, compteur — parce que le rejeu, lui, lit la tâche d'aujourd'hui : sans
+ * ce gel, changer une récompense ou un multiplicateur réécrivait l'historique
+ * entier et faisait sauter le solde. Un événement d'avant ce gel ne porte pas
+ * le champ : il retombe sur la définition courante, faute de mieux.
  */
-const commeAlors = (
-  task: Task | undefined,
-  repeat: Extract<Event, { kind: 'complete' }>['repeat'],
-): Task | undefined => (task && repeat !== undefined ? { ...task, repeat } : task)
+type Gel = {
+  repeat?: Task['repeat']
+  streak?: Task['streak']
+  counter?: Task['counter']
+  baseReward?: number
+}
+
+const commeAlors = (task: Task | undefined, gel: Gel): Task | undefined =>
+  task && {
+    ...task,
+    repeat: gel.repeat !== undefined ? gel.repeat : task.repeat,
+    streak: gel.streak !== undefined ? gel.streak : task.streak,
+    counter: gel.counter !== undefined ? gel.counter : task.counter,
+    reward: gel.baseReward ?? task.reward,
+  }
 
 const freshState = (): TaskState => ({
   streak: 0,
@@ -344,10 +359,13 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     paidLine.set(key, entries.length)
     entries.push(entry)
   }
-  const refund = (key: string) => {
+  /** Reprend exactement ce qui a été versé, même si la tâche a changé depuis. */
+  const refund = (key: string): number => {
     const i = paidLine.get(key)
-    if (i !== undefined) erased.add(i)
     paidLine.delete(key)
+    if (i === undefined) return 0
+    erased.add(i)
+    return entries[i].total
   }
 
   const stateOf = (id: string): TaskState => {
@@ -390,8 +408,11 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     const s = stateOf(e.taskId)
 
     if (e.kind === 'count') {
-      const target = task?.counter?.target ?? Infinity
-      const k = counterPeriod(task, e.ts, dayStart)
+      // Le compteur tel qu'il était au tap : sa récompense, son objectif, ses
+      // paliers et son rythme de période. Éditer la tâche ne rejoue plus le passé.
+      const alors = commeAlors(task, e)
+      const target = alors?.counter?.target ?? Infinity
+      const k = counterPeriod(alors, e.ts, dayStart)
       if (s.periodKey !== k) {
         s.periodKey = k
         s.count = 0
@@ -407,15 +428,15 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
       // l'on attend en corrigeant une erreur de saisie — et c'est aussi ce qui
       // rend le farming impossible, puisqu'un aller-retour se solde à zéro.
       let base = 0
-      const reached = task != null && s.count >= target
+      const reached = alors != null && s.count >= target
       if (reached && !s.targetPaid) {
         s.targetPaid = true
         s.lastTargetTs = e.ts
-        base = task!.reward
+        base = alors!.reward
         // Atteindre l'objectif vaut validation : c'est ce qui fait vivre la
         // série d'un compteur. Les bonus de série, eux, restent réservés aux
         // validations tant que la règle des compteurs partiels n'est pas tranchée.
-        avancerSerie(s, e.ts, everyDaysOf(task), day)
+        avancerSerie(s, e.ts, everyDaysOf(alors), day)
         s.lastDoneTs = e.ts
         s.bestStreak = Math.max(s.bestStreak, s.streak)
         credit(`${e.taskId}:objectif`, {
@@ -433,13 +454,12 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
       } else if (!reached && s.targetPaid) {
         s.targetPaid = false
         s.lastTargetTs = null
-        base = -(task?.reward ?? 0)
-        refund(`${e.taskId}:objectif`)
+        base = -refund(`${e.taskId}:objectif`)
       }
 
       // Même symétrie sur les paliers intermédiaires.
       let tierBonus = 0
-      for (const t of task?.counter?.tiers ?? []) {
+      for (const t of alors?.counter?.tiers ?? []) {
         const crossed = t.at <= s.count
         const paid = s.countTiersPaid.has(t.at)
         if (crossed && !paid) {
@@ -459,8 +479,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
           })
         } else if (!crossed && paid) {
           s.countTiersPaid.delete(t.at)
-          tierBonus -= t.bonus
-          refund(`${e.taskId}:palier${t.at}`)
+          tierBonus -= refund(`${e.taskId}:palier${t.at}`)
         }
       }
       balance += base + tierBonus
@@ -468,14 +487,15 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     }
 
     // --- validation d'une tâche ---
-    // Le rythme figé sur l'événement prime : modifier la tâche aujourd'hui ne
-    // doit ni réparer ni casser ce qui s'est joué hier.
-    const alors = commeAlors(task, e.repeat)
+    // Ce qui est figé sur l'événement prime — rythme et bonus de série :
+    // modifier la tâche aujourd'hui ne doit ni réparer ni casser ce qui s'est
+    // joué hier, ni revaloriser ce qui a déjà été payé.
+    const alors = commeAlors(task, e)
     const every = everyDaysOf(alors)
     avancerSerie(s, e.ts, every, day)
 
     let tierBonus = 0
-    for (const t of task?.streak?.tiers ?? []) {
+    for (const t of alors?.streak?.tiers ?? []) {
       if (t.at <= s.streak && !s.streakTiersPaid.has(t.at)) {
         s.streakTiersPaid.add(t.at)
         tierBonus += t.bonus
@@ -494,7 +514,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     }
 
     const penalized = Math.max(0, e.baseReward * e.penaltyFactor - e.penaltyFlat)
-    const m = task?.streak?.multiplier
+    const m = alors?.streak?.multiplier
     const factor = m ? Math.max(1, Math.min(1 + m.perStep * (s.streak - 1), m.cap)) : 1
     const multiplierBonus = penalized * factor - penalized
     const total = penalized * factor + tierBonus
@@ -688,9 +708,23 @@ export function pendingToEvents(
         penaltyFactor: factor,
         penaltyFlat: flat,
         repeat: task.repeat,
+        streak: task.streak,
       })
     } else {
-      added.push({ id: newId(), ts: p.ts, kind: 'count', taskId: p.taskId, delta: p.delta })
+      // Le gel se fait au versement, pas au tap : le natif n'envoie que des
+      // faits. C'est la tâche d'aujourd'hui, mais figée une bonne fois — une
+      // édition ultérieure ne rejouera plus ce tap-là.
+      const task = byId.get(p.taskId)
+      added.push({
+        id: newId(),
+        ts: p.ts,
+        kind: 'count',
+        taskId: p.taskId,
+        delta: p.delta,
+        baseReward: task?.reward,
+        counter: task?.counter,
+        repeat: task?.repeat,
+      })
     }
   }
   return added
