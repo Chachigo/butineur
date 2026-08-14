@@ -115,22 +115,36 @@ function firstCycleEnd(task: Task, now: number, dayStart: number): number {
   return nextBoundary(task, startOfDay(now, dayStart) - 1)
 }
 
+/** Ouverture du cycle qui se ferme à `end` : le lendemain de l'échéance précédente. */
+function cycleOpen(task: Task, end: number, dayStart: number): number {
+  const d = new Date(prevBoundary(task, end))
+  d.setDate(d.getDate() + 1)
+  return startOfDay(+d, dayStart)
+}
+
 /**
  * Échéance suivante une fois `ts` validé.
  *
- * En calendaire, la validation remplit le cycle qui était en cours quel que soit
- * le moment : faire en avance ne rapproche pas l'échéance suivante, et rattraper
- * un retard ne saute pas un cycle. En glissant, c'est le passage qui redémarre
- * le compte — c'est tout l'intérêt de ce rythme.
+ * En calendaire, la validation remplit le cycle **ouvert au moment du tap** :
+ * faire en avance ne rapproche pas l'échéance suivante, et rattraper un retard
+ * ne laisse pas la tâche à refaire dans la foulée — elle repartait sinon pour
+ * le cycle courant, qu'on venait pourtant de faire. Un tap tombé dans le
+ * battement entre une échéance ratée et l'ouverture du cycle suivant remplit
+ * bien le cycle raté, lui : c'est une tâche faite en retard, pas en avance.
+ * En glissant, c'est le passage qui redémarre le compte — tout l'intérêt de ce rythme.
  */
-function nextCycleEnd(task: Task, pending: number, ts: number): number {
+function nextCycleEnd(task: Task, pending: number, ts: number, dayStart: number): number {
   const r = task.repeat!
   if (rythme(r) === 'glissant') {
     const d = new Date(ts)
     d.setDate(d.getDate() + Math.max(1, r.everyDays))
     return atHm(d, dueHm(task))
   }
-  return nextBoundary(task, Math.max(pending, ts))
+  // `ts - 1` : une validation pile à l'échéance tient encore dans son cycle.
+  const end = nextBoundary(task, ts - 1)
+  const rempli = ts >= cycleOpen(task, end, dayStart) ? nextBoundary(task, end) : end
+  // Un tap versé après coup par un widget ne doit jamais faire reculer l'échéance.
+  return Math.max(pending, rempli)
 }
 
 export type Cycle = {
@@ -157,11 +171,9 @@ export function cycleFor(
   const end = s?.pendingDue ?? firstCycleEnd(task, now, dayStart)
   if (rythme(task.repeat) === 'glissant') return { from: startOfDay(end, dayStart), end }
 
-  // Le cycle s'ouvre le lendemain de l'échéance précédente : une hebdomadaire
-  // due dimanche se fait du lundi au dimanche, pas de dimanche 20 h à dimanche 20 h.
-  const d = new Date(prevBoundary(task, end))
-  d.setDate(d.getDate() + 1)
-  return { from: startOfDay(+d, dayStart), end }
+  // Une hebdomadaire due dimanche se fait du lundi au dimanche, pas de
+  // dimanche 20 h à dimanche 20 h.
+  return { from: cycleOpen(task, end, dayStart), end }
 }
 
 /** Échéance qui s'applique à la prochaine validation, ou null sans date limite. */
@@ -197,7 +209,8 @@ export function upcomingDues(
   if (!task.repeat) return [first]
 
   const dues = [first]
-  while (dues.length < n) dues.push(nextCycleEnd(task, dues[dues.length - 1], dues[dues.length - 1]))
+  while (dues.length < n)
+    dues.push(nextCycleEnd(task, dues[dues.length - 1], dues[dues.length - 1], dayStart))
   return dues
 }
 
@@ -472,7 +485,12 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     // Le cycle rempli, on passe au suivant. Calculé ici et pas à la lecture :
     // il dépend de l'échéance qui était en cours, donc de tout l'historique.
     if (alors?.repeat) {
-      s.pendingDue = nextCycleEnd(alors, s.pendingDue ?? firstCycleEnd(alors, e.ts, dayStart), e.ts)
+      s.pendingDue = nextCycleEnd(
+        alors,
+        s.pendingDue ?? firstCycleEnd(alors, e.ts, dayStart),
+        e.ts,
+        dayStart,
+      )
     }
 
     const penalized = Math.max(0, e.baseReward * e.penaltyFactor - e.penaltyFlat)

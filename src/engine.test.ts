@@ -111,11 +111,21 @@ describe('cycles', () => {
       expect(dayNum(dueTsFor(t, s, at(5))!) - dayNum(at(5))).toBe(8)
     })
 
-    it('ne saute pas un cycle quand on rattrape un retard', () => {
+    it('rattraper un retard remplit la semaine en cours, pas celle qu’on a ratée', () => {
       // Faite le dimanche 11, puis le dimanche 18 manqué et rattrapé le
-      // mercredi 21 : la prochaine échéance reste le dimanche qui vient.
+      // mercredi 21 : ce mercredi tombe dans la semaine du 19 au 25, c'est donc
+      // elle qui est remplie — sinon la tâche restait à refaire le jour même.
       const s = state(t, [done(6), done(16)])
-      expect(dayNum(dueTsFor(t, s, at(16))!) - dayNum(at(16))).toBe(4)
+      expect(dayNum(dueTsFor(t, s, at(16))!) - dayNum(at(16))).toBe(11)
+      expect(isAvailable(t, s, at(16))).toBe(false)
+    })
+
+    it('un rattrapage tombé avant l’ouverture du cycle suivant reste un retard', () => {
+      // Dimanche 18 raté de trois heures : le cycle du 19 n'est pas ouvert, le
+      // tap solde bien celui qu'on vient de manquer.
+      const s = state(t, [done(6), done(13, { ts: at(13) + 11 * 3_600_000 })])
+      expect(new Date(dueTsFor(t, s, at(13))!).getDay()).toBe(0)
+      expect(dayNum(dueTsFor(t, s, at(13))!) - dayNum(at(13))).toBe(7)
     })
 
     it('rouvre le lendemain de l’échéance, pas sept jours après le passage', () => {
@@ -127,6 +137,14 @@ describe('cycles', () => {
 
   describe('quotidienne', () => {
     const t = task({ repeat: { everyDays: 1 }, due })
+
+    it('ne reste pas à faire après une validation en chaîne cassée', () => {
+      // Faite le 5, plus rien pendant six jours — la série est rompue — puis
+      // validée le 11 : elle remplit la journée du 11, pas celle qu'on a ratée.
+      const s = state(t, [done(0), done(6)])
+      expect(isAvailable(t, s, at(6))).toBe(false)
+      expect(dayNum(dueTsFor(t, s, at(6))!) - dayNum(at(6))).toBe(1)
+    })
 
     it('garde l’heure réglée au lieu de la décaler à chaque passage', () => {
       const tard = at(0) + 9 * 3_600_000 // validée à 21 h, une heure trop tard
