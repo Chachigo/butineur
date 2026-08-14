@@ -75,7 +75,12 @@ npm run screenshots  # captures du README, sur des données de démo (dev server
 - Debug natif : **`Log.e`, jamais `Log.d`** (filtré sur le téléphone de Cléa).
 - Suppression douce (`deletedAt`) partout : la synchro du lot 3 en dépendra.
 - Les raccourcis assumés portent un commentaire `ponytail:` avec leur plafond.
-- Checklist de tests : [.todo/ToDo-Cléa.md](.todo/ToDo-Cléa.md) — à lire avant de répondre,
-  les cases cochées disent où elle en est ; retirer ce qui est fait.
-- Les avis / réponses aux questions vont dans [.todo/questions-reponses.md](.todo/questions-reponses.md),
-  pas dans le chat.
+- Les tâches et la checklist de tests vivent dans le **kanban Vikunja**, plus dans un
+  fichier — à lire avant de répondre, la colonne `Claude` est la file d'entrée.
+  [.todo/ToDo-Cléa.md](.todo/ToDo-Cléa.md) ne garde que les conventions.
+- Une carte de la colonne `brainstorming` demande un **avis avant décision** : répondre
+  **en commentaire sur la carte**, et ne rien coder tant qu'elle n'est pas passée en `Claude`.
+- Les autres avis / réponses aux questions vont dans
+  [.todo/questions-reponses.md](.todo/questions-reponses.md), pas dans le chat.
+- Nouvelle version : écrire une note de version (nouveautés + corrections) dans la release
+  GitHub, avec un lien vers chaque commit.
