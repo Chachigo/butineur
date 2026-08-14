@@ -743,6 +743,14 @@ button:focus-visible {
   flex-wrap: wrap;
 }
 
+/* Le centrage ci-dessus taillait chaque bouton à son texte : deux boutons
+   côte à côte n'avaient pas la même hauteur dès qu'un libellé passait à la
+   ligne. Eux seuls s'étirent, les libellés restent centrés. */
+.row > .btn,
+.row > .chip-btn {
+  align-self: stretch;
+}
+
 .row__label {
   flex: 1 1 auto;
   min-width: 0;
