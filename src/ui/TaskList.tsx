@@ -124,7 +124,12 @@ function Rapide({ modele, onEdit }: { modele: Task; onEdit: (t: Task) => void })
   return (
     <button
       className="rapide"
-      onClick={() => saveTask({ ...modele, id: uid(), template: false, updatedAt: 0 })}
+      // La tâche posée atterrit plus bas dans la liste, parfois hors écran :
+      // sans à-coup sous le doigt, rien ne dit que le tap a pris.
+      onClick={(e) => {
+        pop(e.currentTarget)
+        saveTask({ ...modele, id: uid(), template: false, updatedAt: 0 })
+      }}
       {...longPress}
     >
       <Icon icon={modele.icon ?? ''} fallback="✓" /> {modele.name}
