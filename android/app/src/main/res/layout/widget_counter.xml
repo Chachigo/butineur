@@ -23,11 +23,20 @@
         android:contentDescription="@null"
         android:visibility="gone" />
 
+    <!-- Une seule ligne, quitte à rétrécir : sur une grille dense la cellule
+         est étroite, et un nom ou une unité longue partait à la ligne. Le
+         redimensionnement automatique est API 26+, en dessous il ne reste que
+         la coupure — pas de retour à la ligne dans les deux cas.
+         ponytail: pas de mise en page par taille de widget (RemoteViews
+         responsive, API 31+) ; à sortir seulement si rétrécir ne suffit plus. -->
     <TextView
         android:id="@+id/counter_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
+        android:autoSizeMaxTextSize="13sp"
+        android:autoSizeMinTextSize="9sp"
+        android:autoSizeTextType="uniform"
         android:ellipsize="end"
         android:gravity="center"
         android:maxLines="1"
@@ -37,9 +46,15 @@
 
     <TextView
         android:id="@+id/counter_value"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="1dp"
+        android:autoSizeMaxTextSize="12sp"
+        android:autoSizeMinTextSize="8sp"
+        android:autoSizeTextType="uniform"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
         android:textColor="@color/widget_dim"
         android:textSize="12sp"
         android:textStyle="bold" />
