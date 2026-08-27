@@ -450,6 +450,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
           multiplierBonus: 0,
           tierBonus: 0,
           total: base,
+          target: true,
         })
       } else if (!reached && s.targetPaid) {
         s.targetPaid = false
@@ -572,6 +573,9 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
   return { balance, perTask, entries: kept }
 }
 
+/** A ledger line that counts as a completion: a plain one, or a counter's target. */
+export const isDone = (e: LedgerEntry): boolean => e.kind === 'complete' || e.target === true
+
 /**
  * Cycles missed over a repeating task's history: the gap between two consecutive
  * completions (or the last one and now) beyond a single cycle.
@@ -585,10 +589,7 @@ export function missedCycles(tasks: Task[], entries: LedgerEntry[], now: number,
     if (!task.repeat) continue
     const every = Math.max(1, task.repeat.everyDays)
     const jours = entries
-      .filter(
-        (e) =>
-          e.taskId === task.id && (e.kind === 'complete' || (e.kind === 'count' && e.label.endsWith('objectif atteint'))),
-      )
+      .filter((e) => e.taskId === task.id && isDone(e))
       .map((e) => dayNum(e.ts, dayStart))
       .sort((a, b) => a - b)
 

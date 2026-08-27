@@ -3,6 +3,7 @@ import {
   DAY,
   computePenalty,
   isAvailable,
+  isDone,
   dayNum,
   daysUntilWorthless,
   dueTsFor,
@@ -313,6 +314,19 @@ describe('missed cycles', () => {
     expect(missedCycles([t], entries, at(5))).toBe(3)
     // Observed at 10 with no new completion: 6, 7, 8 and 9 add up.
     expect(missedCycles([t], entries, at(10))).toBe(7)
+  })
+
+  // The target line is recognised by its flag, not by its label: translating the
+  // interface would otherwise have broken the count in silence. A tier crossed
+  // is not a completion, only the target is.
+  it('counts a counter target as a completion, and a tier as nothing', () => {
+    const c = task({ reward: 10, repeat: daily, counter: { target: 2, tiers: [{ at: 1, bonus: 1 }] } })
+    // Days 0 and 4 reach the target; day 2 stops at the tier.
+    const { entries } = replay([count(0), count(0), count(2), count(4), count(4)], [c], at(4))
+    expect(entries.filter(isDone).map((e) => e.target)).toEqual([true, true])
+    expect(entries.filter((e) => !isDone(e)).every((e) => e.label.includes('palier'))).toBe(true)
+    // Only days 0 and 4 count: days 1, 2 and 3 are missed.
+    expect(missedCycles([c], entries, at(4))).toBe(3)
   })
 })
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { DAY, dayNum, missedCycles, type Replay } from '../engine'
+import { DAY, dayNum, isDone, missedCycles, type Replay } from '../engine'
 import { fmt } from '../format'
 import type { LedgerEntry, Task } from '../types'
 
@@ -37,7 +37,7 @@ export default function Stats({
   let nbTaches = 0
   for (const e of entries) {
     const j = dayNum(e.ts, dayStart)
-    if (e.kind === 'complete' || (e.kind === 'count' && e.label.endsWith('objectif atteint'))) {
+    if (isDone(e)) {
       compte.set(j, (compte.get(j) ?? 0) + 1)
       nbTaches++
     }

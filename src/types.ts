@@ -199,4 +199,10 @@ export type LedgerEntry = {
   tierBonus: number
   /** Net effect on the balance, signed. */
   total: number
+  /**
+   * Set on the line that pays a counter's target — the one that counts as a
+   * completion. A flag rather than a match on the label, which the translation
+   * of the interface would have broken in silence.
+   */
+  target?: true
 }
