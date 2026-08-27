@@ -22,6 +22,14 @@ the kitchen funds a night at the movies.
 
 <p align="center"><em>Screenshots taken on demo data (in French) — <code>npm run screenshots</code>.</em></p>
 
+## Install
+
+Android 7.0 or newer, outside the Play Store. The short version:
+**[add it to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.butineur.mobile%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FChachigo%252Fbutineur%2522%252C%2522author%2522%253A%2522Chachigo%2522%252C%2522name%2522%253A%2522Butineur%2522%252C%2522additionalSettings%2522%253A%2522%257B%255C%2522includePrereleases%255C%2522%253Atrue%257D%2522%257D)** and it updates itself, or take the APK from the
+[releases page](https://github.com/Chachigo/butineur/releases) and open it yourself.
+
+Step by step, and what to watch out for: **[install guide](docs/install.md)**.
+
 ## What it does
 
 - **Free-form rewards** — you set the amount of every task.

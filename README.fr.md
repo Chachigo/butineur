@@ -22,6 +22,15 @@ ensuite pour tes loisirs. Faire le ménage finance une soirée ciné.
 
 <p align="center"><em>Captures prises sur des données de démo — <code>npm run screenshots</code>.</em></p>
 
+## Installer
+
+Android 7.0 ou plus récent, hors Play Store. La version courte :
+**[l'ajouter à Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.butineur.mobile%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FChachigo%252Fbutineur%2522%252C%2522author%2522%253A%2522Chachigo%2522%252C%2522name%2522%253A%2522Butineur%2522%252C%2522additionalSettings%2522%253A%2522%257B%255C%2522includePrereleases%255C%2522%253Atrue%257D%2522%257D)** et il se met à jour tout seul, ou prendre l'APK
+de la [page des versions](https://github.com/Chachigo/butineur/releases)
+et l'ouvrir.
+
+Pas à pas, et ce à quoi faire attention : **[guide d'installation](docs/install.fr.md)**.
+
 ## Ce que ça fait
 
 - **Récompenses libres** — tu fixes le montant de chaque tâche.
