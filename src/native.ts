@@ -103,7 +103,7 @@ export function widgetPayload(
   now: number,
 ): WidgetPayload {
   const day = dayNum(now, settings.dayStart)
-  const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template)
+  const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template && !t.parentId)
   const { currency } = settings
 
   return {
@@ -228,7 +228,7 @@ export type NotifSpec = { id: number; title: string; body: string; at: number }
 const CYCLES_AVANCE = 4
 
 export function notificationSpecs(rep: Replay, tasks: Task[], now: number, currency: string): NotifSpec[] {
-  const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template)
+  const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template && !t.parentId)
 
   // `isAvailable` everywhere: a task already done has nothing left to remind
   // about, neither its deadline nor its reminder. Without that filter, completing

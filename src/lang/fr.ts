@@ -296,6 +296,14 @@ const fr: Record<keyof typeof en, string> = {
   'bk.notButineur': 'Ce fichier ne vient pas de Butineur.',
   'bk.unknownFormat': 'Format de sauvegarde inconnu ({format}).',
   'bk.incomplete': 'Sauvegarde incomplète : tâches ou journal manquants.',
+  // --- sous-tâches ---
+  'sub.progress': '{done}/{total}',
+  'sub.expand': 'Afficher les sous-tâches',
+  'sub.collapse': 'Masquer les sous-tâches',
+  'ed.parent': 'Sous-tâche de',
+  'ed.parentHint': 'Elle suit le rythme du parent',
+  'ed.parentNone': 'aucun parent',
+  'ed.parentLocked': 'Choisi à la création seulement',
 }
 
 export default fr

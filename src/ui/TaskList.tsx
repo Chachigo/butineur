@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { Fragment, useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
 import {
+  childrenOf,
   computePenalty,
   dueTsFor,
   isAvailable,
   lastCompletion,
   previewReward,
+  subtaskProgress,
   type Replay,
 } from '../engine'
 import { now as clock } from '../debug'
@@ -68,9 +70,20 @@ export default function TaskList({
     return i === -1 ? gele!.length : i
   }
   const affichees = gele ? [...tasks].sort((a, b) => place(a.id) - place(b.id)) : sorted
+  // A subtask is shown under its parent, never on its own line at the top level.
+  const racines = affichees.filter((t) => !t.parentId)
 
   const sel = useSelection(affichees, deleteTask)
   useCloseOnBack(sel.selecting, sel.stop)
+
+  // The fold is screen state, not data: nothing to persist, nothing to sync.
+  const [deplies, setDeplies] = useState<Set<string>>(new Set())
+  const plier = (id: string) =>
+    setDeplies((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
 
   return (
     <>
@@ -94,21 +107,46 @@ export default function TaskList({
       )}
 
       <ul className="list">
-        {affichees.map((t) => (
-          <TaskRow
-            key={t.id}
-            task={t}
-            onValider={figer}
-            rep={rep}
-            now={now}
-            currency={currency}
-            dayStart={dayStart}
-            balanceRef={balanceRef}
-            onEdit={onEdit}
-            onStats={onStats}
-            sel={sel}
-          />
-        ))}
+        {racines.map((t) => {
+          const subs = childrenOf(t.id, affichees)
+          const ouvert = deplies.has(t.id)
+          return (
+            <Fragment key={t.id}>
+              <TaskRow
+                task={t}
+                onValider={figer}
+                rep={rep}
+                now={now}
+                currency={currency}
+                dayStart={dayStart}
+                balanceRef={balanceRef}
+                onEdit={onEdit}
+                onStats={onStats}
+                sel={sel}
+                tasks={tasks}
+                ouvert={ouvert}
+                onPlier={() => plier(t.id)}
+              />
+              {ouvert &&
+                subs.map((sub) => (
+                  <TaskRow
+                    key={sub.id}
+                    task={sub}
+                    onValider={figer}
+                    rep={rep}
+                    now={now}
+                    currency={currency}
+                    dayStart={dayStart}
+                    balanceRef={balanceRef}
+                    onEdit={onEdit}
+                    onStats={onStats}
+                    sel={sel}
+                    tasks={tasks}
+                  />
+                ))}
+            </Fragment>
+          )
+        })}
       </ul>
 
       {!sel.selecting && (
@@ -150,15 +188,19 @@ function rank(t: Task, rep: Replay, now: number, dayStart: number): number {
   return 2
 }
 
-type RowProps = Omit<Props, 'tasks' | 'onNew' | 'modeles'> & {
+type RowProps = Omit<Props, 'onNew' | 'modeles'> & {
   task: Task
   sel: Selection
   /** Freezes the list order for as long as it takes the finger to leave the screen. */
   onValider: () => void
+  /** Set on a parent only: the chevron state and what toggles it. */
+  ouvert?: boolean
+  onPlier?: () => void
 }
 
 function TaskRow({
   task,
+  tasks,
   rep,
   now,
   currency,
@@ -168,6 +210,8 @@ function TaskRow({
   onStats,
   sel,
   onValider,
+  ouvert,
+  onPlier,
 }: RowProps) {
   const events = useDB().events
   const s = rep.perTask.get(task.id)
@@ -176,23 +220,40 @@ function TaskRow({
   const due = dueTsFor(task, s, now, dayStart)
   const late = due !== null && now > due
 
+  const completionEvent = (t: Task, ts: number) => {
+    const st = rep.perTask.get(t.id)
+    const { factor, flat } = computePenalty(t, ts, st)
+    return {
+      id: uid(),
+      ts,
+      kind: 'complete' as const,
+      taskId: t.id,
+      baseReward: t.reward,
+      penaltyFactor: factor,
+      penaltyFlat: flat,
+      repeat: t.repeat,
+      streak: t.streak,
+    }
+  }
+
   const complete = (e: MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget
     onValider()
     const ts = clock()
-    const { factor, flat } = computePenalty(task, ts, s)
     const gain = previewReward(task, s, ts)
-    addEvent({
-      id: uid(),
-      ts,
-      kind: 'complete',
-      taskId: task.id,
-      baseReward: task.reward,
-      penaltyFactor: factor,
-      penaltyFlat: flat,
-      repeat: task.repeat,
-      streak: task.streak,
-    })
+    addEvent(completionEvent(task, ts))
+    // Last subtask down: the parent falls with it, in the same gesture. One
+    // rule, one place — the count in the chevron reads the same `isAvailable`.
+    //
+    // ponytail: the parent's completion is written, not derived at replay time.
+    // At batch 3, two devices each ticking the last box would complete the
+    // parent twice. Deriving it would be fairer but grows the engine, so not
+    // before it is needed.
+    if (task.parentId) {
+      const { done, total } = subtaskProgress(task.parentId, tasks, rep, ts, dayStart)
+      const parent = tasks.find((p) => p.id === task.parentId)
+      if (parent && total > 0 && done + 1 >= total) addEvent(completionEvent(parent, ts))
+    }
     coinFly(el, balanceRef.current, `+${fmt(gain)}`)
     // Confetti only when a streak tier is crossed.
     const next = streak + 1
@@ -205,6 +266,12 @@ function TaskRow({
     if (!target) return
     onValider()
     addEvent({ id: uid(), ts: clock(), kind: 'undo', targetId: target.id })
+    // Undoing a subtask undoes the parent it had just completed: the bouquet is
+    // no longer complete. Two `undo` events, the log stays append-only.
+    if (task.parentId) {
+      const parent = lastCompletion(events, task.parentId)
+      if (parent) addEvent({ id: uid(), ts: clock(), kind: 'undo', targetId: parent.id })
+    }
     coinFly(e.currentTarget, balanceRef.current, `−${fmt(target.baseReward)}`, true)
     pop(balanceRef.current, true)
   }
@@ -245,6 +312,7 @@ function TaskRow({
   // A counter at its target is done for today: greyed out like the rest.
   const spent = !available || reached
 
+  const sousTaches = subtaskProgress(task.id, tasks, rep, now, dayStart)
   const selecting = sel.selecting
   const selected = sel.selection?.has(task.id) ?? false
   const longPress = useLongPress(() => sel.start(task.id), !selecting)
@@ -253,8 +321,21 @@ function TaskRow({
     <li
       className={`task${spent ? ' task--done' : ''}${late ? ' task--late' : ''}${
         selected ? ' task--picked' : ''
-      }`}
+      }${task.parentId ? ' task--sub' : ''}`}
     >
+      {onPlier && sousTaches.total > 0 && !selecting && (
+        <button
+          className="task__fold"
+          onClick={onPlier}
+          aria-expanded={ouvert}
+          aria-label={tr(ouvert ? 'sub.collapse' : 'sub.expand')}
+        >
+          <span className={`task__chevron${ouvert ? ' task__chevron--on' : ''}`}>›</span>
+          <em className="badge">
+            {tr('sub.progress', { done: sousTaches.done, total: sousTaches.total })}
+          </em>
+        </button>
+      )}
       <button
         className="task__body"
         onClick={() => (selecting ? sel.toggle(task.id) : task.repeat ? onStats(task) : onEdit(task))}
@@ -269,7 +350,9 @@ function TaskRow({
         <span className="task__text">
           <span className="task__name">{task.name || tr('list.noName')}</span>
           <span className="task__meta">
-            {task.repeat && <em className="badge">{rythmeLabel(task.repeat)}</em>}
+            {/* The rhythm is the parent's, shown one line above: saying it again
+                on each subtask only makes the list heavier. */}
+            {task.repeat && !task.parentId && <em className="badge">{rythmeLabel(task.repeat)}</em>}
             {streak > 1 && (
               <em className={`badge ${s?.frozen ? 'badge--frozen' : 'badge--streak'}`}>
                 {tr('list.streak', { n: streak, emoji: s?.frozen ? '🧊' : '🔥' })}

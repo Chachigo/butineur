@@ -149,6 +149,10 @@ export default function TaskEditor({
   const isNew = !db.tasks.some((x) => x.id === task.id)
   const patch = (p: Partial<Task>) => setT((prev) => ({ ...prev, ...p }))
   const cur = db.settings.currency
+  // One level only: a task that is already a subtask cannot become a parent.
+  const parents = db.tasks.filter(
+    (x) => !x.deletedAt && !x.template && !x.parentId && x.id !== t.id,
+  )
 
   useCloseOnBack(true, onClose)
 
@@ -188,6 +192,41 @@ export default function TaskEditor({
             />
           </div>
 
+          {/*
+            A subtask borrows its parent's rhythm, deadline and reminder — the
+            three blocks below simply do not exist for it. Only offered at
+            creation: attaching an existing task would change the reference cycle
+            of a history already written.
+          */}
+          {isNew && parents.length > 0 && (
+            <div className="row">
+              <span className="row__label">{tr('ed.parent')}</span>
+              <select
+                className="input input--select"
+                value={t.parentId ?? ''}
+                onChange={(e) =>
+                  patch({
+                    parentId: e.target.value || undefined,
+                    repeat: e.target.value ? null : t.repeat,
+                    due: e.target.value ? null : t.due,
+                    remind: e.target.value ? null : t.remind,
+                    streak: e.target.value ? null : t.streak,
+                    template: e.target.value ? false : t.template,
+                  })
+                }
+                aria-label={tr('ed.parent')}
+              >
+                <option value="">{tr('ed.parentNone')}</option>
+                {parents.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {t.parentId && <p className="hint">{tr(isNew ? 'ed.parentHint' : 'ed.parentLocked')}</p>}
+
           <label className="field">
             <span className="field__label">{tr('ed.reward')}</span>
             <span className="field__row">
@@ -201,6 +240,8 @@ export default function TaskEditor({
             </span>
           </label>
 
+          {!t.parentId && (
+            <>
           <Section
             title={tr('ed.quick')}
             hint={tr('ed.quickHint')}
@@ -323,6 +364,9 @@ export default function TaskEditor({
             )}
           </Section>
 
+            </>
+          )}
+
           <Section
             title={tr('ed.counter')}
             hint={tr('ed.counterHint')}
@@ -372,7 +416,7 @@ export default function TaskEditor({
 
           {/* A recurring task gets its deadline from its rhythm: no date to pick,
               only for the ones that happen just once. */}
-          {!t.repeat && (
+          {!t.repeat && !t.parentId && (
             <Section
               title={tr('ed.deadline')}
               on={!!t.due}
@@ -447,6 +491,8 @@ export default function TaskEditor({
             </Section>
           )}
 
+          {!t.parentId && (
+            <>
           <Section
             title={tr('ed.remind')}
             hint={tr('ed.remindHint')}
@@ -646,6 +692,9 @@ export default function TaskEditor({
               </>
             )}
           </Section>
+
+            </>
+          )}
 
           {!t.counter && (
             <p className="preview">{rich(tr('ed.onTimeNoStreak', { amount: fmt(t.reward), cur }))}</p>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { now as clock, timeOffset } from './debug'
-import { DAY, pendingToEvents, replay, staleOneShots } from './engine'
+import { DAY, pendingToEvents, replay, staleOneShots, withParents } from './engine'
 import {
   drainPending,
   notificationSpecs,
@@ -9,7 +9,7 @@ import {
   takeNewTaskRequest,
   widgetPayload,
 } from './native'
-import { tr, type Key } from './i18n'
+import { lang, tr, type Key } from './i18n'
 import { deleteTask, quitterAtelier, uid, update, useDB } from './store'
 import type { Task } from './types'
 import Balance from './ui/Balance'
@@ -50,6 +50,12 @@ export default function App() {
     if (tab === 'stats' && !db.settings.showStats) setTab('tasks')
   }, [tab, db.settings.showStats])
 
+  // The page has to declare the language it is actually showing: screen readers
+  // and the browser's own hyphenation read this attribute, not our dictionary.
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [])
+
   // The accent color drives the whole stylesheet.
   useEffect(() => {
     document.documentElement.style.setProperty('--go', db.settings.accent)
@@ -74,16 +80,20 @@ export default function App() {
     return () => clearInterval(i)
   }, [])
 
+  // Subtasks borrow their parent's rhythm, once and for all, before anything
+  // reads a cycle. Everything downstream then works on plain tasks.
+  const tasks = useMemo(() => withParents(db.tasks), [db.tasks])
+
   // The whole log is replayed: the balance is never stored.
   const rep = useMemo(
-    () => replay(db.events, db.tasks, now, db.settings.dayStart),
-    [db.events, db.tasks, now, db.settings.dayStart],
+    () => replay(db.events, tasks, now, db.settings.dayStart),
+    [db.events, tasks, now, db.settings.dayStart],
   )
   const visibleTasks = useMemo(
-    () => db.tasks.filter((t) => !t.deletedAt && !t.archived && !t.template),
-    [db.tasks],
+    () => tasks.filter((t) => !t.deletedAt && !t.archived && !t.template),
+    [tasks],
   )
-  const modeles = useMemo(() => db.tasks.filter((t) => !t.deletedAt && t.template), [db.tasks])
+  const modeles = useMemo(() => tasks.filter((t) => !t.deletedAt && t.template), [tasks])
 
   // Taps made on a widget with the app closed join the log. Same append-only
   // mechanics as the rest: nothing is lost, nothing is doubled.
@@ -108,21 +118,21 @@ export default function App() {
 
   // One-shot tasks disappear the day after they are completed.
   useEffect(() => {
-    const stale = staleOneShots(db.tasks, rep, now, db.settings.dayStart)
+    const stale = staleOneShots(tasks, rep, now, db.settings.dayStart)
     if (stale.length) stale.forEach(deleteTask)
-  }, [db.tasks, rep, now, db.settings.dayStart])
+  }, [tasks, rep, now, db.settings.dayStart])
 
   // Widgets and reminders are only rewritten when their content has changed —
   // otherwise the one-minute tick would redraw them in a loop.
   const widgetKey = useMemo(
-    () => JSON.stringify(widgetPayload(rep, db.tasks, db.settings, now)),
-    [rep, db.tasks, db.settings, now],
+    () => JSON.stringify(widgetPayload(rep, tasks, db.settings, now)),
+    [rep, tasks, db.settings, now],
   )
   useEffect(() => void pushWidgetState(JSON.parse(widgetKey)), [widgetKey])
 
   const notifKey = useMemo(
-    () => JSON.stringify(notificationSpecs(rep, db.tasks, now, db.settings.currency)),
-    [rep, db.tasks, now, db.settings.currency],
+    () => JSON.stringify(notificationSpecs(rep, tasks, now, db.settings.currency)),
+    [rep, tasks, now, db.settings.currency],
   )
   useEffect(() => void syncNotifications(JSON.parse(notifKey)), [notifKey])
 

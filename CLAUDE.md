@@ -54,6 +54,25 @@ tous les deux, ils ne peuvent donc pas se contredire.
 - `everyDays` reste le rythme en jours dans tous les cas — il règle aussi les
   périodes de compteur et la tolérance de série (mensuel = 31, `ponytail:`).
 
+## Sous-tâches
+
+Un seul niveau : `parentId` sur `Task`. Une sous-tâche est une tâche à qui on
+retire **rythme, échéance et rappel** — elle les emprunte au parent, et c'est le
+cycle du parent qui dit quand elle revient. Elle garde sa récompense, donc elle
+se valide comme n'importe quelle tâche et `replay()` n'a rien appris de neuf.
+
+- **`withParents()` résout l'emprunt une fois**, avant le rejeu, plutôt que de
+  faire descendre une recherche de parent dans `cycleFor`, `counterPeriod` et
+  `isAvailable` — les trois lisent `repeat`, leur donner le bon suffit.
+- **Le rattachement ne se fait qu'à la création** : faire d'une tâche existante
+  une sous-tâche changerait le cycle de référence d'un historique déjà écrit.
+- **La dernière sous-tâche valide le parent** dans la foulée, et l'annuler
+  annule les deux. Le compte du chevron lit le même `isAvailable` que le bouton,
+  ils ne peuvent donc pas diverger. `ponytail:` la validation du parent est
+  écrite, pas dérivée — voir le commentaire dans `TaskList`.
+- Le pli est un **état d'écran**, jamais persisté. Les sous-tâches n'apparaissent
+  ni dans les widgets ni dans la barre de tâches rapides : le parent est l'entrée.
+
 ## Widgets
 
 Pas de service en arrière-plan. Le Kotlin lit le `SharedPreferences` **`CapacitorStorage`**

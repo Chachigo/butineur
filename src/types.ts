@@ -47,6 +47,18 @@ export type Task = {
    * regular — groceries, laundry.
    */
   template?: boolean
+  /**
+   * Parent of a subtask. One level only, no sub-subtask.
+   *
+   * A subtask is a task stripped of three things: rhythm, deadline and
+   * reminder. It borrows them from its parent — the parent's cycle says when it
+   * comes back. It keeps its own reward, so it is completed like any other task
+   * and `replay()` has nothing new to learn.
+   *
+   * Only set at creation: making an existing task a subtask would change the
+   * reference cycle of a history already written.
+   */
+  parentId?: string
   archived: boolean
   updatedAt: number
   deletedAt: number | null

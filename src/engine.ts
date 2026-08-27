@@ -577,6 +577,46 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
   return { balance, perTask, entries: kept }
 }
 
+/**
+ * A subtask resolved against its parent: it has no rhythm of its own, it borrows
+ * the parent's cycle.
+ *
+ * Applied once, before the replay, rather than threading a parent lookup through
+ * `cycleFor`, `counterPeriod` and `isAvailable` — they all read `repeat`, so
+ * giving them the right `repeat` is enough. The freeze still works: the tap
+ * writes the resolved rhythm onto the event, so editing the parent later does
+ * not rewrite what the subtask already earned.
+ */
+export function withParents(tasks: Task[]): Task[] {
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  return tasks.map((t) =>
+    t.parentId ? { ...t, repeat: byId.get(t.parentId)?.repeat ?? null } : t,
+  )
+}
+
+/** The subtasks of a parent, in creation order, deleted ones left out. */
+export const childrenOf = (parentId: string, tasks: Task[]): Task[] =>
+  tasks.filter((t) => t.parentId === parentId && !t.deletedAt)
+
+/**
+ * How many subtasks of a parent are done for the cycle in progress.
+ *
+ * "Done" is `isAvailable` read backwards: a subtask that cannot be completed
+ * again is one that has been. It is the same source of truth as the button in
+ * the list, so the count and the button can never disagree.
+ */
+export function subtaskProgress(
+  parentId: string,
+  tasks: Task[],
+  rep: Replay,
+  now = Date.now(),
+  dayStart = 0,
+): { done: number; total: number } {
+  const subs = childrenOf(parentId, tasks)
+  const done = subs.filter((t) => !isAvailable(t, rep.perTask.get(t.id), now, dayStart)).length
+  return { done, total: subs.length }
+}
+
 /** A ledger line that counts as a completion: a plain one, or a counter's target. */
 export const isDone = (e: LedgerEntry): boolean => e.kind === 'complete' || e.target === true
 

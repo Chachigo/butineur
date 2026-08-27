@@ -163,12 +163,19 @@ export const saveShopItem = (s: ShopItem) =>
 /**
  * Soft delete: `deletedAt` lets the batch-3 sync propagate the removal, and past
  * events keep their value in the balance.
+ *
+ * Deleting a parent takes its subtasks with it — left behind, they would be
+ * orphans with no cycle, invisible in the list and impossible to delete.
  */
 export const deleteTask = (id: string) =>
-  update((d) => ({
-    ...d,
-    tasks: d.tasks.map((t) => (t.id === id ? { ...t, deletedAt: Date.now(), updatedAt: Date.now() } : t)),
-  }))
+  update((d) => {
+    const now = Date.now()
+    const gone = (t: Task) => t.id === id || t.parentId === id
+    return {
+      ...d,
+      tasks: d.tasks.map((t) => (gone(t) ? { ...t, deletedAt: now, updatedAt: now } : t)),
+    }
+  })
 
 export const deleteShopItem = (id: string) =>
   update((d) => ({

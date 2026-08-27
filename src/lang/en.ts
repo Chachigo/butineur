@@ -300,4 +300,12 @@ export default {
   'bk.notButineur': 'This file does not come from Butineur.',
   'bk.unknownFormat': 'Unknown backup format ({format}).',
   'bk.incomplete': 'Incomplete backup: tasks or log missing.',
+  // --- subtasks ---
+  'sub.progress': '{done}/{total}',
+  'sub.expand': 'Show the subtasks',
+  'sub.collapse': 'Hide the subtasks',
+  'ed.parent': 'Subtask of',
+  'ed.parentHint': 'It follows the parent’s rhythm',
+  'ed.parentNone': 'no parent',
+  'ed.parentLocked': 'Set at creation only',
 }
