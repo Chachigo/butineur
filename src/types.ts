@@ -152,6 +152,12 @@ export type Settings = {
   accent: string
   /** Start of a new day, in minutes since midnight (0-1439). */
   dayStart: number
+  /**
+   * Preferred hour "HH:MM" for a reminder set a whole day or more before the
+   * deadline: such a reminder has no time of its own, it would inherit the
+   * deadline's — 23:59 — and ring at night.
+   */
+  remindAt: string
   /** Reward pre-filled when creating a task. */
   defaultReward: number
   /** The log can hold a negative balance; the interface refuses it by default. */

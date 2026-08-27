@@ -21,7 +21,8 @@ import {
 } from './engine'
 import { parseBackup, serialize } from './backup'
 import { fakeStreak, undoDebugEvents } from './debug'
-import type { Event, Task } from './types'
+import { notificationSpecs } from './native'
+import type { DB, Event, Task } from './types'
 
 // Monday 5 January 2026, noon — far from any daylight saving change.
 const T0 = new Date(2026, 0, 5, 12, 0, 0).getTime()
@@ -645,6 +646,7 @@ describe('backup', () => {
       budgetLabel: 'budget loisirs',
       accent: '#4ade80',
       dayStart: 0,
+      remindAt: '09:00',
       defaultReward: 10,
       allowNegative: false,
       weekStart: 1 as const,
@@ -912,5 +914,34 @@ describe('availability', () => {
     const t = task()
     const { perTask } = replay([done(0)], [t], at(0))
     expect(isAvailable(t, perTask.get('t1'), at(9))).toBe(false)
+  })
+})
+
+describe('notifications', () => {
+  const settings = { currency: '€', remindAt: '09:00' } as DB['settings']
+  const daily = (over: Partial<Task> = {}) =>
+    task({ repeat: { everyDays: 1 }, due: { at: '23:59', penalty: { kind: 'none' } }, ...over })
+  const specs = (t: Task) => notificationSpecs(replay([], [t], T0), [t], T0, settings)
+
+  it('says nothing at the deadline when it costs nothing', () => {
+    // No reminder, no cheer on this task: what is left can only be the deadline.
+    expect(specs(daily())).toEqual([])
+  })
+
+  it('still announces a deadline that has a penalty', () => {
+    const t = daily({ due: { at: '23:59', penalty: { kind: 'flat', amount: 5 } } })
+    expect(specs(t).length).toBeGreaterThan(0)
+  })
+
+  it('puts a reminder set days ahead at the chosen hour', () => {
+    const t = daily({ remind: { kind: 'before', minutes: 2 * 24 * 60 } })
+    const heures = specs(t).map((s) => new Date(s.at).getHours())
+    expect(new Set(heures)).toEqual(new Set([9]))
+  })
+
+  it('leaves a reminder under a day at its exact offset', () => {
+    const t = daily({ remind: { kind: 'before', minutes: 60 } })
+    const dues = upcomingDues(t, undefined, T0, 0, 4)
+    expect(specs(t).map((s) => s.at)).toEqual(dues.map((d) => d - 3_600_000).filter((x) => x > T0))
   })
 })

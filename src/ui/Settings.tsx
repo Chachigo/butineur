@@ -151,6 +151,18 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
           <p className="hint">{tr('set.dayStartHint')}</p>
 
           <div className="row">
+            <span className="row__label">{tr('set.remindAt')}</span>
+            <input
+              className="input input--time"
+              type="time"
+              value={db.settings.remindAt}
+              onChange={(e) => e.target.value && setSettings({ remindAt: e.target.value })}
+              aria-label={tr('set.remindAtLabel')}
+            />
+          </div>
+          <p className="hint">{tr('set.remindAtHint')}</p>
+
+          <div className="row">
             <span className="row__label">{tr('set.defaultReward')}</span>
             <NumberInput
               className="input input--xs"

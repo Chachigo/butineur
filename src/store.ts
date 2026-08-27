@@ -17,6 +17,7 @@ const EMPTY: DB = {
     budgetLabel: tr('set.budgetHint'),
     accent: '#4ade80',
     dayStart: 0,
+    remindAt: '09:00',
     defaultReward: 10,
     allowNegative: false,
     weekStart: 1,

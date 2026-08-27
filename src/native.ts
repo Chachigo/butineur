@@ -278,14 +278,17 @@ export type NotifSpec = { id: number; title: string; body: string; at: number }
  */
 const CYCLES_AVANCE = 4
 
-export function notificationSpecs(rep: Replay, tasks: Task[], now: number, currency: string): NotifSpec[] {
+export function notificationSpecs(rep: Replay, tasks: Task[], now: number, settings: Settings): NotifSpec[] {
+  const currency = settings.currency
   const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template && !t.parentId)
 
   // `isAvailable` everywhere: a task already done has nothing left to remind
   // about, neither its deadline nor its reminder. Without that filter, completing
   // a task — in the app or from a widget — still let the notification fire.
   const deadlines = live
-    .filter((t) => t.due && isAvailable(t, rep.perTask.get(t.id), now))
+    // Nothing to announce when the deadline costs nothing: a repeating task gets
+    // one by default, without penalty, and it would just ring at 23:59 for free.
+    .filter((t) => t.due && t.due.penalty.kind !== 'none' && isAvailable(t, rep.perTask.get(t.id), now))
     .flatMap((t) =>
       upcomingDues(t, rep.perTask.get(t.id), now, 0, CYCLES_AVANCE)
         .filter((at) => at > now)
@@ -301,7 +304,7 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
   const reminders = live
     .filter((t) => t.remind && isAvailable(t, rep.perTask.get(t.id), now))
     .flatMap((t) =>
-      remindTimes(t, rep, now)
+      remindTimes(t, rep, now, settings.remindAt)
         .filter((at) => at > now)
         .map((at, i) => ({
           // Offset so it does not overwrite the deadline notification of the same task.
@@ -368,12 +371,22 @@ function cheerFor(t: Task, s: TaskState | undefined): string | null {
  * deadline: without one, there is nothing to hang them on. The fixed-time
  * reminder does not depend on the rhythm — it is simply the next few days.
  */
-function remindTimes(t: Task, rep: Replay, now: number): number[] {
+function remindTimes(t: Task, rep: Replay, now: number, remindAt: string): number[] {
   const r = t.remind!
   const dues = () => upcomingDues(t, rep.perTask.get(t.id), now, 0, CYCLES_AVANCE)
 
   if ('kind' in r && r.kind === 'before') {
-    return dues().map((due) => due - r.minutes * 60_000)
+    // A delay of a whole day or more has no time of its own: it lands at the
+    // deadline's hour, 23:59 by default. Move it to the preferred one. Under
+    // 24 h the exact offset is the point, so it stays untouched.
+    return dues().map((due) => {
+      const at = due - r.minutes * 60_000
+      if (r.minutes < 1440) return at
+      const [h, m] = remindAt.split(':').map(Number)
+      const d = new Date(at)
+      d.setHours(h || 0, m || 0, 0, 0)
+      return +d
+    })
   }
   if ('kind' in r && r.kind === 'jour') {
     // On the day of the deadline at the given time — not on days without a

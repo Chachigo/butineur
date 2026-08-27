@@ -129,8 +129,8 @@ export default function App() {
   useEffect(() => void pushWidgetState(JSON.parse(widgetKey)), [widgetKey])
 
   const notifKey = useMemo(
-    () => JSON.stringify(notificationSpecs(rep, tasks, now, db.settings.currency)),
-    [rep, tasks, now, db.settings.currency],
+    () => JSON.stringify(notificationSpecs(rep, tasks, now, db.settings)),
+    [rep, tasks, now, db.settings],
   )
   useEffect(() => void syncNotifications(JSON.parse(notifKey)), [notifKey])
 
