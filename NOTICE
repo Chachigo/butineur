@@ -1,0 +1,25 @@
+Butineur
+Copyright (C) 2026 Chachigo
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License version 3, as published by
+the Free Software Foundation. See the LICENSE file for the full text.
+
+This product bundles third-party material, each under its own license:
+
+- Phosphor Icons — MIT — Copyright (c) 2020-2021 Phosphor Icons
+  https://phosphoricons.com/
+  The icon set and the subset font shipped in `public/fonts/phosphor.woff2`
+  and `android/app/src/main/res/font/phosphor.ttf`.
+
+- Noto Emoji — Apache License 2.0 — Copyright Google Inc.
+  https://github.com/googlefonts/noto-emoji
+  The bee of the app icon, converted to a VectorDrawable.
+
+- React and React DOM — MIT — Copyright (c) Meta Platforms, Inc. and affiliates.
+- Capacitor and its plugins — MIT — Copyright (c) Ionic
+- idb-keyval — Apache License 2.0 — Copyright (c) Jake Archibald
+- canvas-confetti — ISC — Copyright (c) 2020 Kiril Vatev
+
+The full license text of every npm dependency ships in its own package under
+`node_modules/`.

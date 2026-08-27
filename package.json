@@ -2,6 +2,7 @@
   "name": "butineur",
   "version": "0.6.0-beta",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "vite",

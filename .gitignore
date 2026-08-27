@@ -25,3 +25,6 @@ android/app/src/main/assets/capacitor.plugins.json
 .directory
 *.log
 .todo
+.remarque
+.vscode
+tsconfig.tsbuildinfo

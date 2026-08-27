@@ -6,6 +6,8 @@ L'idée : chaque tâche accomplie rapporte une somme que tu as définie toi-mêm
 Ce n'est pas de l'argent réel — c'est une enveloppe de dépense que tu t'autorises
 ensuite pour tes loisirs. Faire le ménage finance une soirée ciné.
 
+*[Read in English](README.md)*
+
 <p align="center">
   <img src="docs/demo/01-taches.png" width="240" alt="Liste des tâches">
   <img src="docs/demo/04-editeur-serie.png" width="240" alt="Éditeur : simulation du bonus de série">
@@ -81,6 +83,18 @@ d'événements est fait pour ça.
 
 L'interface est en français. Une traduction anglaise est prévue, et l'anglais
 deviendra la langue par défaut.
+
+## Contribuer
+
+Les bugs et les idées passent par les
+[issues](https://github.com/Chachigo/butineur/issues) — voir
+[CONTRIBUTING.md](CONTRIBUTING.md). Butineur est une appli personnelle avec des
+partis pris : ouvre une issue avant d'écrire une pull request. Les gabarits sont
+en anglais, mais tu peux écrire en français, on te répondra en français.
+
+## Licence
+
+[AGPL-3.0-only](LICENSE). Le matériel tiers embarqué est listé dans [NOTICE](NOTICE).
 
 ## Crédits
 
