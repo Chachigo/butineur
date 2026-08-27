@@ -22,6 +22,7 @@ persister un total dérivé est à repenser.
 | `src/store.ts` | état global : `useDB()`, `update()`, persistance idb-keyval débouncée, `migrate()` au chargement |
 | `src/native.ts` | pont widgets/notifs : écrit dans `@capacitor/preferences`, draine les taps |
 | `src/format.ts` | tout l'affichage : montants, dates, libellé de rythme |
+| `src/i18n.tsx` + `src/lang/` | traduction. Chaque langue est typée sur l'anglais : une clé manquante ne compile pas |
 | `src/ui/` | composants. `TaskEditor.tsx` est le gros morceau (700 l.). |
 | `android/…/mobile/*.kt` | les 3 widgets + `Store.kt`, seul code natif |
 
@@ -73,8 +74,11 @@ npm run screenshots  # captures du README, sur des données de démo (dev server
 ## Conventions
 
 - **Commentaires du code en anglais** (dépôt public, cf. `CONTRIBUTING.md`) ; ils
-  disent *pourquoi*, pas *quoi*. L'interface est encore en français, la
-  traduction est en cours.
+  disent *pourquoi*, pas *quoi*.
+- **Aucune chaîne d'interface dans le code** : tout passe par `tr()` de
+  `src/i18n.tsx`, avec sa clé dans `src/lang/en.ts` (la référence) et
+  `src/lang/fr.ts`. `aria-label` compris. La fonction s'appelle `tr` et non `t`,
+  parce que `t` désigne une tâche partout ailleurs.
 - Debug natif : **`Log.e`, jamais `Log.d`** (filtré sur le téléphone de Cléa).
 - Suppression douce (`deletedAt`) partout : la synchro du lot 3 en dépendra.
 - Les raccourcis assumés portent un commentaire `ponytail:` avec leur plafond.

@@ -36,6 +36,7 @@ ensuite pour tes loisirs. Faire le ménage finance une soirée ciné.
   tâches validables sans ouvrir l'appli.
 - **Petites animations** à chaque gain et à chaque dépense, coupées si le système
   demande des animations réduites.
+- **Français et anglais**, selon le téléphone ou forcé dans les réglages.
 
 ## Comment c'est fait
 
@@ -81,8 +82,10 @@ Fonctionnel sur Android. Le serveur self-host optionnel (accès PC au navigateur
 synchronisation téléphone ↔ PC) est conçu mais pas encore écrit : le journal
 d'événements est fait pour ça.
 
-L'interface est en français. Une traduction anglaise est prévue, et l'anglais
-deviendra la langue par défaut.
+L'interface parle français et anglais. Elle suit la langue du téléphone au
+premier lancement, et un sélecteur dans les réglages force l'une ou l'autre.
+Ajouter une langue = un fichier dans `src/lang/` et une ligne — chaque langue est
+typée sur l'anglais, donc une clé manquante fait échouer la compilation.
 
 ## Contribuer
 

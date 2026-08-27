@@ -20,8 +20,7 @@ the kitchen funds a night at the movies.
   <img src="docs/demo/06-historique.png" width="240" alt="History">
 </p>
 
-<p align="center"><em>Screenshots taken on demo data — <code>npm run screenshots</code>. The
-interface is in French for now; see <a href="#status">Status</a>.</em></p>
+<p align="center"><em>Screenshots taken on demo data (in French) — <code>npm run screenshots</code>.</em></p>
 
 ## What it does
 
@@ -38,6 +37,7 @@ interface is in French for now; see <a href="#status">Status</a>.</em></p>
   tasks you can complete without opening the app.
 - **Small animations** on every gain and every purchase, dropped when the system
   asks for reduced motion.
+- **English and French**, following the phone or forced in the settings.
 
 ## How it is built
 
@@ -81,8 +81,10 @@ Working on Android. The optional self-hosted server (browser access from a
 desktop, and phone ↔ desktop sync) is designed but not written yet: the event log
 was built for it.
 
-The interface is in French. An English translation is planned, and English will
-become the default language.
+The interface speaks English and French. It follows the phone's language on first
+launch, and a picker in the settings forces either one. Adding a language is one
+file in `src/lang/` plus one line — every language is typed on English, so a
+missing key fails the build.
 
 ## Contributing
 
