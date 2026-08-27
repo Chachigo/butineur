@@ -1,0 +1,46 @@
+name: Bug report
+description: Something behaves differently than it should
+labels: [bug]
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown at the bottom of the Settings screen.
+      placeholder: 0.6.0-beta
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version and phone model
+      placeholder: Android 14, Pixel 7
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshot, error message, stack trace — anything helps.
