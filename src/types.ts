@@ -50,13 +50,13 @@ export type Task = {
   /**
    * Parent of a subtask. One level only, no sub-subtask.
    *
-   * A subtask is a task stripped of three things: rhythm, deadline and
-   * reminder. It borrows them from its parent — the parent's cycle says when it
-   * comes back. It keeps its own reward, so it is completed like any other task
-   * and `replay()` has nothing new to learn.
+   * A bouquet is one-shot: a parent cannot repeat, so neither can its subtasks.
+   * A subtask is therefore a task stripped of rhythm, deadline and reminder —
+   * a name, an amount, and a counter if it needs one. It keeps its own reward,
+   * so it is completed like any other task and `replay()` has nothing to learn.
    *
-   * Only set at creation: making an existing task a subtask would change the
-   * reference cycle of a history already written.
+   * A parent is not completed by hand: the last subtask completes it, and its
+   * own reward is the bonus for the full bouquet.
    */
   parentId?: string
   archived: boolean

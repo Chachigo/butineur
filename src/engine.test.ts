@@ -5,8 +5,8 @@ import {
   childrenOf,
   isAvailable,
   isDone,
+  subtaskDone,
   subtaskProgress,
-  withParents,
   dayNum,
   daysUntilWorthless,
   dueTsFor,
@@ -830,7 +830,8 @@ describe('debug workshop', () => {
 })
 
 describe('subtasks', () => {
-  const parent = task({ id: 'p', repeat: { everyDays: 7, weekday: 0 }, reward: 20 })
+  // A bouquet is one-shot: neither the parent nor its subtasks repeat.
+  const parent = task({ id: 'p', reward: 20 })
   const sub = (id: string): Task => ({ ...task({ reward: 5 }), id, parentId: 'p' })
   const all = [parent, sub('a'), sub('b')]
 
@@ -842,46 +843,59 @@ describe('subtasks', () => {
     baseReward: 5,
     penaltyFactor: 1,
     penaltyFlat: 0,
-    repeat: parent.repeat,
   })
 
-  it('borrows the parent rhythm, since it has none of its own', () => {
-    const resolved = withParents(all)
-    expect(resolved.find((t) => t.id === 'a')!.repeat).toEqual(parent.repeat)
-    expect(resolved.find((t) => t.id === 'p')!.repeat).toEqual(parent.repeat)
+  it('gathers the children of a parent, deleted ones left out', () => {
+    expect(childrenOf('p', all).map((t) => t.id)).toEqual(['a', 'b'])
+    const gone = [...all.slice(0, 2), { ...sub('b'), deletedAt: 1 }]
+    expect(childrenOf('p', gone).map((t) => t.id)).toEqual(['a'])
   })
 
-  it('is only completable again on the parent cycle', () => {
-    const resolved = withParents(all)
-    const a = resolved.find((t) => t.id === 'a')!
-    const rep = replay([doneSub('a', 0)], resolved, at(0))
-    // Monday, done: nothing to do again before the cycle that opens on the 12th.
-    expect(isAvailable(a, rep.perTask.get('a'), at(3))).toBe(false)
-    expect(isAvailable(a, rep.perTask.get('a'), at(7))).toBe(true)
+  it('counts the progress of the bouquet', () => {
+    const none = replay([], all, at(0))
+    expect(subtaskProgress('p', all, none, at(0))).toEqual({ done: 0, total: 2 })
+    const one = replay([doneSub('a', 0)], all, at(0))
+    expect(subtaskProgress('p', all, one, at(0))).toEqual({ done: 1, total: 2 })
+    const both = replay([doneSub('a', 0), doneSub('b', 0)], all, at(0))
+    expect(subtaskProgress('p', all, both, at(0))).toEqual({ done: 2, total: 2 })
   })
 
-  it('counts the progress of the bouquet on the cycle in progress', () => {
-    const resolved = withParents(all)
-    expect(childrenOf('p', resolved)).toHaveLength(2)
-    const none = replay([], resolved, at(0))
-    expect(subtaskProgress('p', resolved, none, at(0))).toEqual({ done: 0, total: 2 })
-    const one = replay([doneSub('a', 0)], resolved, at(0))
-    expect(subtaskProgress('p', resolved, one, at(0))).toEqual({ done: 1, total: 2 })
+  it('counts a counter subtask done only when it reaches its target', () => {
+    const compteur = { ...sub('c'), counter: { target: 2, tiers: [] } }
+    const bouquet = [parent, compteur]
+    const un = replay([count(0)].map((e) => ({ ...e, taskId: 'c' })), bouquet, at(0))
+    expect(subtaskDone(compteur, un.perTask.get('c'), at(0))).toBe(false)
+    expect(subtaskProgress('p', bouquet, un, at(0))).toEqual({ done: 0, total: 1 })
+
+    const deux = replay([count(0), count(0)].map((e) => ({ ...e, taskId: 'c' })), bouquet, at(0))
+    expect(subtaskDone(compteur, deux.perTask.get('c'), at(0))).toBe(true)
+    expect(subtaskProgress('p', bouquet, deux, at(0))).toEqual({ done: 1, total: 1 })
+  })
+
+  it('does not offer a done subtask again: the bouquet happens once', () => {
+    const rep = replay([doneSub('a', 0)], all, at(0))
+    expect(isAvailable(all[1], rep.perTask.get('a'), at(0))).toBe(false)
+    expect(isAvailable(all[1], rep.perTask.get('a'), at(30))).toBe(false)
   })
 
   it('pays each subtask on its own, plus the parent bonus', () => {
-    const resolved = withParents(all)
     const parentDone: Event = {
       id: 'pp', ts: at(0), kind: 'complete', taskId: 'p',
-      baseReward: 20, penaltyFactor: 1, penaltyFlat: 0, repeat: parent.repeat,
+      baseReward: 20, penaltyFactor: 1, penaltyFlat: 0,
     }
-    const { balance } = replay([doneSub('a', 0), doneSub('b', 0), parentDone], resolved, at(0))
+    const { balance } = replay([doneSub('a', 0), doneSub('b', 0), parentDone], all, at(0))
     expect(balance).toBe(30)
   })
 
-  it('leaves a subtask alone when the parent has no rhythm', () => {
-    const orphan = withParents([task({ id: 'p', repeat: null }), sub('a')])
-    expect(orphan.find((t) => t.id === 'a')!.repeat).toBeNull()
+  it('clears the whole bouquet the day after, like any one-shot task', () => {
+    const parentDone: Event = {
+      id: 'pp', ts: at(0), kind: 'complete', taskId: 'p',
+      baseReward: 20, penaltyFactor: 1, penaltyFlat: 0,
+    }
+    const evts = [doneSub('a', 0), doneSub('b', 0), parentDone]
+    const rep = replay(evts, all, at(1))
+    expect(staleOneShots(all, rep, at(0)).sort()).toEqual([])
+    expect(staleOneShots(all, rep, at(1)).sort()).toEqual(['a', 'b', 'p'])
   })
 })
 

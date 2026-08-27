@@ -1,7 +1,16 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import { Preferences } from '@capacitor/preferences'
-import { dayNum, dueTsFor, isAvailable, previewReward, upcomingDues, type Replay } from './engine'
+import {
+  childrenOf,
+  dayNum,
+  dueTsFor,
+  isAvailable,
+  previewReward,
+  subtaskProgress,
+  upcomingDues,
+  type Replay,
+} from './engine'
 import { fmt } from './format'
 import { tr } from './i18n'
 import type { Pending, Settings, Task, TaskState } from './types'
@@ -53,8 +62,11 @@ export type WidgetPayload = {
     name: string
     icon: string
     iconPh: boolean
-    /** What the button does: increment, or complete. */
-    kind: 'count' | 'complete'
+    /**
+     * What the button does: increment, complete, or nothing — a `parent` row is
+     * shown, never tapped: its subtasks are what complete it.
+     */
+    kind: 'count' | 'complete' | 'parent'
     /** Button label, already formatted: "+10", "3/8", "✓". */
     label: string
     /**
@@ -64,8 +76,10 @@ export type WidgetPayload = {
      */
     gain: number
     done: boolean
-    /** Base des identifiants de notification, pour que le widget puisse les couper. */
+    /** Base of the notification ids, so the widget can cancel them. */
     notifBase: number
+    /** A subtask, drawn indented under the parent that precedes it. */
+    sub?: boolean
   }[]
 }
 
@@ -103,7 +117,8 @@ export function widgetPayload(
   now: number,
 ): WidgetPayload {
   const day = dayNum(now, settings.dayStart)
-  const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template && !t.parentId)
+  const visible = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template)
+  const live = visible.filter((t) => !t.parentId)
   const { currency } = settings
 
   return {
@@ -126,10 +141,28 @@ export function widgetPayload(
         gains: countGains(t, rep),
         notifBase: notifId(t.id),
       })),
-    todo: live
-      .filter((t) => isAvailable(t, rep.perTask.get(t.id), now))
-      .map((t) => {
+    todo: withChildren(
+      live.filter((t) => isAvailable(t, rep.perTask.get(t.id), now)),
+      visible,
+      rep,
+      now,
+    )
+      .map(({ t, sub }) => {
         const s = rep.perTask.get(t.id)
+        if (childrenOf(t.id, visible).length > 0) {
+          const { done, total } = subtaskProgress(t.id, visible, rep, now)
+          return {
+            id: t.id,
+            name: t.name,
+            ...icon(t.icon),
+            kind: 'parent' as const,
+            label: `${done}/${total}`,
+            gain: 0,
+            done: false,
+            notifBase: notifId(t.id),
+            sub,
+          }
+        }
         if (t.counter) {
           const count = s?.count ?? 0
           const done = count >= t.counter.target
@@ -143,6 +176,7 @@ export function widgetPayload(
             gain: 0,
             done,
             notifBase: notifId(t.id),
+            sub,
           }
         }
         return {
@@ -154,16 +188,33 @@ export function widgetPayload(
           gain: previewReward(t, s, now),
           done: false,
           notifBase: notifId(t.id),
+          sub,
         }
-      })
-      // What is still to do first, most urgent on top; what is done at the bottom.
-      .sort((a, b) => {
-        if (a.done !== b.done) return a.done ? 1 : -1
-        const ta = live.find((t) => t.id === a.id)!
-        const tb = live.find((t) => t.id === b.id)!
-        return due(ta, rep, now) - due(tb, rep, now)
       }),
   }
+}
+
+/**
+ * Sorts the roots by urgency, then slips each parent's remaining subtasks right
+ * after it.
+ *
+ * The sort happens before the children are inserted, otherwise a subtask would
+ * drift away from the parent that gives it its meaning — the widget has no
+ * chevron to fold, the indent is all it has to say who belongs to whom.
+ */
+function withChildren(
+  roots: Task[],
+  all: Task[],
+  rep: Replay,
+  now: number,
+): { t: Task; sub?: boolean }[] {
+  const sorted = [...roots].sort((a, b) => due(a, rep, now) - due(b, rep, now))
+  return sorted.flatMap((t) => [
+    { t },
+    ...childrenOf(t.id, all)
+      .filter((c) => isAvailable(c, rep.perTask.get(c.id), now))
+      .map((c) => ({ t: c, sub: true })),
+  ])
 }
 
 const due = (t: Task, rep: Replay, now: number) =>

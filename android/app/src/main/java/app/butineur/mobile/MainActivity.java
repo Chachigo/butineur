@@ -9,20 +9,20 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Doit précéder super.onCreate : le bridge instancie les plugins au démarrage.
+        // Must come before super.onCreate: the bridge instantiates plugins on start.
         registerPlugin(WidgetBridge.class);
         super.onCreate(savedInstanceState);
         closePanelsOnBack();
     }
 
     /**
-     * Capacitor 8 ne fait rien du bouton « retour » : l'activité se termine, et
-     * un panneau ouvert dans la WebView se refermait en quittant l'appli.
+     * Capacitor 8 does nothing with the "back" button: the activity finishes, and
+     * a panel open in the WebView used to close by quitting the app.
      *
-     * On demande au web s'il a quelque chose à fermer plutôt que de le déduire
-     * de `WebView.canGoBack()`, qui ignore les entrées d'historique créées par
-     * `pushState` dans ce montage. Le web sait quels panneaux sont ouverts,
-     * c'est donc lui qui répond.
+     * We ask the web side whether it has something to close rather than infer it
+     * from `WebView.canGoBack()`, which ignores the history entries created by
+     * `pushState` in this setup. The web side knows which panels are open, so it
+     * is the one that answers.
      */
     private void closePanelsOnBack() {
         OnBackPressedCallback callback = new OnBackPressedCallback(true) {
@@ -44,7 +44,7 @@ public class MainActivity extends BridgeActivity {
         getOnBackPressedDispatcher().addCallback(this, callback);
     }
 
-    /** Rien à fermer : on rend la main au comportement système. */
+    /** Nothing to close: hand back to the system behaviour. */
     private void quit(OnBackPressedCallback callback) {
         callback.setEnabled(false);
         getOnBackPressedDispatcher().onBackPressed();

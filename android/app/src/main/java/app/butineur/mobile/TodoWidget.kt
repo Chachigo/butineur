@@ -36,7 +36,10 @@ class TodoWidget : AppWidgetProvider() {
             return
         }
 
+        // A parent row sends an empty id: it is completed by its subtasks, never
+        // by a tap.
         val taskId = intent.getStringExtra(EXTRA_TASK) ?: return
+        if (taskId.isEmpty()) return
         // A counter already at its target: nothing left to add, open the app.
         if (intent.getBooleanExtra(EXTRA_DONE, false)) return
 

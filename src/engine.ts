@@ -577,33 +577,32 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
   return { balance, perTask, entries: kept }
 }
 
-/**
- * A subtask resolved against its parent: it has no rhythm of its own, it borrows
- * the parent's cycle.
- *
- * Applied once, before the replay, rather than threading a parent lookup through
- * `cycleFor`, `counterPeriod` and `isAvailable` — they all read `repeat`, so
- * giving them the right `repeat` is enough. The freeze still works: the tap
- * writes the resolved rhythm onto the event, so editing the parent later does
- * not rewrite what the subtask already earned.
- */
-export function withParents(tasks: Task[]): Task[] {
-  const byId = new Map(tasks.map((t) => [t.id, t]))
-  return tasks.map((t) =>
-    t.parentId ? { ...t, repeat: byId.get(t.parentId)?.repeat ?? null } : t,
-  )
-}
-
 /** The subtasks of a parent, in creation order, deleted ones left out. */
 export const childrenOf = (parentId: string, tasks: Task[]): Task[] =>
   tasks.filter((t) => t.parentId === parentId && !t.deletedAt)
 
 /**
- * How many subtasks of a parent are done for the cycle in progress.
+ * Is this subtask done?
  *
- * "Done" is `isAvailable` read backwards: a subtask that cannot be completed
- * again is one that has been. It is the same source of truth as the button in
- * the list, so the count and the button can never disagree.
+ * A counter is done when it reaches its target — `isAvailable` always says yes
+ * for one, since one more tap is always possible. Anything else is
+ * `isAvailable` read backwards: what cannot be completed again has been.
+ */
+export function subtaskDone(
+  task: Task,
+  s: TaskState | undefined,
+  now = Date.now(),
+  dayStart = 0,
+): boolean {
+  if (task.counter) return (s?.count ?? 0) >= task.counter.target
+  return !isAvailable(task, s, now, dayStart)
+}
+
+/**
+ * How many subtasks of a parent are done.
+ *
+ * Same source of truth as the button in the list, so the count in the chevron
+ * and what the row offers can never disagree.
  */
 export function subtaskProgress(
   parentId: string,
@@ -613,7 +612,7 @@ export function subtaskProgress(
   dayStart = 0,
 ): { done: number; total: number } {
   const subs = childrenOf(parentId, tasks)
-  const done = subs.filter((t) => !isAvailable(t, rep.perTask.get(t.id), now, dayStart)).length
+  const done = subs.filter((t) => subtaskDone(t, rep.perTask.get(t.id), now, dayStart)).length
   return { done, total: subs.length }
 }
 

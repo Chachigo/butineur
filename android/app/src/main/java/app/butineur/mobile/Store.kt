@@ -31,7 +31,7 @@ data class TodoTask(
     val name: String,
     val icon: String,
     val iconPh: Boolean,
-    /** "count" or "complete": what the button triggers. */
+    /** "count", "complete", or "parent" — a parent row is shown, never tapped. */
     val kind: String,
     /** Already formatted by the web side — the native side computes no amount. */
     val label: String,
@@ -40,6 +40,8 @@ data class TodoTask(
     val done: Boolean,
     /** Base of this task's notification ids. */
     val notifBase: Int,
+    /** A subtask: drawn indented under the parent that precedes it. */
+    val sub: Boolean,
 )
 
 /**
@@ -149,6 +151,7 @@ object Store {
                     gain = o.optDouble("gain", 0.0),
                     done = o.optBoolean("done"),
                     notifBase = o.optInt("notifBase"),
+                    sub = o.optBoolean("sub"),
                 )
             }
         }.getOrDefault(emptyList())

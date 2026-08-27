@@ -6,6 +6,7 @@ import {
   isAvailable,
   lastCompletion,
   previewReward,
+  subtaskDone,
   subtaskProgress,
   type Replay,
 } from '../engine'
@@ -236,24 +237,39 @@ function TaskRow({
     }
   }
 
+  /**
+   * The bouquet follows its subtasks, both ways: the last one down completes the
+   * parent, and taking one back undoes it. Called by the completion button and
+   * by the counter's +/-, so the two paths cannot drift apart.
+   *
+   * ponytail: the parent's completion is written, not derived at replay time.
+   * At batch 3, two devices each ticking the last box would complete the parent
+   * twice. Deriving it would be fairer but grows the engine, so not before it is
+   * needed.
+   */
+  const majParent = (fait: boolean, ts: number) => {
+    if (!task.parentId) return
+    const parent = tasks.find((p) => p.id === task.parentId)
+    if (!parent) return
+    const { done, total } = subtaskProgress(task.parentId, tasks, rep, ts, dayStart)
+    // `done` still counts this subtask as it was before the tap.
+    const etait = subtaskDone(task, s, ts, dayStart)
+    const apres = done - (etait ? 1 : 0) + (fait ? 1 : 0)
+
+    if (fait && total > 0 && apres >= total) addEvent(completionEvent(parent, ts))
+    if (!fait && apres < total) {
+      const derniere = lastCompletion(events, parent.id)
+      if (derniere) addEvent({ id: uid(), ts, kind: 'undo', targetId: derniere.id })
+    }
+  }
+
   const complete = (e: MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget
     onValider()
     const ts = clock()
     const gain = previewReward(task, s, ts)
     addEvent(completionEvent(task, ts))
-    // Last subtask down: the parent falls with it, in the same gesture. One
-    // rule, one place — the count in the chevron reads the same `isAvailable`.
-    //
-    // ponytail: the parent's completion is written, not derived at replay time.
-    // At batch 3, two devices each ticking the last box would complete the
-    // parent twice. Deriving it would be fairer but grows the engine, so not
-    // before it is needed.
-    if (task.parentId) {
-      const { done, total } = subtaskProgress(task.parentId, tasks, rep, ts, dayStart)
-      const parent = tasks.find((p) => p.id === task.parentId)
-      if (parent && total > 0 && done + 1 >= total) addEvent(completionEvent(parent, ts))
-    }
+    majParent(true, ts)
     coinFly(el, balanceRef.current, `+${fmt(gain)}`)
     // Confetti only when a streak tier is crossed.
     const next = streak + 1
@@ -265,13 +281,9 @@ function TaskRow({
     const target = lastCompletion(events, task.id)
     if (!target) return
     onValider()
-    addEvent({ id: uid(), ts: clock(), kind: 'undo', targetId: target.id })
-    // Undoing a subtask undoes the parent it had just completed: the bouquet is
-    // no longer complete. Two `undo` events, the log stays append-only.
-    if (task.parentId) {
-      const parent = lastCompletion(events, task.parentId)
-      if (parent) addEvent({ id: uid(), ts: clock(), kind: 'undo', targetId: parent.id })
-    }
+    const ts = clock()
+    addEvent({ id: uid(), ts, kind: 'undo', targetId: target.id })
+    majParent(false, ts)
     coinFly(e.currentTarget, balanceRef.current, `−${fmt(target.baseReward)}`, true)
     pop(balanceRef.current, true)
   }
@@ -289,9 +301,10 @@ function TaskRow({
       tiers.filter((t) => t.at <= n).reduce((a, t) => a + t.bonus, 0)
     const gain = crossed(after) - crossed(before)
 
+    const ts = clock()
     addEvent({
       id: uid(),
-      ts: clock(),
+      ts,
       kind: 'count',
       taskId: task.id,
       delta,
@@ -299,6 +312,8 @@ function TaskRow({
       counter: task.counter,
       repeat: task.repeat,
     })
+    // Reaching the target is what completes a counter — the bouquet follows.
+    if (task.parentId) majParent(after >= target, ts)
     if (gain !== 0) {
       coinFly(el, balanceRef.current, `${gain > 0 ? '+' : '−'}${fmt(Math.abs(gain))}`, gain < 0)
       if (gain > 0) burst(el)
@@ -395,6 +410,16 @@ function TaskRow({
             {fmt(task.reward)} {currency}
           </span>
         </div>
+      ) : sousTaches.total > 0 ? (
+        /*
+         * A parent is not completed by hand: the last subtask completes it. Its
+         * amount is shown, not offered — a button that must not be pressed is a
+         * trap, and disabling it would read as "unavailable" rather than "it is
+         * not yours to press".
+         */
+        <span className={`task__go task__go--parent${available ? '' : ' task__go--parent-done'}`}>
+          {available ? `+${fmt(task.reward)} ${currency}` : '✓'}
+        </span>
       ) : (
         <button
           className={available ? 'task__go' : 'task__go task__go--undo'}

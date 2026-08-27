@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import {
+  childrenOf,
   daysUntilWorthless,
   dueTsFor,
   rewardAfterDays,
@@ -18,7 +19,7 @@ import {
   weekdayName,
 } from '../format'
 import { rich, tr, trn, type Key } from '../i18n'
-import { deleteTask, saveTask, uid, useDB } from '../store'
+import { deleteTask, saveTaskTree, uid, useDB } from '../store'
 import type { Penalty, Task, TaskState, Tier } from '../types'
 import IconPicker from './IconPicker'
 import NumberInput from './NumberInput'
@@ -149,9 +150,19 @@ export default function TaskEditor({
   const isNew = !db.tasks.some((x) => x.id === task.id)
   const patch = (p: Partial<Task>) => setT((prev) => ({ ...prev, ...p }))
   const cur = db.settings.currency
-  // One level only: a task that is already a subtask cannot become a parent.
+
+  // The subtasks are edited here, with their parent, and saved with it. They
+  // only reach the database on save — cancelling has to leave nothing behind.
+  const [enfants, setEnfants] = useState(() => childrenOf(task.id, db.tasks))
+  const aDesEnfants = enfants.length > 0
+
+  /*
+   * A bouquet happens once: a parent does not repeat, so a subtask has neither
+   * rhythm nor deadline. Only tasks that could host one are offered, and a task
+   * that already hosts subtasks cannot become one itself.
+   */
   const parents = db.tasks.filter(
-    (x) => !x.deletedAt && !x.template && !x.parentId && x.id !== t.id,
+    (x) => !x.deletedAt && !x.template && !x.parentId && !x.repeat && x.id !== t.id,
   )
 
   useCloseOnBack(true, onClose)
@@ -162,7 +173,10 @@ export default function TaskEditor({
 
   const save = () => {
     if (!canSave) return
-    saveTask({ ...t, name: t.name.trim() })
+    saveTaskTree(
+      { ...t, name: t.name.trim() },
+      enfants.filter((e) => e.name.trim()).map((e) => ({ ...e, name: e.name.trim() })),
+    )
     onClose()
   }
 
@@ -193,12 +207,12 @@ export default function TaskEditor({
           </div>
 
           {/*
-            A subtask borrows its parent's rhythm, deadline and reminder — the
-            three blocks below simply do not exist for it. Only offered at
-            creation: attaching an existing task would change the reference cycle
-            of a history already written.
+            A subtask has neither rhythm, deadline nor reminder — the blocks
+            below simply do not exist for it. Attaching is possible after the
+            fact: since a bouquet never repeats, there is no reference cycle to
+            shift under a history already written.
           */}
-          {isNew && parents.length > 0 && (
+          {!aDesEnfants && parents.length > 0 && (
             <div className="row">
               <span className="row__label">{tr('ed.parent')}</span>
               <select
@@ -225,7 +239,7 @@ export default function TaskEditor({
               </select>
             </div>
           )}
-          {t.parentId && <p className="hint">{tr(isNew ? 'ed.parentHint' : 'ed.parentLocked')}</p>}
+          {aDesEnfants && !t.parentId && <p className="hint">{tr('ed.isParent')}</p>}
 
           <label className="field">
             <span className="field__label">{tr('ed.reward')}</span>
@@ -243,6 +257,27 @@ export default function TaskEditor({
           {!t.parentId && (
             <>
           <Section
+            title={tr('ed.subtasks')}
+            hint={tr('ed.subtasksHint')}
+            on={aDesEnfants}
+            disabled={!!t.repeat}
+            disabledHint={tr('ed.subNoRepeat')}
+            onToggle={(v) =>
+              setEnfants(v ? [blankChild(t.id, db.settings.defaultReward)] : [])
+            }
+          >
+            <SubtaskEditor
+              enfants={enfants}
+              onChange={setEnfants}
+              currency={cur}
+              onAdd={() =>
+                setEnfants([...enfants, blankChild(t.id, db.settings.defaultReward)])
+              }
+            />
+            <p className="hint">{tr('ed.parentBonus')}</p>
+          </Section>
+
+          <Section
             title={tr('ed.quick')}
             hint={tr('ed.quickHint')}
             on={!!t.template}
@@ -255,6 +290,8 @@ export default function TaskEditor({
           <Section
             title={tr('ed.repeat')}
             on={!!t.repeat}
+            disabled={aDesEnfants}
+            disabledHint={tr('ed.repeatNoSub')}
             onToggle={(v) =>
               patch({
                 repeat: v ? { everyDays: 1 } : null,
@@ -722,6 +759,88 @@ export default function TaskEditor({
           </button>
         </footer>
       </div>
+    </div>
+  )
+}
+
+const blankChild = (parentId: string, reward: number): Task => ({
+  ...blankTask(reward),
+  parentId,
+})
+
+/**
+ * One line per subtask: a name, an amount, and a counter when the thing is
+ * counted rather than ticked. No unit — the line is already narrow, and "3/8"
+ * says enough under a parent that names the bouquet.
+ */
+function SubtaskEditor({
+  enfants,
+  onChange,
+  currency,
+  onAdd,
+}: {
+  enfants: Task[]
+  onChange: (e: Task[]) => void
+  currency: string
+  onAdd: () => void
+}) {
+  const set = (i: number, p: Partial<Task>) =>
+    onChange(enfants.map((e, j) => (j === i ? { ...e, ...p } : e)))
+
+  return (
+    <div className="subs">
+      {enfants.map((e, i) => (
+        <div className="sub" key={e.id}>
+          <div className="sub__row">
+            <input
+              className="input input--sm sub__name"
+              value={e.name}
+              onChange={(ev) => set(i, { name: ev.target.value })}
+              placeholder={tr('ed.subtaskName')}
+              aria-label={tr('ed.subtaskName')}
+            />
+            <NumberInput
+              className="input input--xs"
+              value={e.reward}
+              min={0}
+              onChange={(reward) => set(i, { reward })}
+              aria-label={tr('ed.reward')}
+            />
+            <span className="field__suffix">{currency}</span>
+            <button
+              className="tier__del"
+              onClick={() => onChange(enfants.filter((_, j) => j !== i))}
+              aria-label={tr('ed.subtaskRemove')}
+            >
+              ✕
+            </button>
+          </div>
+          <div className="sub__row">
+            <label className="row row--check sub__count">
+              <input
+                type="checkbox"
+                checked={!!e.counter}
+                onChange={(ev) =>
+                  set(i, { counter: ev.target.checked ? { target: 3, tiers: [] } : null })
+                }
+              />
+              <span className="row__label">{tr('ed.subtaskCounter')}</span>
+            </label>
+            {e.counter && (
+              <NumberInput
+                className="input input--xs"
+                value={e.counter.target}
+                min={1}
+                onChange={(target) => set(i, { counter: { ...e.counter!, target } })}
+                aria-label={tr('ed.target')}
+              />
+            )}
+          </div>
+        </div>
+      ))}
+      <button className="link" onClick={onAdd}>
+        {tr('ed.addSubtask')}
+      </button>
     </div>
   )
 }

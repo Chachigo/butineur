@@ -301,9 +301,18 @@ const fr: Record<keyof typeof en, string> = {
   'sub.expand': 'Afficher les sous-tâches',
   'sub.collapse': 'Masquer les sous-tâches',
   'ed.parent': 'Sous-tâche de',
-  'ed.parentHint': 'Elle suit le rythme du parent',
   'ed.parentNone': 'aucun parent',
-  'ed.parentLocked': 'Choisi à la création seulement',
+  // --- éditeur de sous-tâches ---
+  'ed.subtasks': 'Sous-tâches',
+  'ed.subtasksHint': 'Les valider toutes valide cette tâche',
+  'ed.subtaskName': 'Nom de la sous-tâche',
+  'ed.addSubtask': '+ ajouter une sous-tâche',
+  'ed.subtaskRemove': 'Retirer cette sous-tâche',
+  'ed.subtaskCounter': 'La compter',
+  'ed.parentBonus': 'Bonus du bouquet complet — les sous-tâches paient chacune la sienne.',
+  'ed.repeatNoSub': 'Une tâche à sous-tâches ne se répète pas',
+  'ed.subNoRepeat': 'Pas sur une tâche répétitive',
+  'ed.isParent': 'Une tâche à sous-tâches ne peut pas en être une',
 }
 
 export default fr

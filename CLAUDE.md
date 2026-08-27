@@ -56,22 +56,27 @@ tous les deux, ils ne peuvent donc pas se contredire.
 
 ## Sous-tâches
 
-Un seul niveau : `parentId` sur `Task`. Une sous-tâche est une tâche à qui on
-retire **rythme, échéance et rappel** — elle les emprunte au parent, et c'est le
-cycle du parent qui dit quand elle revient. Elle garde sa récompense, donc elle
-se valide comme n'importe quelle tâche et `replay()` n'a rien appris de neuf.
+Un seul niveau : `parentId` sur `Task`. **Un bouquet arrive une fois** — un
+parent ne se répète pas, donc ses sous-tâches non plus. Une sous-tâche est une
+tâche à qui on retire rythme, échéance et rappel : un nom, un montant, et un
+compteur si besoin (sans unité). Elle garde sa récompense, donc elle se valide
+comme n'importe quelle tâche et `replay()` n'a rien appris de neuf.
 
-- **`withParents()` résout l'emprunt une fois**, avant le rejeu, plutôt que de
-  faire descendre une recherche de parent dans `cycleFor`, `counterPeriod` et
-  `isAvailable` — les trois lisent `repeat`, leur donner le bon suffit.
-- **Le rattachement ne se fait qu'à la création** : faire d'une tâche existante
-  une sous-tâche changerait le cycle de référence d'un historique déjà écrit.
-- **La dernière sous-tâche valide le parent** dans la foulée, et l'annuler
-  annule les deux. Le compte du chevron lit le même `isAvailable` que le bouton,
-  ils ne peuvent donc pas diverger. `ponytail:` la validation du parent est
-  écrite, pas dérivée — voir le commentaire dans `TaskList`.
-- Le pli est un **état d'écran**, jamais persisté. Les sous-tâches n'apparaissent
-  ni dans les widgets ni dans la barre de tâches rapides : le parent est l'entrée.
+- **Un parent ne se valide pas à la main** : son montant s'affiche dans un
+  encadré accentué, jamais dans un bouton. Ce sont ses sous-tâches qui le paient,
+  et sa propre récompense est le bonus du bouquet complet.
+- **`majParent()` dans `TaskList` est la seule règle de cascade**, appelée par la
+  validation, l'annulation et le +/- d'un compteur — les trois chemins ne peuvent
+  pas diverger. `ponytail:` la validation du parent est écrite, pas dérivée au
+  rejeu ; voir le commentaire sur place.
+- **`subtaskDone()` fait autorité sur « c'est fait »** : un compteur est fait à
+  son objectif, le reste, c'est `isAvailable` à l'envers. Le n/N du chevron et ce
+  que la ligne propose sortent de la même fonction.
+- Les sous-tâches s'éditent **dans l'éditeur du parent** (`saveTaskTree` les
+  enregistre d'un bloc), et une tâche existante peut être rattachée après coup —
+  sans cycle de référence, il n'y a rien à décaler.
+- Le pli est un **état d'écran**, jamais persisté. Le widget liste, lui, n'a pas
+  de chevron : les sous-tâches y sont à plat, en retrait sous leur parent.
 
 ## Widgets
 

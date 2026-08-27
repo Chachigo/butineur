@@ -58,9 +58,17 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
         )
         v.setTextViewText(R.id.row_name, t.name)
         v.setTextViewText(R.id.row_go, label)
+        // A subtask hangs under the parent above it: the widget has no chevron,
+        // the indent is the only thing that says who belongs to whom.
+        v.setViewPadding(R.id.row_root, if (t.sub) 34 else 0, 0, 0, 0)
 
         val accent = Store.accent(ctx)
-        if (done) {
+        if (t.kind == "parent") {
+            // Shown, never tapped: its subtasks are what complete it.
+            v.setInt(R.id.row_go, "setBackgroundResource", R.drawable.widget_chip)
+            v.tint(R.id.row_go, ctx.getColor(R.color.widget_panel))
+            v.setTextColor(R.id.row_go, accent)
+        } else if (done) {
             v.setInt(R.id.row_go, "setBackgroundResource", R.drawable.widget_chip)
             v.tint(R.id.row_go, ctx.getColor(R.color.widget_panel))
             v.setTextColor(R.id.row_go, accent)
@@ -71,11 +79,12 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
         }
 
         // The PendingIntent is carried by the widget; each row only supplies its
-        // own extras. That is the mechanism RemoteViews imposes.
+        // own extras. That is the mechanism RemoteViews imposes. A parent row
+        // sends an empty intent — nothing to trigger, and tapping it opens the app.
         v.setOnClickFillInIntent(
             R.id.row_root,
             Intent()
-                .putExtra(TodoWidget.EXTRA_TASK, t.id)
+                .putExtra(TodoWidget.EXTRA_TASK, if (t.kind == "parent") "" else t.id)
                 .putExtra(TodoWidget.EXTRA_KIND, t.kind)
                 .putExtra(TodoWidget.EXTRA_DONE, done),
         )

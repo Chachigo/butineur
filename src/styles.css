@@ -1,4 +1,4 @@
-/* Même police que les widgets Android (android/app/src/main/res/font). */
+/* Same font as the Android widgets (android/app/src/main/res/font). */
 @font-face {
   font-family: 'Phosphor';
   src: url('/fonts/phosphor.woff2') format('woff2');
@@ -6,9 +6,9 @@
 }
 
 /*
- * Duotone : deux glyphes à la même place, le fond puis le détail. Le `-1em`
- * ramène le second sur le premier — c'est la technique de Phosphor lui-même,
- * la police n'a pas de glyphe bicolore.
+ * Duotone: two glyphs at the same spot, background then detail. The `-1em`
+ * brings the second back onto the first — that is Phosphor's own technique, the
+ * font has no two-tone glyph.
  */
 .ph-glyph {
   font-family: 'Phosphor';
@@ -40,9 +40,9 @@
   color-scheme: dark;
 
   /*
-   * Capacitor 8 injecte `--safe-area-inset-*` dans la WebView (SystemBars,
-   * insetsHandling: css). `env()` seul ne suffit pas sous Android : les
-   * fenêtres passaient sous les boutons de navigation.
+   * Capacitor 8 injects `--safe-area-inset-*` into the WebView (SystemBars,
+   * insetsHandling: css). `env()` alone is not enough on Android: windows slid
+   * under the navigation buttons.
    */
   --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
@@ -86,8 +86,8 @@ button:disabled {
 }
 
 /*
- * Le contenu défile sous les barres système : un simple padding ne suffit pas,
- * il ne fait que décaler le départ. Ces bandeaux opaques les masquent.
+ * Content scrolls under the system bars: plain padding is not enough, it only
+ * shifts where things start. These opaque strips hide them.
  */
 body::before,
 body::after {
@@ -110,7 +110,7 @@ body::after {
   height: var(--sab);
 }
 
-/* --- solde --- */
+/* --- balance --- */
 .balance {
   padding: 28px 20px 20px;
   text-align: center;
@@ -142,7 +142,7 @@ body::after {
   letter-spacing: 0.12em;
 }
 
-/* --- onglets --- */
+/* --- tabs --- */
 .tabs {
   display: flex;
   gap: 6px;
@@ -176,7 +176,7 @@ body::after {
   padding: 0 16px;
 }
 
-/* --- listes --- */
+/* --- lists --- */
 .list {
   list-style: none;
   margin: 0;
@@ -208,7 +208,7 @@ body::after {
   background: var(--panel-2);
 }
 
-/* Le chevron et le n/N du parent, à gauche de la ligne. */
+/* The parent's chevron and n/N, at the left of the row. */
 .task__fold {
   display: flex;
   flex-direction: column;
@@ -244,7 +244,7 @@ body::after {
   box-shadow: inset 3px 0 0 var(--bad);
 }
 
-/* --- sélection multiple --- */
+/* --- multi-selection --- */
 .task--picked {
   outline: 2px solid var(--go);
   opacity: 1;
@@ -354,7 +354,7 @@ body::after {
   color: var(--streak);
 }
 
-/* Série en gel : un cycle manqué, le suivant décide. */
+/* Frozen streak: one cycle missed, the next one decides. */
 .badge--frozen {
   color: #7dd3fc;
 }
@@ -390,8 +390,23 @@ body::after {
   color: var(--go-ink);
 }
 
-/* Tâche déjà faite : le bouton propose de revenir en arrière. Deux glyphes en
-   13 px se ratent au doigt — on vise la cible tactile minimale de 44 px. */
+/* A parent's amount: a frame, never a button. Its subtasks are what pay it, and
+   a button that must not be pressed is a trap. */
+.task__go--parent {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: 2px solid var(--go);
+  color: var(--go);
+}
+
+.task__go--parent-done {
+  border-color: var(--dim);
+  color: var(--dim);
+}
+
+/* Task already done: the button offers to go back. Two glyphs at 13 px are
+   missed by the finger — we aim at the 44 px minimum touch target. */
 .task__go--undo {
   background: var(--panel-2);
   color: var(--dim);
@@ -457,7 +472,7 @@ body::after {
 
 /* --- historique --- */
 
-/* Le crayon dit qu'une ligne se corrige — seules les dépenses libres en ont un. */
+/* The pencil says a line can be corrected — only free-form spendings have one. */
 .entry__edit {
   padding: 2px 6px;
   font-size: 12px;
@@ -521,12 +536,12 @@ body::after {
   color: var(--streak);
 }
 
-/* --- dépense libre --- */
+/* --- free-form spending --- */
 .free {
   margin-top: 20px;
 }
 
-/* Une dépense hors catalogue est rare : un bouton, pas un formulaire permanent. */
+/* A spending outside the catalogue is rare: a button, not a permanent form. */
 .free__open {
   width: 100%;
   background: var(--panel);
@@ -534,7 +549,7 @@ body::after {
 }
 
 /* --- bouton flottant --- */
-/* --- page pleine (réglages) --- */
+/* --- full page (settings) --- */
 .page {
   max-width: 640px;
   margin: 0 auto;
@@ -615,7 +630,7 @@ body::after {
   outline-offset: -5px;
 }
 
-/* Un panneau est ouvert : le bouton flottant recouvrait « Enregistrer ». */
+/* A panel is open: the floating button was covering "Save". */
 body:has(.sheet) .fab {
   display: none;
 }
@@ -641,10 +656,10 @@ body.kbd .fab {
   box-shadow: 0 6px 20px #0008;
 }
 
-/* --- feuille modale --- */
+/* --- modal sheet --- */
 
-/* Un panneau ouvert fige la page en dessous : sans ça, la liste défile sous le
-   formulaire et on perd de vue ce qu'on est en train de modifier. */
+/* An open panel freezes the page underneath: without this, the list scrolls
+   under the form and you lose sight of what you are editing. */
 body:has(.sheet) {
   overflow: hidden;
 }
@@ -716,7 +731,7 @@ body:has(.sheet) {
   border-top: 1px solid var(--line);
 }
 
-/* Une feuille sans pied doit quand même dégager les boutons de navigation. */
+/* A sheet with no footer still has to clear the navigation buttons. */
 .sheet__body:last-child {
   padding-bottom: calc(var(--sab) + 18px);
 }
@@ -746,7 +761,7 @@ button:focus-visible {
   flex: 0 0 auto;
 }
 
-/* Assez large pour 3 chiffres, assez étroit pour tenir dans une ligne de réglage. */
+/* Wide enough for 3 digits, narrow enough to fit in a settings row. */
 .input--xs {
   width: 4.2em;
   flex: 0 0 auto;
@@ -769,7 +784,7 @@ button:focus-visible {
   width: auto;
 }
 
-/* Ligne de réglage : libellé à gauche, contrôles serrés à droite. */
+/* Settings row: label on the left, controls packed on the right. */
 .row {
   display: flex;
   align-items: center;
@@ -777,9 +792,9 @@ button:focus-visible {
   flex-wrap: wrap;
 }
 
-/* Le centrage ci-dessus taillait chaque bouton à son texte : deux boutons
-   côte à côte n'avaient pas la même hauteur dès qu'un libellé passait à la
-   ligne. Eux seuls s'étirent, les libellés restent centrés. */
+/* The centering above sized each button to its own text: two buttons side by
+   side had different heights as soon as one label wrapped. Only they stretch,
+   the labels stay centered. */
 .row > .btn,
 .row > .chip-btn {
   align-self: stretch;
@@ -792,7 +807,7 @@ button:focus-visible {
   color: var(--dim);
 }
 
-/* --- jours de la semaine, sans liste déroulante --- */
+/* --- days of the week, without a dropdown --- */
 .days {
   display: flex;
   gap: 4px;
@@ -815,7 +830,7 @@ button:focus-visible {
   color: var(--go-ink);
 }
 
-/* --- sélecteur d'icône --- */
+/* --- icon picker --- */
 .iconpick {
   width: 46px;
   height: 46px;
@@ -964,7 +979,7 @@ button:focus-visible {
   padding: 4px 8px;
 }
 
-/* --- simulation de série --- */
+/* --- streak simulation --- */
 .sim__strip {
   display: flex;
   gap: 5px;
@@ -1044,7 +1059,7 @@ button:focus-visible {
   font-weight: 600;
 }
 
-/* Un lien qui doit avoir l'air d'un bouton (« Signaler un bug »). */
+/* A link that has to look like a button ("Report a bug"). */
 a.btn {
   display: block;
   text-align: center;
@@ -1066,7 +1081,38 @@ a.btn {
   color: var(--bad);
 }
 
-/* --- pièce animée (injectée par fx.ts) --- */
+/* --- subtask editor --- */
+.subs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sub {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.sub__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sub__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.sub__count {
+  flex: 1;
+}
+
+/* --- animated coin (injected by fx.ts) --- */
 .coin {
   position: fixed;
   z-index: 50;
@@ -1126,7 +1172,7 @@ a.btn {
 
 /* --- atelier de debug --- */
 
-/* Un décalage d'horloge oublié passerait pour un bug : il se voit et se coupe d'un tap. */
+/* A forgotten clock offset would pass for a bug: it shows, and one tap clears it. */
 .timewarp {
   display: block;
   width: 100%;
@@ -1137,7 +1183,7 @@ a.btn {
   font-weight: 600;
 }
 
-/* --- pied des réglages --- */
+/* --- settings footer --- */
 .about {
   display: flex;
   align-items: center;
@@ -1182,7 +1228,7 @@ a.btn {
   color: var(--dim);
 }
 
-/* Heatmap globale de l'onglet Stats : une case par jour, l'année entière. */
+/* Global heatmap of the Stats tab: one cell per day, the whole year. */
 .heatmap {
   display: flex;
   gap: 6px;
@@ -1196,8 +1242,8 @@ a.btn {
   gap: 2px;
   flex: none;
   padding-top: 14px;
-  /* Fixe à gauche : sinon elle défile avec la grille et sort de l'écran
-     quand on ouvre sur la semaine en cours. */
+  /* Pinned to the left: otherwise it scrolls with the grid and leaves the
+     screen when opening on the current week. */
   position: sticky;
   left: 0;
   z-index: 1;
@@ -1286,7 +1332,7 @@ a.btn {
   font-weight: 600;
 }
 
-/* --- présentation --- */
+/* --- guided tour --- */
 .tuto {
   text-align: center;
   padding: 28px 24px 8px;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { now as clock, timeOffset } from './debug'
-import { DAY, pendingToEvents, replay, staleOneShots, withParents } from './engine'
+import { DAY, pendingToEvents, replay, staleOneShots } from './engine'
 import {
   drainPending,
   notificationSpecs,
@@ -80,9 +80,7 @@ export default function App() {
     return () => clearInterval(i)
   }, [])
 
-  // Subtasks borrow their parent's rhythm, once and for all, before anything
-  // reads a cycle. Everything downstream then works on plain tasks.
-  const tasks = useMemo(() => withParents(db.tasks), [db.tasks])
+  const tasks = db.tasks
 
   // The whole log is replayed: the balance is never stored.
   const rep = useMemo(

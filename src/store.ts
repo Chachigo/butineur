@@ -157,6 +157,27 @@ export const addEvent = (e: Event) => update((d) => ({ ...d, events: [...d.event
 export const saveTask = (t: Task) =>
   update((d) => ({ ...d, tasks: upsert(d.tasks, { ...t, updatedAt: Date.now() }) }))
 
+/**
+ * Saves a task together with the subtasks edited alongside it. The ones removed
+ * from the list are soft-deleted.
+ *
+ * One `update()` for the lot rather than one per child: a bouquet must never be
+ * seen half written — neither by the replay, nor by the widgets.
+ */
+export function saveTaskTree(parent: Task, children: Task[]) {
+  update((d) => {
+    const now = Date.now()
+    const keep = new Set(children.map((c) => c.id))
+    let tasks = d.tasks.map((t) =>
+      t.parentId === parent.id && !keep.has(t.id) && !t.deletedAt
+        ? { ...t, deletedAt: now, updatedAt: now }
+        : t,
+    )
+    for (const t of [parent, ...children]) tasks = upsert(tasks, { ...t, updatedAt: now })
+    return { ...d, tasks }
+  })
+}
+
 export const saveShopItem = (s: ShopItem) =>
   update((d) => ({ ...d, shopItems: upsert(d.shopItems, { ...s, updatedAt: Date.now() }) }))
 

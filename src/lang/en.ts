@@ -305,7 +305,16 @@ export default {
   'sub.expand': 'Show the subtasks',
   'sub.collapse': 'Hide the subtasks',
   'ed.parent': 'Subtask of',
-  'ed.parentHint': 'It follows the parent’s rhythm',
   'ed.parentNone': 'no parent',
-  'ed.parentLocked': 'Set at creation only',
+  // --- subtask editor ---
+  'ed.subtasks': 'Subtasks',
+  'ed.subtasksHint': 'Completing them all completes this task',
+  'ed.subtaskName': 'Name of the subtask',
+  'ed.addSubtask': '+ add a subtask',
+  'ed.subtaskRemove': 'Remove this subtask',
+  'ed.subtaskCounter': 'Count it',
+  'ed.parentBonus': 'Bonus for the full bouquet — the subtasks pay on their own.',
+  'ed.repeatNoSub': 'A task with subtasks does not repeat',
+  'ed.subNoRepeat': 'Not on a repeating task',
+  'ed.isParent': 'A task with subtasks cannot be one itself',
 }
