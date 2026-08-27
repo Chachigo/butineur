@@ -1,6 +1,15 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+// Release signing. Local builds read android/keystore.properties (never
+// versioned), CI reads the same four values from the environment. Without
+// either, a release build stays unsigned instead of failing — a contributor
+// only ever needs the debug build.
+def ksProps = new Properties()
+def ksFile = rootProject.file("keystore.properties")
+if (ksFile.exists()) ksFile.withInputStream { ksProps.load(it) }
+def ksPath = ksProps.getProperty("storeFile") ?: System.getenv("KEYSTORE_FILE")
+
 android {
     namespace = "app.butineur.mobile"
     kotlinOptions {
@@ -11,8 +20,8 @@ android {
         applicationId "app.butineur.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "0.6.0-beta"
+        versionCode 7
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -20,8 +29,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (ksPath) {
+            release {
+                storeFile file(ksPath)
+                storePassword ksProps.getProperty("storePassword") ?: System.getenv("KEYSTORE_PASSWORD")
+                keyAlias ksProps.getProperty("keyAlias") ?: System.getenv("KEY_ALIAS")
+                keyPassword ksProps.getProperty("keyPassword") ?: System.getenv("KEY_PASSWORD")
+                // v3 carries the proof of a key rotation. minSdk is 24, so v1
+                // is dead weight; v3 is the only escape hatch if the key ever
+                // has to change, and it costs one line now.
+                enableV3Signing = true
+            }
+        }
+    }
     buildTypes {
         release {
+            if (ksPath) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

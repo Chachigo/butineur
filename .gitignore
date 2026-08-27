@@ -11,6 +11,8 @@ android/captures/
 *.apk
 *.aab
 *.keystore
+*.jks
+android/keystore.properties
 
 # Machine-specific : chemin du SDK Android
 android/local.properties

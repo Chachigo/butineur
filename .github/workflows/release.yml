@@ -1,0 +1,59 @@
+name: Release APK
+
+# A tag is the trigger: the APK is attached to a draft release, so the release
+# notes stay handwritten.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  # The release key never changes — an APK signed by anything else must not ship.
+  EXPECTED_SHA256: ff36f688b91e12b22f489ac2f4fd859b006914874f7cc31daf4d155ef2b32602
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx cap sync android
+
+      - name: Unpack the signing key
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      - name: Build the release APK
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: cd android && ./gradlew assembleRelease
+
+      - name: Check the signature
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs android/app/build/outputs/apk/release/app-release.apk \
+            | grep -q "$EXPECTED_SHA256"
+
+      - name: Attach it to a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK="butineur-${GITHUB_REF_NAME#v}.apk"
+          mv android/app/build/outputs/apk/release/app-release.apk "$APK"
+          gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" "$APK" \
+            || gh release upload "$GITHUB_REF_NAME" "$APK" --clobber

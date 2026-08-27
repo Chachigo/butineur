@@ -1,6 +1,6 @@
 {
   "name": "butineur",
-  "version": "0.6.0-beta",
+  "version": "1.0.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -12,7 +12,8 @@
     "icons": "node scripts/build-icons.mjs && python3 scripts/subset-font.py",
     "screenshots": "node scripts/screenshots.mjs",
     "android": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-$HOME/.local/jdk/current} ./gradlew installDebug",
-    "android:apk": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-$HOME/.local/jdk/current} ./gradlew assembleDebug"
+    "android:apk": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-$HOME/.local/jdk/current} ./gradlew assembleDebug",
+    "android:release": "npm run build && cap sync android && cd android && JAVA_HOME=${JAVA_HOME:-$HOME/.local/jdk/current} ./gradlew assembleRelease"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",

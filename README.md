@@ -25,7 +25,7 @@ the kitchen funds a night at the movies.
 ## Install
 
 Android 7.0 or newer, outside the Play Store. The short version:
-**[add it to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.butineur.mobile%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FChachigo%252Fbutineur%2522%252C%2522author%2522%253A%2522Chachigo%2522%252C%2522name%2522%253A%2522Butineur%2522%252C%2522additionalSettings%2522%253A%2522%257B%255C%2522includePrereleases%255C%2522%253Atrue%257D%2522%257D)** and it updates itself, or take the APK from the
+**[add it to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.butineur.mobile%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FChachigo%252Fbutineur%2522%252C%2522author%2522%253A%2522Chachigo%2522%252C%2522name%2522%253A%2522Butineur%2522%257D)** and it updates itself, or take the APK from the
 [releases page](https://github.com/Chachigo/butineur/releases) and open it yourself.
 
 Step by step, and what to watch out for: **[install guide](docs/install.md)**.
@@ -72,7 +72,7 @@ npm install
 npm run dev          # browser
 npm run test         # the reward engine (the money path)
 npm run android      # build + install on the plugged-in phone
-npm run android:apk  # APK only, no device needed
+npm run android:apk  # debug APK, no device needed
 npm run screenshots  # the README screenshots, on demo data
 ```
 
@@ -83,16 +83,25 @@ never your real data.
 Android prerequisites: a JDK 21 and the Android SDK. `android/local.properties`
 and the script's `JAVA_HOME` point at one specific machine — adapt them.
 
+Released APKs are built by [CI](.github/workflows/release.yml) on a `v*` tag and
+signed with the project's release key. `npm run android:release` does the same
+locally, and needs an `android/keystore.properties` you will not have — without
+it, a release build simply comes out unsigned.
+
 ## Status
 
-Working on Android. The optional self-hosted server (browser access from a
-desktop, and phone ↔ desktop sync) is designed but not written yet: the event log
-was built for it.
+Working on Android.
 
 The interface speaks English and French. It follows the phone's language on first
 launch, and a picker in the settings forces either one. Adding a language is one
 file in `src/lang/` plus one line — every language is typed on English, so a
 missing key fails the build.
+
+## What's next
+
+The optional self-hosted server — browser access from a desktop, and phone ↔
+desktop sync. The event log was built for it: append-only, soft deletes
+everywhere, no derived total ever stored.
 
 ## Contributing
 
