@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { tr, type Key } from '../i18n'
 import Icon, { phosphor } from './Icon'
 import { PHOSPHOR_GROUPS } from './icons.generated'
 import { useCloseOnBack } from './useCloseOnBack'
@@ -11,20 +12,20 @@ import { useCloseOnBack } from './useCloseOnBack'
 // Same categories as the icon bank: you look in the same place in both. Emoji
 // cover what a line drawing cannot render — faces, specific animals, named
 // food.
-const EMOJI_GROUPS: [string, string[]][] = [
-  ['Maison', ['🧹', '🧼', '🧺', '🛏️', '🚿', '🛁', '🪣', '🍽️', '🗑️', '♻️', '🚽', '🧻', '🪠', '🧴', '🪥', '🧽', '🛋️', '🔧', '🪛', '🔨', '🧯', '💡', '🔑', '📦', '🛒', '👜']],
-  ['Corps', ['🏃', '🏋️', '🧘', '🚴', '🤸', '💪', '🚶', '🏊', '🧠', '👁️', '💇', '☯️']],
-  ['Santé', ['🩹', '💊', '💉', '🦷', '🩺', '😷', '🚭', '🧪', '🤒', '🧬']],
-  ['Repas', ['💧', '🥤', '☕', '🍎', '🥗', '🍳', '🥦', '🍵', '🥕', '🍞', '🧀', '🍒', '🍕', '🍦', '🍚', '🍲', '👨‍🍳', '🥫', '🍫']],
-  ['Fête', ['🎉', '🥳', '🎂', '🎁', '🍾', '🥂', '🎈', '🎊', '🍰', '🪅', '🕯️', '💃', '🕺', '🍷', '🍺', '🍸']],
-  ['Travail', ['💼', '📚', '✏️', '📝', '📌', '📅', '🕐', '📞', '✉️', '💬', '🎓', '📈', '⚖️', '🏭']],
-  ['Informatique', ['💻', '🖥️', '⌨️', '🖱️', '💾', '📁', '📂', '📄', '🔐', '🖨️', '📥', '🤖']],
-  ['Loisirs', ['🎨', '🎸', '🎮', '📷', '🧩', '🎬', '📖', '🎧', '🌍', '🎲', '🎯', '🎤', '🔭', '🧶', '🎟️', '🎳', '📺', '🎥']],
-  ['Transport', ['✈️', '🚲', '🚌', '🚗', '🚐', '⛵', '🧳', '⛽', '🛞', '🌉', '🛵', '🚕']],
-  ['Vêtements', ['👕', '👖', '👗', '🧦', '👟', '👢', '👠', '🧢', '👓', '⌚', '🧥', '🧣']],
-  ['Animaux', ['🐶', '🐱', '🐰', '🐹', '🐟', '🦎', '🐢', '🦜', '🐴', '🐝', '🐄', '🦋', '🐾', '🦴', '🪶']],
-  ['Nature', ['🪴', '🌿', '☀️', '🌙', '🌈', '⛰️', '⛺', '☂️', '🌱', '🌳', '❄️', '🌊']],
-  ['Divers', ['⭐', '✨', '🔥', '⚡', '❤️', '✅', '🎯', '💎', '🏆', '🥇', '🚩', '🔔', '🚀', '👻', 'ℹ️', '👤', '🪙', '🔒', '😤', '🤩']],
+const EMOJI_GROUPS: [Key, string[]][] = [
+  ['cat.home', ['🧹', '🧼', '🧺', '🛏️', '🚿', '🛁', '🪣', '🍽️', '🗑️', '♻️', '🚽', '🧻', '🪠', '🧴', '🪥', '🧽', '🛋️', '🔧', '🪛', '🔨', '🧯', '💡', '🔑', '📦', '🛒', '👜']],
+  ['cat.body', ['🏃', '🏋️', '🧘', '🚴', '🤸', '💪', '🚶', '🏊', '🧠', '👁️', '💇', '☯️']],
+  ['cat.health', ['🩹', '💊', '💉', '🦷', '🩺', '😷', '🚭', '🧪', '🤒', '🧬']],
+  ['cat.food', ['💧', '🥤', '☕', '🍎', '🥗', '🍳', '🥦', '🍵', '🥕', '🍞', '🧀', '🍒', '🍕', '🍦', '🍚', '🍲', '👨‍🍳', '🥫', '🍫']],
+  ['cat.party', ['🎉', '🥳', '🎂', '🎁', '🍾', '🥂', '🎈', '🎊', '🍰', '🪅', '🕯️', '💃', '🕺', '🍷', '🍺', '🍸']],
+  ['cat.work', ['💼', '📚', '✏️', '📝', '📌', '📅', '🕐', '📞', '✉️', '💬', '🎓', '📈', '⚖️', '🏭']],
+  ['cat.tech', ['💻', '🖥️', '⌨️', '🖱️', '💾', '📁', '📂', '📄', '🔐', '🖨️', '📥', '🤖']],
+  ['cat.leisure', ['🎨', '🎸', '🎮', '📷', '🧩', '🎬', '📖', '🎧', '🌍', '🎲', '🎯', '🎤', '🔭', '🧶', '🎟️', '🎳', '📺', '🎥']],
+  ['cat.travel', ['✈️', '🚲', '🚌', '🚗', '🚐', '⛵', '🧳', '⛽', '🛞', '🌉', '🛵', '🚕']],
+  ['cat.clothes', ['👕', '👖', '👗', '🧦', '👟', '👢', '👠', '🧢', '👓', '⌚', '🧥', '🧣']],
+  ['cat.animals', ['🐶', '🐱', '🐰', '🐹', '🐟', '🦎', '🐢', '🦜', '🐴', '🐝', '🐄', '🦋', '🐾', '🦴', '🪶']],
+  ['cat.nature', ['🪴', '🌿', '☀️', '🌙', '🌈', '⛰️', '⛺', '☂️', '🌱', '🌳', '❄️', '🌊']],
+  ['cat.misc', ['⭐', '✨', '🔥', '⚡', '❤️', '✅', '🎯', '💎', '🏆', '🥇', '🚩', '🔔', '🚀', '👻', 'ℹ️', '👤', '🪙', '🔒', '😤', '🤩']],
 ]
 
 type Tab = 'ph' | 'emoji'
@@ -54,7 +55,7 @@ export default function IconPicker({
         type="button"
         className="iconpick"
         onClick={() => setOpen(true)}
-        aria-label="Choisir une icône"
+        aria-label={tr('icon.pick')}
       >
         <Icon icon={value} fallback={fallback} />
       </button>
@@ -63,8 +64,8 @@ export default function IconPicker({
         <div className="sheet" onClick={() => setOpen(false)}>
           <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
             <header className="sheet__head">
-              <h2>Icône</h2>
-              <button className="sheet__x" onClick={() => setOpen(false)} aria-label="Fermer">
+              <h2>{tr('icon.title')}</h2>
+              <button className="sheet__x" onClick={() => setOpen(false)} aria-label={tr('common.close')}>
                 ✕
               </button>
             </header>
@@ -76,7 +77,7 @@ export default function IconPicker({
                 className={tab === 'emoji' ? 'tab tab--on' : 'tab'}
                 onClick={() => setTab('emoji')}
               >
-                Emoji
+                {tr('icon.emoji')}
               </button>
               <button
                 role="tab"
@@ -84,7 +85,7 @@ export default function IconPicker({
                 className={tab === 'ph' ? 'tab tab--on' : 'tab'}
                 onClick={() => setTab('ph')}
               >
-                Icônes
+                {tr('icon.glyphs')}
               </button>
             </nav>
 
@@ -92,7 +93,7 @@ export default function IconPicker({
               {tab === 'ph'
                 ? PHOSPHOR_GROUPS.map(([label, icons]) => (
                     <section key={label}>
-                      <p className="hint">{label}</p>
+                      <p className="hint">{tr(label as Key)}</p>
                       <div className="iconpick__grid">
                         {icons.map(([name, chars]) => (
                           <button
@@ -112,7 +113,7 @@ export default function IconPicker({
                   ))
                 : EMOJI_GROUPS.map(([label, icons]) => (
                     <section key={label}>
-                      <p className="hint">{label}</p>
+                      <p className="hint">{tr(label as Key)}</p>
                       <div className="iconpick__grid">
                         {icons.map((e) => (
                           <button
@@ -129,7 +130,7 @@ export default function IconPicker({
                   ))}
 
               <button className="link" onClick={() => choose('')}>
-                Aucune icône
+                {tr('icon.none')}
               </button>
             </div>
           </div>

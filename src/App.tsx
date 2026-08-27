@@ -132,7 +132,7 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Un décalage oublié ressemblerait à un bug : il s'annonce, et se coupe d'un tap. */}
+      {/* A forgotten time offset would look like a bug: it announces itself, and one tap clears it. */}
       {timeOffset() !== 0 && (
         <button className="timewarp" onClick={() => void quitterAtelier()}>
           {tr('app.timewarp', {

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { tr, trn } from '../i18n'
 
 /**
  * Multi-selection by long press, shared by the task list and the shop.
@@ -48,22 +49,20 @@ export function useLongPress(onLongPress: () => void, active: boolean) {
   }
 }
 
-export function SelectionBar({ sel, noun }: { sel: Selection; noun: [string, string] }) {
+export function SelectionBar({ sel, noun }: { sel: Selection; noun: string }) {
   if (!sel.selection) return null
   const n = sel.selection.size
   return (
     <div className="selbar">
-      <button className="selbar__x" onClick={sel.stop} aria-label="Quitter la sélection">
+      <button className="selbar__x" onClick={sel.stop} aria-label={tr('sel.leave')}>
         ✕
       </button>
-      <span className="selbar__count">
-        {n} {n > 1 ? noun[1] : noun[0]}
-      </span>
+      <span className="selbar__count">{trn(noun, n)}</span>
       <button className="selbar__all" onClick={sel.selectAll}>
-        Tout
+        {tr('sel.all')}
       </button>
       <button className="btn btn--danger" onClick={sel.removeSelected} disabled={n === 0}>
-        Supprimer
+        {tr('common.delete')}
       </button>
     </div>
   )

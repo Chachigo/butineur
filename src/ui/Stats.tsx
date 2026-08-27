@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { DAY, dayNum, isDone, missedCycles, type Replay } from '../engine'
 import { fmt } from '../format'
+import { lang, tr } from '../i18n'
 import type { LedgerEntry, Task } from '../types'
 
-const JOURS_ABR = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam']
-const MOIS = new Intl.DateTimeFormat('fr-FR', { month: 'short' })
+const MOIS = new Intl.DateTimeFormat(lang, { month: 'short' })
+const JOUR_ABR = new Intl.DateTimeFormat(lang, { weekday: 'short' })
 
 const SEMAINES = 53
 
@@ -76,19 +77,19 @@ export default function Stats({
   return (
     <>
       <div className="stats">
-        <Chiffre valeur={`${fmt(gagne)} ${currency}`} legende="gagné en tout" />
-        <Chiffre valeur={`${fmt(gagne / mois)} ${currency}`} legende="par mois en moyenne" />
-        <Chiffre valeur={String(nbTaches)} legende="tâches faites" />
-        <Chiffre valeur={String(loupees)} legende="cycles manqués" />
-        <Chiffre valeur={String(record)} legende="plus longue série" />
+        <Chiffre valeur={`${fmt(gagne)} ${currency}`} legende={tr('stats.earned')} />
+        <Chiffre valeur={`${fmt(gagne / mois)} ${currency}`} legende={tr('stats.perMonth')} />
+        <Chiffre valeur={String(nbTaches)} legende={tr('stats.done')} />
+        <Chiffre valeur={String(loupees)} legende={tr('stats.missed')} />
+        <Chiffre valeur={String(record)} legende={tr('stats.best')} />
       </div>
 
-      <p className="hint">L'année écoulée, toutes tâches confondues.</p>
+      <p className="hint">{tr('stats.year')}</p>
       <div className="heatmap" ref={scroller}>
         <div className="heatmap__jours">
           {ordre.map((dow) => (
             <span key={dow} className="heatmap__label">
-              {JOURS_ABR[dow]}
+              {JOUR_ABR.format(new Date(1970, 0, 4 + dow))}
             </span>
           ))}
         </div>
@@ -109,7 +110,7 @@ export default function Stats({
                     className={`heatmap__case heatmap__case--l${niveau(compte.get(j) ?? 0)}${
                       palier.has(j) ? ' heatmap__case--palier' : ''
                     }${j > aujourdhui ? ' heatmap__case--futur' : ''}`}
-                    title={new Date((j + 0.5) * DAY).toLocaleDateString('fr-FR')}
+                    title={new Date((j + 0.5) * DAY).toLocaleDateString(lang)}
                   />
                 ))}
               </div>

@@ -82,17 +82,23 @@ object Store {
         return format(raw + pendingGain(ctx))
     }
 
-    /** Same rendering as `fmt` on the web side: rounded to the cent, decimal comma. */
+    /**
+     * Same rendering as `fmt` on the web side: rounded to the cent, and the
+     * decimal separator of the phone's language — comma in French, dot in
+     * English. `Locale.getDefault()` rather than a fixed locale, so the widget
+     * and the app never disagree on a figure.
+     */
     private fun format(n: Double): String {
         val r = Math.round(n * 100) / 100.0
         return if (r == Math.floor(r)) r.toLong().toString()
-        else String.format(java.util.Locale.FRANCE, "%.2f", r)
+        else String.format(java.util.Locale.getDefault(), "%.2f", r)
     }
 
     fun currency(ctx: Context): String = prefs(ctx).getString(KEY_CURRENCY, null) ?: ""
 
     fun budgetLabel(ctx: Context): String =
-        prefs(ctx).getString(KEY_LABEL, null)?.ifEmpty { null } ?: "budget loisirs"
+        prefs(ctx).getString(KEY_LABEL, null)?.ifEmpty { null }
+            ?: ctx.getString(R.string.widget_balance_label)
 
     /** Accent color chosen in the settings, falling back to green. */
     fun accent(ctx: Context): Int =

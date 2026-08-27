@@ -4,6 +4,7 @@ import { defaultDue } from './format'
 import { PHOSPHOR_MIGRATE } from './ui/icons.generated'
 import { useSyncExternalStore } from 'react'
 import type { DB, Event, ShopItem, Task } from './types'
+import { tr } from './i18n'
 
 const KEY = 'db'
 
@@ -13,7 +14,7 @@ const EMPTY: DB = {
   events: [],
   settings: {
     currency: '€',
-    budgetLabel: 'budget loisirs',
+    budgetLabel: tr('set.budgetHint'),
     accent: '#4ade80',
     dayStart: 0,
     defaultReward: 10,

@@ -2,6 +2,7 @@ import { Directory, Encoding, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 import { isNative } from './native'
 import type { DB } from './types'
+import { tr } from './i18n'
 
 /**
  * A backup is the raw content of the database, wrapped in the minimum needed to
@@ -79,12 +80,12 @@ export function parseBackup(text: string): DB {
   }
 
   const b = parsed as Partial<Backup>
-  if (b?.app !== 'butineur') throw new Error('Ce fichier ne vient pas de Butineur.')
-  if (b.format !== FORMAT) throw new Error(`Format de sauvegarde inconnu (${String(b.format)}).`)
+  if (b?.app !== 'butineur') throw new Error(tr('bk.notButineur'))
+  if (b.format !== FORMAT) throw new Error(tr('bk.unknownFormat', { format: String(b.format) }))
 
   const db = b.db as Partial<DB> | undefined
   if (!db || !Array.isArray(db.tasks) || !Array.isArray(db.events)) {
-    throw new Error('Sauvegarde incomplète : tâches ou journal manquants.')
+    throw new Error(tr('bk.incomplete'))
   }
 
   return {

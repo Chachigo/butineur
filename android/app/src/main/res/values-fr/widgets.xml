@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Seules les chaînes sont ici : les couleurs et le style de values/ valent
+     pour toutes les langues, Android fusionne par nom de ressource. -->
+<resources>
+    <string name="widget_balance_label">budget loisirs</string>
+    <string name="widget_balance_desc">Solde du budget loisirs</string>
+    <string name="widget_counter_desc">Compteur d\'une tâche</string>
+    <string name="widget_todo_desc">Tâches à faire</string>
+    <string name="widget_todo_title">À FAIRE</string>
+    <string name="widget_todo_empty">Tout est fait. 🎉</string>
+    <string name="widget_todo_new">Nouvelle tâche</string>
+    <string name="widget_unassigned">Aucune tâche</string>
+    <string name="widget_config_title">Quelle tâche compteur ?</string>
+    <string name="widget_config_empty">Aucune tâche à compteur pour l\'instant.\n\nOuvre l\'appli, crée une tâche puis active « Compteur » dedans. Repose ensuite le widget.</string>
+    <string name="widget_config_cancel">Annuler</string>
+    <string name="widget_plus">Ajouter 1</string>
+</resources>

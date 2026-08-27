@@ -9,6 +9,7 @@ import {
 } from '../engine'
 import { now as clock } from '../debug'
 import { fmt, relativeDay, rythmeLabel } from '../format'
+import { tr } from '../i18n'
 import { burst, coinFly, pop } from '../fx'
 import { addEvent, deleteTask, saveTask, uid, useDB } from '../store'
 import type { Task } from '../types'
@@ -73,9 +74,9 @@ export default function TaskList({
 
   return (
     <>
-      <SelectionBar sel={sel} noun={['sélectionnée', 'sélectionnées']} />
+      <SelectionBar sel={sel} noun="sel.task" />
 
-      {/* Ce qui revient souvent sans être régulier : un bouton le repose dans la liste. */}
+      {/* What comes back often without being regular: a button lays it back in the list. */}
       {!sel.selecting && modeles.length > 0 && (
         <div className="rapides">
           {modeles.map((m) => (
@@ -86,9 +87,9 @@ export default function TaskList({
 
       {affichees.length === 0 && (
         <p className="empty">
-          Aucune tâche pour l’instant.
+          {tr('list.empty')}
           <br />
-          Crée-en une pour commencer à remplir ton budget.
+          {tr('list.emptyHint')}
         </p>
       )}
 
@@ -111,7 +112,7 @@ export default function TaskList({
       </ul>
 
       {!sel.selecting && (
-        <button className="fab" onClick={onNew} aria-label="Nouvelle tâche">
+        <button className="fab" onClick={onNew} aria-label={tr('list.new')}>
           +
         </button>
       )}
@@ -266,24 +267,24 @@ function TaskRow({
         )}
         <Icon className="task__icon" icon={task.icon ?? ''} fallback={task.counter ? '🎯' : '✓'} />
         <span className="task__text">
-          <span className="task__name">{task.name || 'Sans nom'}</span>
+          <span className="task__name">{task.name || tr('list.noName')}</span>
           <span className="task__meta">
             {task.repeat && <em className="badge">{rythmeLabel(task.repeat)}</em>}
             {streak > 1 && (
               <em className={`badge ${s?.frozen ? 'badge--frozen' : 'badge--streak'}`}>
-                série {streak} {s?.frozen ? '🧊' : '🔥'}
+                {tr('list.streak', { n: streak, emoji: s?.frozen ? '🧊' : '🔥' })}
               </em>
             )}
-            {/* Une série perdue se dit une fois, tant qu'elle n'est pas relancée. */}
+            {/* A lost streak is said once, for as long as it has not been restarted. */}
             {streak === 0 && (s?.brokenStreak ?? 0) > 1 && (
-              <em className="badge badge--broken">série {s!.brokenStreak} perdue 💔</em>
+              <em className="badge badge--broken">{tr('list.broken', { n: s!.brokenStreak })}</em>
             )}
             {due !== null && (
               <em className={`badge${late ? ' badge--late' : ''}`}>
                 {relativeDay(due, now, dayStart)}
               </em>
             )}
-            {!available && !task.repeat && <em className="badge">terminée</em>}
+            {!available && !task.repeat && <em className="badge">{tr('list.finished')}</em>}
           </span>
         </span>
       </button>
@@ -291,7 +292,7 @@ function TaskRow({
       {selecting ? null : task.counter ? (
         <div className="task__counter-wrap">
           <div className="task__counter">
-            <button className="round" onClick={bump(-1)} disabled={count === 0} aria-label="Retirer">
+            <button className="round" onClick={bump(-1)} disabled={count === 0} aria-label={tr('list.minus')}>
               −
             </button>
             <span className={`task__count${reached ? ' task__count--ok' : ''}`}>
@@ -302,7 +303,7 @@ function TaskRow({
               className="round round--go"
               onClick={bump(1)}
               disabled={reached}
-              aria-label="Ajouter"
+              aria-label={tr('list.plus')}
             >
               {reached ? '✓' : '+'}
             </button>
@@ -315,7 +316,7 @@ function TaskRow({
         <button
           className={available ? 'task__go' : 'task__go task__go--undo'}
           onClick={available ? complete : undo}
-          title={available ? undefined : 'Annuler cette validation'}
+          title={available ? undefined : tr('list.undo')}
         >
           {available ? `+${fmt(previewReward(task, s, now))} ${currency}` : '↩ ✓'}
         </button>

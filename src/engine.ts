@@ -1,3 +1,7 @@
+// The only import of the engine, and it stays pure: `tr` is a lookup in a frozen
+// table, not I/O. The ledger labels have to say what they say in the user's
+// language, and they are derived at replay time like everything else.
+import { tr } from './i18n'
 import type { Event, LedgerEntry, Pending, Task, TaskState } from './types'
 
 export const DAY = 86_400_000
@@ -404,7 +408,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     }
 
     const task = byId.get(e.taskId)
-    const label = task?.name ?? '(tâche supprimée)'
+    const label = task?.name ?? tr('log.deleted')
     const s = stateOf(e.taskId)
 
     if (e.kind === 'count') {
@@ -444,7 +448,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
           ts: e.ts,
           kind: 'count',
           taskId: e.taskId,
-          label: `${label} — objectif atteint`,
+          label: tr('log.target', { task: label }),
           base,
           penalty: 0,
           multiplierBonus: 0,
@@ -471,7 +475,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
             ts: e.ts,
             kind: 'count',
             taskId: e.taskId,
-            label: `${label} — palier ${t.at}`,
+            label: tr('log.tier', { task: label, n: t.at }),
             base: 0,
             penalty: 0,
             multiplierBonus: 0,

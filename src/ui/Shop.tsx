@@ -2,6 +2,7 @@ import { useState, type MouseEvent, type RefObject } from 'react'
 import { now as clock } from '../debug'
 import { fmt } from '../format'
 import { coinFly, pop } from '../fx'
+import { tr } from '../i18n'
 import { addEvent, deleteShopItem, saveShopItem, uid, useDB } from '../store'
 import type { ShopItem } from '../types'
 import Icon from './Icon'
@@ -49,19 +50,19 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
   const spendFree = (e: MouseEvent<HTMLButtonElement>) => {
     const amount = +freeAmount.replace(',', '.')
     if (!(amount > 0)) return
-    spend(amount, freeLabel.trim() || 'Dépense', undefined, e.currentTarget)
+    spend(amount, freeLabel.trim() || tr('history.defaultLabel'), undefined, e.currentTarget)
     closeFree()
   }
 
   return (
     <>
-      <SelectionBar sel={sel} noun={['sélectionné', 'sélectionnés']} />
+      <SelectionBar sel={sel} noun="sel.item" />
 
       {items.length === 0 && (
         <p className="empty">
-          Ta boutique est vide.
+          {tr('shop.empty')}
           <br />
-          Ajoute les loisirs que tu veux t’offrir.
+          {tr('shop.emptyHint')}
         </p>
       )}
 
@@ -82,7 +83,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
 
       <div className="free">
         <button className="btn free__open" onClick={() => setFreeOpen(true)}>
-          Autre dépense…
+          {tr('shop.free')}
         </button>
       </div>
 
@@ -90,27 +91,27 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
         <div className="sheet" onClick={closeFree}>
           <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
             <header className="sheet__head">
-              <h2>Autre dépense</h2>
-              <button className="sheet__x" onClick={closeFree} aria-label="Fermer">
+              <h2>{tr('shop.freeTitle')}</h2>
+              <button className="sheet__x" onClick={closeFree} aria-label={tr('common.close')}>
                 ✕
               </button>
             </header>
 
             <div className="sheet__body">
               <label className="field">
-                <span className="field__label">Pour quoi ?</span>
+                <span className="field__label">{tr('shop.what')}</span>
                 <input
                   className="input"
                   value={freeLabel}
                   onChange={(e) => setFreeLabel(e.target.value)}
-                  placeholder="Cinéma, resto…"
-                  aria-label="Libellé de la dépense"
+                  placeholder={tr('shop.whatHint')}
+                  aria-label={tr('history.label')}
                   autoFocus
                 />
               </label>
 
               <label className="field">
-                <span className="field__label">Montant</span>
+                <span className="field__label">{tr('history.amount')}</span>
                 <span className="field__row">
                   <input
                     className="input input--sm"
@@ -118,22 +119,20 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
                     value={freeAmount}
                     onChange={(e) => setFreeAmount(e.target.value)}
                     placeholder="0"
-                    aria-label="Montant"
+                    aria-label={tr('history.amount')}
                   />
                   <span className="field__suffix">{currency}</span>
                 </span>
               </label>
 
               {tooExpensive(+freeAmount.replace(',', '.')) && (
-                <p className="hint hint--bad">
-                  Budget insuffisant. Autorise le négatif dans les Réglages si tu veux forcer.
-                </p>
+                <p className="hint hint--bad">{tr('shop.notEnough')}</p>
               )}
             </div>
 
             <footer className="sheet__foot">
               <button className="btn" onClick={closeFree}>
-                Annuler
+                {tr('common.cancel')}
               </button>
               <button
                 className="btn btn--go"
@@ -142,7 +141,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
                   !(+freeAmount.replace(',', '.') > 0) || tooExpensive(+freeAmount.replace(',', '.'))
                 }
               >
-                Dépenser
+                {tr('shop.spend')}
               </button>
             </footer>
           </div>
@@ -150,7 +149,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
       )}
 
       {!sel.selecting && (
-        <button className="fab" onClick={() => setEditing(blankItem())} aria-label="Nouvel article">
+        <button className="fab" onClick={() => setEditing(blankItem())} aria-label={tr('shop.newItem')}>
           +
         </button>
       )}
@@ -210,13 +209,17 @@ function ShopRow({
           disabled={tooExpensive(item.price)}
           title={
             tooExpensive(item.price)
-              ? 'Budget insuffisant — activable dans les Réglages'
+              ? tr('shop.tooDearTitle')
               : item.price > balance
-                ? 'Ça fera passer ton budget dans le rouge'
+                ? tr('shop.redTitle')
                 : undefined
           }
         >
-          {tooExpensive(item.price) ? 'Trop cher' : item.price > balance ? '⚠ Acheter' : 'Acheter'}
+          {tooExpensive(item.price)
+            ? tr('shop.tooDear')
+            : item.price > balance
+              ? tr('shop.buyWarn')
+              : tr('shop.buy')}
         </button>
       )}
     </li>
@@ -252,8 +255,8 @@ function ItemEditor({ item, onClose }: { item: ShopItem; onClose: () => void }) 
     <div className="sheet" onClick={onClose}>
       <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
         <header className="sheet__head">
-          <h2>{isNew ? 'Nouvel article' : 'Modifier'}</h2>
-          <button className="sheet__x" onClick={onClose} aria-label="Fermer">
+          <h2>{tr(isNew ? 'shop.newItem' : 'common.edit')}</h2>
+          <button className="sheet__x" onClick={onClose} aria-label={tr('common.close')}>
             ✕
           </button>
         </header>
@@ -265,13 +268,13 @@ function ItemEditor({ item, onClose }: { item: ShopItem; onClose: () => void }) 
               className="input"
               value={s.name}
               onChange={(e) => setS({ ...s, name: e.target.value })}
-              placeholder="Nom de l’article"
-              aria-label="Nom"
+              placeholder={tr('shop.itemName')}
+              aria-label={tr('shop.name')}
             />
           </div>
 
           <label className="field">
-            <span className="field__label">Prix</span>
+            <span className="field__label">{tr('shop.price')}</span>
             <span className="field__row">
               <NumberInput
                 className="input input--sm"
@@ -288,7 +291,7 @@ function ItemEditor({ item, onClose }: { item: ShopItem; onClose: () => void }) 
         <footer className="sheet__foot">
           {isNew ? (
             <button className="btn" onClick={onClose}>
-              Annuler
+              {tr('common.cancel')}
             </button>
           ) : (
             <button
@@ -298,11 +301,11 @@ function ItemEditor({ item, onClose }: { item: ShopItem; onClose: () => void }) 
                 onClose()
               }}
             >
-              Supprimer
+              {tr('common.delete')}
             </button>
           )}
           <button className="btn btn--go" onClick={save} disabled={!canSave}>
-            Enregistrer
+            {tr('common.save')}
           </button>
         </footer>
       </div>

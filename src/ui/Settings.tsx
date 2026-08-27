@@ -11,6 +11,7 @@ import {
   undoDebugEvents,
 } from '../debug'
 import { DAY } from '../engine'
+import { langSetting, rich, setLang, tr, type Key, type Lang } from '../i18n'
 import { addEvent, quitterAtelier, replaceAll, setSettings, uid, update, useDB } from '../store'
 import NumberInput from './NumberInput'
 import { useCloseOnBack } from './useCloseOnBack'
@@ -38,16 +39,22 @@ const timeToMinutes = (t: string) => {
 }
 
 /** Hues readable on the dark background, contrast checked by eye. */
-const ACCENTS = [
-  ['#4ade80', 'Vert'],
-  ['#38bdf8', 'Bleu'],
-  ['#a78bfa', 'Violet'],
-  ['#f472b6', 'Rose'],
-  ['#fb923c', 'Orange'],
-  ['#facc15', 'Jaune'],
-  ['#2dd4bf', 'Turquoise'],
-  ['#f87171', 'Rouge'],
+const ACCENTS: [string, Key][] = [
+  ['#4ade80', 'color.green'],
+  ['#38bdf8', 'color.blue'],
+  ['#a78bfa', 'color.purple'],
+  ['#f472b6', 'color.pink'],
+  ['#fb923c', 'color.orange'],
+  ['#facc15', 'color.yellow'],
+  ['#2dd4bf', 'color.teal'],
+  ['#f87171', 'color.red'],
 ]
+
+/**
+ * Each language is named in itself: someone who landed in the wrong one has to
+ * be able to find their way back out.
+ */
+const LANG_NAMES: Record<Lang, string> = { fr: 'Français', en: 'English' }
 
 export default function Settings({ onClose, onTuto }: { onClose: () => void; onTuto: () => void }) {
   const db = useDB()
@@ -71,9 +78,9 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
   const sauvegarder = async () => {
     try {
       const nom = await exportBackup(db)
-      setMessage({ ok: true, texte: `Sauvegarde créée dans Documents : ${nom}` })
+      setMessage({ ok: true, texte: tr('set.saved', { name: nom }) })
     } catch (e) {
-      setMessage({ ok: false, texte: `Échec de la sauvegarde : ${(e as Error).message}` })
+      setMessage({ ok: false, texte: tr('set.saveFailed', { error: (e as Error).message }) })
     }
   }
 
@@ -83,7 +90,7 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
       // Full replacement: mixing two databases would duplicate the log and
       // therefore the balance. A restore puts the device in a known state.
       replaceAll(db)
-      setMessage({ ok: true, texte: `Restauré : ${db.tasks.length} tâches, ${db.events.length} événements.` })
+      setMessage({ ok: true, texte: tr('set.restored', { tasks: db.tasks.length, events: db.events.length }) })
     } catch (e) {
       setMessage({ ok: false, texte: (e as Error).message })
     }
@@ -94,84 +101,78 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
   const applyAdjust = () => {
     const amount = +adjust.replace(',', '.')
     if (!amount) return
-    addEvent({ id: uid(), ts: clock(), kind: 'adjust', amount, label: 'Correction manuelle' })
+    addEvent({ id: uid(), ts: clock(), kind: 'adjust', amount, label: tr('set.fixLabel') })
     setAdjust('')
   }
 
   return (
     <div className="page">
       <header className="page__head">
-        <button className="page__back" onClick={onClose} aria-label="Retour">
+        <button className="page__back" onClick={onClose} aria-label={tr('set.back')}>
           ←
         </button>
-        <h1>Réglages</h1>
+        <h1>{tr('set.title')}</h1>
       </header>
 
       <div className="page__body">
         <section className="card">
-          <h2 className="card__title">Budget</h2>
+          <h2 className="card__title">{tr('set.budget')}</h2>
 
           <label className="field">
-            <span className="field__label">Nom du budget</span>
+            <span className="field__label">{tr('set.budgetName')}</span>
             <input
               className="input"
               value={db.settings.budgetLabel}
               onChange={(e) => setSettings({ budgetLabel: e.target.value.slice(0, 24) })}
-              placeholder="budget loisirs"
+              placeholder={tr('set.budgetHint')}
             />
           </label>
 
           <div className="row">
-            <span className="row__label">Symbole</span>
+            <span className="row__label">{tr('set.symbol')}</span>
             <input
               className="input input--xs"
               value={db.settings.currency}
               onChange={(e) => setSettings({ currency: e.target.value.slice(0, 3) })}
-              aria-label="Symbole du budget"
+              aria-label={tr('set.symbolLabel')}
             />
           </div>
 
           <div className="row">
-            <span className="row__label">Début de journée</span>
+            <span className="row__label">{tr('set.dayStart')}</span>
             <input
               className="input input--time"
               type="time"
               value={minutesToTime(db.settings.dayStart)}
               onChange={(e) => e.target.value && setSettings({ dayStart: timeToMinutes(e.target.value) })}
-              aria-label="Heure de début de journée"
+              aria-label={tr('set.dayStartLabel')}
             />
           </div>
-          <p className="hint">
-            À 4 h 30, un compteur monté jusqu’à 4 h du matin compte encore pour la
-            veille. Les dates limites, elles, ne bougent pas.
-          </p>
+          <p className="hint">{tr('set.dayStartHint')}</p>
 
           <div className="row">
-            <span className="row__label">Récompense par défaut</span>
+            <span className="row__label">{tr('set.defaultReward')}</span>
             <NumberInput
               className="input input--xs"
               value={db.settings.defaultReward}
               min={0}
               onChange={(defaultReward) => setSettings({ defaultReward })}
-              aria-label="Récompense par défaut"
+              aria-label={tr('set.defaultReward')}
             />
             <span className="field__suffix">{db.settings.currency}</span>
           </div>
-          <p className="hint">Pré-remplie à la création d’une nouvelle tâche.</p>
+          <p className="hint">{tr('set.defaultRewardHint')}</p>
         </section>
 
         <section className="card">
-          <h2 className="card__title">Sauvegarde</h2>
-          <p className="hint">
-            Tâches, boutique, historique et réglages dans un seul fichier. Le solde
-            n’y est pas : il se recalcule du journal.
-          </p>
+          <h2 className="card__title">{tr('set.backup')}</h2>
+          <p className="hint">{tr('set.backupHint')}</p>
           <div className="row">
             <button className="btn btn--go" onClick={sauvegarder}>
-              Sauvegarder
+              {tr('set.save')}
             </button>
             <button className="btn" onClick={() => fichier.current?.click()}>
-              Restaurer…
+              {tr('set.restore')}
             </button>
           </div>
           <input
@@ -188,44 +189,39 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
           {message && (
             <p className={message.ok ? 'hint hint--ok' : 'hint hint--bad'}>{message.texte}</p>
           )}
-          <p className="hint">
-            Restaurer <strong>remplace</strong> tout ce qui est sur cet appareil.
-          </p>
+          <p className="hint">{rich(tr('set.restoreHint'))}</p>
         </section>
 
         <section className="card">
-          <h2 className="card__title">Statistiques</h2>
+          <h2 className="card__title">{tr('set.stats')}</h2>
           <label className="row row--check">
             <input
               type="checkbox"
               checked={db.settings.showStats}
               onChange={(e) => setSettings({ showStats: e.target.checked })}
             />
-            <span className="row__label">Afficher l’onglet Stats</span>
+            <span className="row__label">{tr('set.showStats')}</span>
           </label>
           <div className="row">
-            <span className="row__label">Premier jour de la semaine</span>
+            <span className="row__label">{tr('set.weekStart')}</span>
             <button
               className={`btn${db.settings.weekStart === 1 ? ' btn--go' : ''}`}
               onClick={() => setSettings({ weekStart: 1 })}
             >
-              Lundi
+              {tr('set.monday')}
             </button>
             <button
               className={`btn${db.settings.weekStart === 0 ? ' btn--go' : ''}`}
               onClick={() => setSettings({ weekStart: 0 })}
             >
-              Dimanche
+              {tr('set.sunday')}
             </button>
           </div>
         </section>
 
         <section className="card">
-          <h2 className="card__title">Écran d’accueil</h2>
-          <p className="hint">
-            Trois widgets : le solde, un compteur, et la liste des tâches à valider
-            sans ouvrir l’appli.
-          </p>
+          <h2 className="card__title">{tr('set.home')}</h2>
+          <p className="hint">{tr('set.homeHint')}</p>
           <div className="row">
             {(['solde', 'compteur', 'liste'] as const).map((k) => (
               <button
@@ -234,23 +230,36 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
                 onClick={async () =>
                   setMessage(
                     (await pinWidget(k))
-                      ? { ok: true, texte: 'Ton lanceur prend le relais — confirme chez lui.' }
-                      : {
-                          ok: false,
-                          texte: 'Ton lanceur ne sait pas le faire : passe par un appui long sur l’écran d’accueil.',
-                        },
+                      ? { ok: true, texte: tr('set.pinOk') }
+                      : { ok: false, texte: tr('set.pinKo') },
                   )
                 }
               >
-                {k}
+                {tr(`set.widget.${k}`)}
               </button>
             ))}
           </div>
         </section>
 
         <section className="card">
-          <h2 className="card__title">Apparence</h2>
-          <p className="hint">Couleur d’accentuation — appliquée aussi aux widgets.</p>
+          <h2 className="card__title">{tr('set.language')}</h2>
+          <div className="row">
+            {(['system', 'fr', 'en'] as const).map((l) => (
+              <button
+                key={l}
+                className={`btn${langSetting() === l ? ' btn--go' : ''}`}
+                onClick={() => void setLang(l as Lang | 'system')}
+              >
+                {l === 'system' ? tr('set.system') : LANG_NAMES[l]}
+              </button>
+            ))}
+          </div>
+          <p className="hint">{tr('set.languageHint')}</p>
+        </section>
+
+        <section className="card">
+          <h2 className="card__title">{tr('set.look')}</h2>
+          <p className="hint">{tr('set.accentHint')}</p>
           <div className="swatches">
             {ACCENTS.map(([hex, name]) => (
               <button
@@ -258,52 +267,46 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
                 className={`swatch${db.settings.accent === hex ? ' swatch--on' : ''}`}
                 style={{ background: hex }}
                 onClick={() => setSettings({ accent: hex })}
-                aria-label={name}
-                title={name}
+                aria-label={tr(name)}
+                title={tr(name)}
               />
             ))}
           </div>
         </section>
 
         <section className="card">
-          <h2 className="card__title">Dépenses</h2>
+          <h2 className="card__title">{tr('set.spending')}</h2>
           <label className="row row--check">
             <input
               type="checkbox"
               checked={db.settings.allowNegative}
               onChange={(e) => setSettings({ allowNegative: e.target.checked })}
             />
-            <span className="row__label">Autoriser le solde négatif</span>
+            <span className="row__label">{tr('set.allowNegative')}</span>
           </label>
-          <p className="hint">
-            Désactivé, une dépense plus grande que le solde est refusée. Les corrections
-            ci-dessous restent toujours possibles.
-          </p>
+          <p className="hint">{tr('set.allowNegativeHint')}</p>
 
           <div className="row">
-            <span className="row__label">Corriger le solde</span>
+            <span className="row__label">{tr('set.fixBalance')}</span>
             <input
               className="input input--xs"
               inputMode="decimal"
               value={adjust}
               onChange={(e) => setAdjust(e.target.value)}
               placeholder="+10"
-              aria-label="Correction du solde"
+              aria-label={tr('set.fixBalanceLabel')}
             />
             <button className="btn" onClick={applyAdjust} disabled={!+adjust.replace(',', '.')}>
-              Appliquer
+              {tr('set.apply')}
             </button>
           </div>
-          <p className="hint">
-            La correction apparaît dans l’historique — le solde reste toujours la somme
-            du journal.
-          </p>
+          <p className="hint">{tr('set.fixHint')}</p>
         </section>
 
         {atelier && <Atelier onClose={fermer} />}
 
         <section className="card">
-          <h2 className="card__title">Aide</h2>
+          <h2 className="card__title">{tr('set.help')}</h2>
           <button
             className="btn"
             onClick={() => {
@@ -311,20 +314,20 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
               onTuto()
             }}
           >
-            Revoir la présentation
+            {tr('set.replayTuto')}
           </button>
           <a className="btn" href={lienBug()} target="_blank" rel="noreferrer">
-            Signaler un bug
+            {tr('set.reportBug')}
           </a>
         </section>
 
         <footer className="about">
           <a className="link" href="https://github.com/Chachigo/butineur" target="_blank" rel="noreferrer">
-            Butineur sur GitHub
+            {tr('set.github')}
           </a>
-          {/* Sept tapes sur la version : l'atelier de debug n'a pas à s'afficher tout seul. */}
+          {/* Seven taps on the version: the debug workshop has no business showing up on its own. */}
           <button className="about__version" onClick={() => setTaps((n) => n + 1)}>
-            version {__VERSION__}
+            {tr('set.version', { v: __VERSION__ })}
           </button>
         </footer>
       </div>
@@ -351,41 +354,38 @@ function Atelier({ onClose }: { onClose: () => void }) {
   return (
     <section className="card">
       <div className="row">
-        <h2 className="card__title">Atelier</h2>
-        {/* Une fois vu, on doit pouvoir le refermer sans relancer l'appli. */}
+        <h2 className="card__title">{tr('wk.title')}</h2>
+        {/* Once seen, one has to be able to close it without restarting the app. */}
         <button className="link" onClick={onClose}>
-          Masquer
+          {tr('wk.hide')}
         </button>
       </div>
 
-      <p className="hint">
-        Décalage d’horloge — l’appli croit qu’on est plus tard, tout le reste en
-        découle.
-      </p>
+      <p className="hint">{tr('wk.clockHint')}</p>
       <div className="row">
         <button className="btn" onClick={() => decaler(3_600_000)}>
-          +1 h
+          {tr('wk.hour')}
         </button>
         <button className="btn" onClick={() => decaler(DAY)}>
-          +1 j
+          {tr('wk.day')}
         </button>
         <button className="btn" onClick={() => decaler(7 * DAY)}>
-          +7 j
+          {tr('wk.week')}
         </button>
         <button className="btn" onClick={() => void quitterAtelier()} disabled={!timeOffset()}>
-          Présent
+          {tr('wk.now')}
         </button>
       </div>
 
       {repetitives.length > 0 && (
         <>
-          <p className="hint">Fabriquer une série sur une tâche répétitive.</p>
+          <p className="hint">{tr('wk.streakHint')}</p>
           <div className="row">
             <select
               className="input input--select"
               value={cible?.id ?? ''}
               onChange={(e) => setTaskId(e.target.value)}
-              aria-label="Tâche à simuler"
+              aria-label={tr('wk.pickTask')}
             >
               {repetitives.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -399,7 +399,7 @@ function Atelier({ onClose }: { onClose: () => void }) {
               min={1}
               max={60}
               onChange={setN}
-              aria-label="Longueur de la série"
+              aria-label={tr('wk.streakLength')}
             />
             <button
               className="btn btn--go"
@@ -408,24 +408,21 @@ function Atelier({ onClose }: { onClose: () => void }) {
                 update((d) => ({ ...d, events: [...d.events, ...fakeStreak(cible, n)] }))
               }
             >
-              Simuler
+              {tr('wk.simulate')}
             </button>
           </div>
         </>
       )}
 
-      <p className="hint">
-        Revenir au présent reprend tout ce qui a été fabriqué ou validé pendant
-        le décalage — rien ne reste daté dans le futur.
-      </p>
+      <p className="hint">{tr('wk.undoHint')}</p>
       <div className="row">
-        <span className="row__label">{faux} événement(s) de test à retirer</span>
+        <span className="row__label">{tr('wk.fake', { n: faux })}</span>
         <button
           className="btn btn--danger"
           disabled={!faux}
           onClick={() => update((d) => ({ ...d, events: [...d.events, ...undoDebugEvents(d.events)] }))}
         >
-          Tout retirer
+          {tr('wk.undoAll')}
         </button>
       </div>
     </section>

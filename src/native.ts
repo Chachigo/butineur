@@ -3,6 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import { Preferences } from '@capacitor/preferences'
 import { dayNum, dueTsFor, isAvailable, previewReward, upcomingDues, type Replay } from './engine'
 import { fmt } from './format'
+import { tr } from './i18n'
 import type { Pending, Settings, Task, TaskState } from './types'
 import { iconChar, isPhosphor } from './ui/Icon'
 
@@ -240,7 +241,7 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
         .map((at, i) => ({
           id: notifId(t.id) + i * 3,
           title: t.name,
-          body: `Échéance maintenant — ${fmt(t.reward)} ${currency} en jeu`,
+          body: tr('notif.due', { amount: fmt(t.reward), cur: currency }),
           at,
         })),
     )
@@ -256,8 +257,8 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
           id: notifId(t.id) + i * 3 + 1,
           title: t.name,
           body: t.counter
-            ? `Objectif du jour : ${t.counter.target} ${t.counter.unit ?? ''}`.trim()
-            : `À faire — ${fmt(previewReward(t, rep.perTask.get(t.id), now))} ${currency}`,
+            ? tr('notif.counter', { n: t.counter.target, unit: t.counter.unit ?? '' }).trim()
+            : tr('notif.todo', { amount: fmt(previewReward(t, rep.perTask.get(t.id), now)), cur: currency }),
           at,
         })),
     )
@@ -291,7 +292,7 @@ function cheerFor(t: Task, s: TaskState | undefined): string | null {
   const streak = s?.streak ?? 0
 
   if (streak === 0 && (s?.brokenStreak ?? 0) > 1) {
-    return `Série de ${s!.brokenStreak} perdue. On repart d’ici ce soir ?`
+    return tr('cheer.lost', { n: s!.brokenStreak })
   }
 
   const next = (t.streak?.tiers ?? [])
@@ -299,11 +300,11 @@ function cheerFor(t: Task, s: TaskState | undefined): string | null {
     .sort((a, b) => a.at - b.at)[0]
   if (next && next.at - streak <= 2) {
     const reste = next.at - streak
-    return `${streak} d’affilée. Encore ${reste} et le palier tombe : +${fmt(next.bonus)}.`
+    return tr('cheer.close', { n: streak, left: reste, bonus: fmt(next.bonus) })
   }
 
   if (streak > 0 && streak + 1 > (s?.bestStreak ?? 0)) {
-    return `${streak} d’affilée — une de plus et c’est ton record.`
+    return tr('cheer.record', { n: streak })
   }
 
   return null

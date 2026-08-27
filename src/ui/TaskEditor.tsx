@@ -8,7 +8,16 @@ import {
   streakAtCap,
   type Rythme,
 } from '../engine'
-import { combineDateTime, defaultDue, fmt, formatDueLong, toDateInput, toTimeInput } from '../format'
+import {
+  combineDateTime,
+  defaultDue,
+  fmt,
+  formatDueLong,
+  toDateInput,
+  toTimeInput,
+  weekdayName,
+} from '../format'
+import { rich, tr, trn, type Key } from '../i18n'
 import { deleteTask, saveTask, uid, useDB } from '../store'
 import type { Penalty, Task, TaskState, Tier } from '../types'
 import IconPicker from './IconPicker'
@@ -45,6 +54,11 @@ function retarget(counter: NonNullable<Task['counter']>, next: number): Tier[] {
 }
 
 const BEFORE_UNITS = { minutes: 1, heures: 60, jours: 1440 } as const
+const BEFORE_LABEL: Record<keyof typeof BEFORE_UNITS, Key> = {
+  minutes: 'ed.minutesBefore',
+  heures: 'ed.hoursBefore',
+  jours: 'ed.daysBefore',
+}
 
 /** Missing `kind` = fixed time: it was the only mode before. */
 const remindKind = (t: Task): 'time' | 'jour' | 'before' =>
@@ -60,22 +74,18 @@ function beforeUnit(t: Task): keyof typeof BEFORE_UNITS {
   return 'minutes'
 }
 
-/** Monday first as in France; the value stays the one from `Date.getDay()`. */
-const WEEKDAYS: [number, string, string][] = [
-  [1, 'L', 'lundi'],
-  [2, 'M', 'mardi'],
-  [3, 'M', 'mercredi'],
-  [4, 'J', 'jeudi'],
-  [5, 'V', 'vendredi'],
-  [6, 'S', 'samedi'],
-  [0, 'D', 'dimanche'],
-]
+/**
+ * Monday first — the value stays the one from `Date.getDay()`. The letter is the
+ * first one of the day's name in the active language, so the row reads right in
+ * every language instead of carrying seven hard-coded French initials.
+ */
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0]
 
-const RYTHMES: [Rythme, string][] = [
-  ['jour', 'Chaque jour'],
-  ['semaine', 'Chaque semaine'],
-  ['mois', 'Chaque mois'],
-  ['glissant', 'Tous les N jours'],
+const RYTHMES: [Rythme, Key][] = [
+  ['jour', 'ed.r.jour'],
+  ['semaine', 'ed.r.semaine'],
+  ['mois', 'ed.r.mois'],
+  ['glissant', 'ed.r.glissant'],
 ]
 
 /**
@@ -106,13 +116,13 @@ function NextDue({ task, state }: { task: Task; state?: TaskState }) {
   // of a brand new task instead of its own.
   const due = dueTsFor(task, state)
   if (due === null) return null
-  return <p className="hint">Prochaine échéance : {formatDueLong(due)}</p>
+  return <p className="hint">{tr('ed.nextDue', { date: formatDueLong(due) })}</p>
 }
 
-const PENALTY_KINDS: [Penalty['kind'], string][] = [
-  ['flat', 'montant fixe'],
-  ['percent', 'pourcentage'],
-  ['decay', 'dégressive par jour'],
+const PENALTY_KINDS: [Penalty['kind'], Key][] = [
+  ['flat', 'ed.p.flat'],
+  ['percent', 'ed.p.percent'],
+  ['decay', 'ed.p.decay'],
 ]
 
 /**
@@ -156,8 +166,8 @@ export default function TaskEditor({
     <div className="sheet" onClick={onClose}>
       <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
         <header className="sheet__head">
-          <h2>{isNew ? 'Nouvelle tâche' : 'Modifier'}</h2>
-          <button className="sheet__x" onClick={onClose} aria-label="Fermer">
+          <h2>{tr(isNew ? 'ed.new' : 'common.edit')}</h2>
+          <button className="sheet__x" onClick={onClose} aria-label={tr('common.close')}>
             ✕
           </button>
         </header>
@@ -173,13 +183,13 @@ export default function TaskEditor({
               className="input"
               value={t.name}
               onChange={(e) => patch({ name: e.target.value })}
-              placeholder="Nom de la tâche"
-              aria-label="Nom"
+              placeholder={tr('ed.nameHint')}
+              aria-label={tr('ed.name')}
             />
           </div>
 
           <label className="field">
-            <span className="field__label">Récompense</span>
+            <span className="field__label">{tr('ed.reward')}</span>
             <span className="field__row">
               <NumberInput
                 className="input input--sm"
@@ -192,20 +202,17 @@ export default function TaskEditor({
           </label>
 
           <Section
-            title="Tâche rapide"
-            hint="Un bouton pour la reposer dans la liste"
+            title={tr('ed.quick')}
+            hint={tr('ed.quickHint')}
             on={!!t.template}
             // A template waits to be pulled out: no rhythm and no deadline to meet.
             onToggle={(v) => patch({ template: v, repeat: v ? null : t.repeat })}
           >
-            <p className="hint">
-              Rangée hors de la liste, elle apparaît en raccourci au-dessus. Taper
-              dessus en crée une copie à faire aujourd'hui.
-            </p>
+            <p className="hint">{tr('ed.quickText')}</p>
           </Section>
 
           <Section
-            title="Répétitive"
+            title={tr('ed.repeat')}
             on={!!t.repeat}
             onToggle={(v) =>
               patch({
@@ -222,28 +229,29 @@ export default function TaskEditor({
             {t.repeat && (
               <>
                 <div className="row">
-                  <span className="row__label">Revient</span>
+                  <span className="row__label">{tr('ed.comesBack')}</span>
                   <select
                     className="input input--select"
                     value={rythme(t.repeat)}
                     onChange={(e) => patch({ repeat: newRepeat(e.target.value as Rythme, t.repeat!) })}
-                    aria-label="Rythme"
+                    aria-label={tr('ed.rhythm')}
                   >
                     {RYTHMES.map(([k, label]) => (
                       <option key={k} value={k}>
-                        {label}
+                        {tr(label)}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 {rythme(t.repeat) === 'semaine' && (
-                  <div className="days" role="group" aria-label="Jour de la semaine">
-                    {WEEKDAYS.map(([value, letter, label]) => {
+                  <div className="days" role="group" aria-label={tr('ed.weekday')}>
+                    {WEEKDAYS.map((value) => {
                       const on = t.repeat!.weekday === value
+                      const label = weekdayName(value)
                       return (
                         <button
-                          key={label}
+                          key={value}
                           type="button"
                           className={on ? 'day day--on' : 'day'}
                           title={label}
@@ -251,7 +259,7 @@ export default function TaskEditor({
                           aria-pressed={on}
                           onClick={() => patch({ repeat: { ...t.repeat!, weekday: value } })}
                         >
-                          {letter}
+                          {label.charAt(0).toUpperCase()}
                         </button>
                       )
                     })}
@@ -260,23 +268,23 @@ export default function TaskEditor({
 
                 {rythme(t.repeat) === 'mois' && (
                   <div className="row">
-                    <span className="row__label">Le</span>
+                    <span className="row__label">{tr('ed.onThe')}</span>
                     <NumberInput
                       className="input input--xs"
                       value={t.repeat.monthday ?? 1}
                       min={1}
                       max={31}
                       onChange={(monthday) => patch({ repeat: { ...t.repeat!, monthday } })}
-                      aria-label="Jour du mois"
+                      aria-label={tr('ed.monthday')}
                     />
-                    <span className="field__suffix">du mois</span>
+                    <span className="field__suffix">{tr('ed.ofMonth')}</span>
                   </div>
                 )}
 
                 {rythme(t.repeat) === 'glissant' && (
                   <>
                     <div className="row">
-                      <span className="row__label">Tous les</span>
+                      <span className="row__label">{tr('ed.every')}</span>
                       <NumberInput
                         className="input input--xs"
                         value={t.repeat.everyDays}
@@ -284,21 +292,19 @@ export default function TaskEditor({
                         // would make no sense.
                         min={2}
                         onChange={(everyDays) => patch({ repeat: { everyDays } })}
-                        aria-label="Nombre de jours"
+                        aria-label={tr('ed.dayCount')}
                       />
-                      <span className="field__suffix">jour(s)</span>
+                      <span className="field__suffix">{tr('ed.days')}</span>
                     </div>
-                    <p className="hint">
-                      Le compte repart de la dernière validation : faire en retard décale la suite.
-                    </p>
+                    <p className="hint">{tr('ed.rollingHint')}</p>
                   </>
                 )}
 
-                {/* L'heure appartient au rythme : « chaque dimanche à 20 h » se lit d'un trait. */}
+                {/* The time belongs to the rhythm: "every Sunday at 8 pm" reads in one go. */}
                 {t.due && (
                   <>
                     <div className="row">
-                      <span className="row__label">En retard à partir de</span>
+                      <span className="row__label">{tr('ed.lateFrom')}</span>
                       <input
                         className="input input--time"
                         type="time"
@@ -307,7 +313,7 @@ export default function TaskEditor({
                           const at = combineDateTime(toDateInput(t.due!.at), e.target.value)
                           if (at) patch({ due: { ...t.due!, at } })
                         }}
-                        aria-label="Heure de l’échéance"
+                        aria-label={tr('ed.dueTime')}
                       />
                     </div>
                     <NextDue task={t} state={state} />
@@ -318,19 +324,19 @@ export default function TaskEditor({
           </Section>
 
           <Section
-            title="Compteur"
-            hint="Ex. 8 verres d’eau par jour"
+            title={tr('ed.counter')}
+            hint={tr('ed.counterHint')}
             on={!!t.counter}
             onToggle={(v) =>
               // Reaching the target pays the task's reward: no tier by default,
               // they only serve as intermediate bonuses.
-              patch({ counter: v ? { target: 0, unit: 'fois', tiers: [] } : null })
+              patch({ counter: v ? { target: 0, unit: tr('ed.unitDefault'), tiers: [] } : null })
             }
           >
             {t.counter && (
               <>
                 <div className="row">
-                  <span className="row__label">Objectif</span>
+                  <span className="row__label">{tr('ed.target')}</span>
                   <NumberInput
                     className="input input--xs"
                     value={t.counter.target}
@@ -339,27 +345,24 @@ export default function TaskEditor({
                     onChange={(target) =>
                       patch({ counter: { ...t.counter!, target, tiers: retarget(t.counter!, target) } })
                     }
-                    aria-label="Objectif"
+                    aria-label={tr('ed.target')}
                   />
                   <input
                     className="input input--unit"
                     value={t.counter.unit ?? ''}
                     onChange={(e) => patch({ counter: { ...t.counter!, unit: e.target.value } })}
-                    placeholder="fois"
-                    aria-label="Unité"
+                    placeholder={tr('ed.unitDefault')}
+                    aria-label={tr('ed.unit')}
                   />
                 </div>
                 <p className="preview">
-                  Objectif atteint :{' '}
-                  <strong>
-                    +{fmt(t.reward)} {cur}
-                  </strong>
+                  {rich(tr('ed.targetReached', { amount: fmt(t.reward), cur }))}
                 </p>
-                <p className="hint">Bonus intermédiaires (facultatif)</p>
+                <p className="hint">{tr('ed.midTiers')}</p>
                 <TierEditor
                   tiers={t.counter.tiers}
                   onChange={(tiers) => patch({ counter: { ...t.counter!, tiers } })}
-                  unit={t.counter.unit || 'fois'}
+                  unit={t.counter.unit || tr('ed.unitDefault')}
                   currency={cur}
                   max={t.counter.target}
                 />
@@ -367,11 +370,11 @@ export default function TaskEditor({
             )}
           </Section>
 
-          {/* Une tâche qui revient tient son échéance de son rythme : pas de
-              date à choisir, seulement pour celles qui n'arrivent qu'une fois. */}
+          {/* A recurring task gets its deadline from its rhythm: no date to pick,
+              only for the ones that happen just once. */}
           {!t.repeat && (
             <Section
-              title="Date limite"
+              title={tr('ed.deadline')}
               on={!!t.due}
               onToggle={(v) => patch({ due: v ? { at: defaultDue(), penalty: { kind: 'none' } } : null })}
             >
@@ -385,7 +388,7 @@ export default function TaskEditor({
                       const at = combineDateTime(e.target.value, toTimeInput(t.due!.at))
                       if (at) patch({ due: { ...t.due!, at } })
                     }}
-                    aria-label="Jour de l’échéance"
+                    aria-label={tr('ed.dueDay')}
                   />
                   <input
                     className="input input--time"
@@ -395,7 +398,7 @@ export default function TaskEditor({
                       const at = combineDateTime(toDateInput(t.due!.at), e.target.value)
                       if (at) patch({ due: { ...t.due!, at } })
                     }}
-                    aria-label="Heure de l’échéance"
+                    aria-label={tr('ed.dueTime')}
                   />
                 </div>
               )}
@@ -404,8 +407,8 @@ export default function TaskEditor({
 
           {t.due && (
             <Section
-              title="Pénalité de retard"
-              hint="Aucune : le retard ne coûte rien"
+              title={tr('ed.penalty')}
+              hint={tr('ed.penaltyHint')}
               on={t.due.penalty.kind !== 'none'}
               onToggle={(v) =>
                 patch({ due: { ...t.due!, penalty: v ? defaultPenalty(t) : { kind: 'none' } } })
@@ -414,7 +417,7 @@ export default function TaskEditor({
               {t.due.penalty.kind !== 'none' && (
                 <>
                   <div className="row">
-                    <span className="row__label">Type</span>
+                    <span className="row__label">{tr('ed.kind')}</span>
                     <select
                       className="input input--select"
                       value={t.due.penalty.kind}
@@ -424,7 +427,7 @@ export default function TaskEditor({
                     >
                       {PENALTY_KINDS.map(([k, label]) => (
                         <option key={k} value={k}>
-                          {label}
+                          {tr(label)}
                         </option>
                       ))}
                     </select>
@@ -435,12 +438,9 @@ export default function TaskEditor({
                     onChange={(penalty) => patch({ due: { ...t.due!, penalty } })}
                   />
                   <PenaltySim task={t} currency={cur} />
-                  {/* La série, elle, ne se négocie pas : elle tombe au cycle manqué. */}
+                  {/* The streak, on the other hand, is not negotiable: it drops on a missed cycle. */}
                   {t.streak && (
-                    <p className="hint">
-                      Sans rapport avec la série : elle tolère un jour de retard, au-delà
-                      elle casse.
-                    </p>
+                    <p className="hint">{tr('ed.penaltyVsStreak')}</p>
                   )}
                 </>
               )}
@@ -448,8 +448,8 @@ export default function TaskEditor({
           )}
 
           <Section
-            title="Rappel"
-            hint="Notification à une heure fixe"
+            title={tr('ed.remind')}
+            hint={tr('ed.remindHint')}
             on={!!t.remind}
             onToggle={(v) => patch({ remind: v ? { kind: 'time', time: '19:00' } : null })}
           >
@@ -461,7 +461,7 @@ export default function TaskEditor({
                     className={remindKind(t) === 'time' ? 'chip-btn chip-btn--on' : 'chip-btn'}
                     onClick={() => patch({ remind: { kind: 'time', time: '19:00' } })}
                   >
-                    à une heure fixe
+                    {tr('ed.atTime')}
                   </button>
                   <button
                     type="button"
@@ -475,7 +475,7 @@ export default function TaskEditor({
                       })
                     }
                   >
-                    le jour même
+                    {tr('ed.onTheDay')}
                   </button>
                   <button
                     type="button"
@@ -491,18 +491,16 @@ export default function TaskEditor({
                       })
                     }
                   >
-                    avant l’échéance
+                    {tr('ed.beforeDue')}
                   </button>
                 </div>
                 {remindKind(t) === 'before' && (
-                  <p className="hint">
-                    Compté depuis l’échéance ci-dessus : change l’heure dans « Date limite ».
-                  </p>
+                  <p className="hint">{tr('ed.beforeHint')}</p>
                 )}
 
                 {remindKind(t) === 'jour' && (
                   <div className="row">
-                    <span className="row__label">Le jour de l’échéance à</span>
+                    <span className="row__label">{tr('ed.onDueDayAt')}</span>
                     <input
                       className="input input--time"
                       type="time"
@@ -510,14 +508,14 @@ export default function TaskEditor({
                       onChange={(e) =>
                         e.target.value && patch({ remind: { kind: 'jour', time: e.target.value } })
                       }
-                      aria-label="Heure du rappel"
+                      aria-label={tr('ed.remindTime')}
                     />
                   </div>
                 )}
 
                 {remindKind(t) === 'time' ? (
                   <div className="row">
-                    <span className="row__label">Chaque jour à</span>
+                    <span className="row__label">{tr('ed.everyDayAt')}</span>
                     <input
                       className="input input--time"
                       type="time"
@@ -525,12 +523,12 @@ export default function TaskEditor({
                       onChange={(e) =>
                         e.target.value && patch({ remind: { kind: 'time', time: e.target.value } })
                       }
-                      aria-label="Heure du rappel"
+                      aria-label={tr('ed.remindTime')}
                     />
                   </div>
                 ) : remindKind(t) === 'before' ? (
                   <div className="row">
-                    <span className="row__label">Prévenir</span>
+                    <span className="row__label">{tr('ed.warnMe')}</span>
                     <NumberInput
                       className="input input--xs"
                       value={Math.round((t.remind as { minutes: number }).minutes / BEFORE_UNITS[beforeUnit(t)])}
@@ -538,7 +536,7 @@ export default function TaskEditor({
                       onChange={(v) =>
                         patch({ remind: { kind: 'before', minutes: v * BEFORE_UNITS[beforeUnit(t)] } })
                       }
-                      aria-label="Délai avant l’échéance"
+                      aria-label={tr('ed.beforeDelay')}
                     />
                     <select
                       className="input input--select"
@@ -550,46 +548,45 @@ export default function TaskEditor({
                         )
                         patch({ remind: { kind: 'before', minutes: n * BEFORE_UNITS[u] } })
                       }}
-                      aria-label="Unité du délai"
+                      aria-label={tr('ed.delayUnit')}
                     >
-                      <option value="minutes">minutes avant</option>
-                      <option value="heures">heures avant</option>
-                      <option value="jours">jours avant</option>
+                      {(Object.keys(BEFORE_UNITS) as (keyof typeof BEFORE_UNITS)[]).map((u) => (
+                        <option key={u} value={u}>
+                          {tr(BEFORE_LABEL[u])}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 ) : null}
 
-                <p className="hint">
-                  Envoyé seulement les jours où la tâche est à faire. Rien tant qu’elle
-                  est déjà validée.
-                </p>
+                <p className="hint">{tr('ed.remindText')}</p>
               </>
             )}
           </Section>
 
 
-          {/* Une série n'a de sens que sur une tâche qui revient. */}
+          {/* A streak only makes sense on a task that comes back. */}
           <Section
-            title="Bonus de série"
-            hint="Récompense la régularité"
+            title={tr('ed.streak')}
+            hint={tr('ed.streakHint')}
             on={!!t.streak}
             disabled={!t.repeat}
-            disabledHint="Active « Répétitive » d’abord"
+            disabledHint={tr('ed.streakNeedsRepeat')}
             onToggle={(v) =>
               patch({ streak: v ? { tiers: [{ at: 3, bonus: 5 }], multiplier: null } : null })
             }
           >
             {t.streak && (
               <>
-                <p className="hint">Paliers</p>
+                <p className="hint">{tr('ed.tiers')}</p>
                 <TierEditor
                   tiers={t.streak.tiers}
                   onChange={(tiers) => patch({ streak: { ...t.streak!, tiers } })}
-                  unit="d’affilée"
+                  unit={tr('ed.inARow')}
                   currency={cur}
                 />
                 <Section
-                  title="Multiplicateur"
+                  title={tr('ed.multiplier')}
                   on={!!t.streak.multiplier}
                   onToggle={(v) =>
                     patch({ streak: { ...t.streak!, multiplier: v ? { perStep: 0.1, cap: 2 } : null } })
@@ -598,7 +595,7 @@ export default function TaskEditor({
                   {t.streak.multiplier && (
                     <>
                       <div className="row">
-                        <span className="row__label">Par cran</span>
+                        <span className="row__label">{tr('ed.perStep')}</span>
                         <span className="field__suffix">+</span>
                         <NumberInput
                           className="input input--xs"
@@ -613,12 +610,12 @@ export default function TaskEditor({
                               },
                             })
                           }
-                          aria-label="Pourcentage par cran"
+                          aria-label={tr('ed.perStepLabel')}
                         />
                         <span className="field__suffix">%</span>
                       </div>
                       <div className="row">
-                        <span className="row__label">Plafond</span>
+                        <span className="row__label">{tr('ed.cap')}</span>
                         <span className="field__suffix">×</span>
                         <NumberInput
                           className="input input--xs"
@@ -630,7 +627,7 @@ export default function TaskEditor({
                               streak: { ...t.streak!, multiplier: { ...t.streak!.multiplier!, cap } },
                             })
                           }
-                          aria-label="Plafond du multiplicateur"
+                          aria-label={tr('ed.capLabel')}
                         />
                       </div>
                       <StreakSim task={t} currency={cur} everyDays={t.repeat?.everyDays ?? 1} />
@@ -639,34 +636,26 @@ export default function TaskEditor({
                 </Section>
 
                 <Section
-                  title="Encouragements"
-                  hint="Notifications sur la série"
+                  title={tr('ed.cheer')}
+                  hint={tr('ed.cheerHint')}
                   on={t.cheer}
                   onToggle={(cheer) => patch({ cheer })}
                 >
-                  <p className="hint">
-                    Un message quand un palier approche, quand une série se casse, ou
-                    quand ton record est à portée. Rien à dire, rien d’envoyé.
-                  </p>
+                  <p className="hint">{tr('ed.cheerText')}</p>
                 </Section>
               </>
             )}
           </Section>
 
           {!t.counter && (
-            <p className="preview">
-              À l’heure et sans série :{' '}
-              <strong>
-                +{fmt(t.reward)} {cur}
-              </strong>
-            </p>
+            <p className="preview">{rich(tr('ed.onTimeNoStreak', { amount: fmt(t.reward), cur }))}</p>
           )}
         </div>
 
         <footer className="sheet__foot">
           {isNew ? (
             <button className="btn" onClick={onClose}>
-              Annuler
+              {tr('common.cancel')}
             </button>
           ) : (
             <button
@@ -676,11 +665,11 @@ export default function TaskEditor({
                 onClose()
               }}
             >
-              Supprimer
+              {tr('common.delete')}
             </button>
           )}
           <button className="btn btn--go" onClick={save} disabled={!canSave}>
-            Enregistrer
+            {tr('common.save')}
           </button>
         </footer>
       </div>
@@ -710,13 +699,13 @@ function StreakSim({
 
   return (
     <div className="sim">
-      <p className="hint">Simulation</p>
+      <p className="hint">{tr('sim.title')}</p>
       <div className="sim__strip">
         {steps.map((n) => {
           const tier = (task.streak?.tiers ?? []).some((t) => t.at === n)
           return (
             <div key={n} className={`sim__step${cap !== null && n >= cap ? ' sim__step--cap' : ''}`}>
-              {/* Le rang de la série, et le jour où il tombe. */}
+              {/* The rank in the streak, and the day it falls on. */}
               <span className="sim__n">
                 {n}
                 {everyDays > 1 && <em className="sim__day">j{(n - 1) * everyDays}</em>}
@@ -730,11 +719,15 @@ function StreakSim({
         })}
       </div>
       <p className="hint">
-        {cap !== null ? `Plafond atteint à la ${cap}ᵉ. ` : ''}
-        {upTo} validations d’affilée, soit {span} jour{span > 1 ? 's' : ''} ={' '}
-        <strong className="sim__total">
-          {fmt(total)} {currency}
-        </strong>
+        {cap !== null ? tr('sim.capAt', { n: cap }) : ''}
+        {rich(
+          tr('sim.total', {
+            n: upTo,
+            days: trn('sim.days', span),
+            amount: fmt(total),
+            cur: currency,
+          }),
+        )}
       </p>
     </div>
   )
@@ -748,11 +741,11 @@ function PenaltySim({ task, currency }: { task: Task; currency: string }) {
 
   return (
     <div className="sim">
-      <p className="hint">Simulation du retard</p>
+      <p className="hint">{tr('sim.late')}</p>
       <div className="sim__strip">
         {days.map((d) => (
           <div key={d} className={`sim__step${zero !== null && d >= zero ? ' sim__step--cap' : ''}`}>
-            <span className="sim__n">{d === 0 ? 'à l’heure' : `+${d} j`}</span>
+            <span className="sim__n">{d === 0 ? tr('sim.onTime') : tr('sim.plusDays', { n: d })}</span>
             <span className={`sim__v${rewardAfterDays(task, d) === 0 ? ' sim__v--zero' : ''}`}>
               {fmt(rewardAfterDays(task, d))}
             </span>
@@ -760,20 +753,9 @@ function PenaltySim({ task, currency }: { task: Task; currency: string }) {
         ))}
       </div>
       <p className="hint">
-        {zero !== null ? (
-          <>
-            Ne rapporte plus rien à partir de{' '}
-            <strong className="sim__total">
-              {zero} jour{zero > 1 ? 's' : ''} de retard
-            </strong>
-            .
-          </>
-        ) : (
-          <>
-            Rapporte toujours quelque chose, même très en retard ({fmt(rewardAfterDays(task, 60))}{' '}
-            {currency} au minimum).
-          </>
-        )}
+        {zero !== null
+          ? rich(tr('sim.worthless', { days: trn('sim.days', zero) }))
+          : tr('sim.alwaysPays', { amount: fmt(rewardAfterDays(task, 60)), cur: currency })}
       </p>
     </div>
   )
@@ -807,19 +789,19 @@ function PenaltyValue({
     penalty.kind === 'flat'
       ? ([penalty.amount, currency, 'amount'] as const)
       : penalty.kind === 'percent'
-        ? ([penalty.percent, '% en moins', 'percent'] as const)
-        : ([penalty.percentPerDay, '% par jour', 'percentPerDay'] as const)
+        ? ([penalty.percent, tr('ed.percentOff'), 'percent'] as const)
+        : ([penalty.percentPerDay, tr('ed.percentPerDay'), 'percentPerDay'] as const)
 
   return (
     <div className="row">
-      <span className="row__label">Retrait</span>
+      <span className="row__label">{tr('ed.subtract')}</span>
       <span className="field__suffix">−</span>
       <NumberInput
         className="input input--xs"
         value={value}
         min={0}
         onChange={(n) => onChange({ ...penalty, [key]: n } as Penalty)}
-        aria-label="Valeur de la pénalité"
+        aria-label={tr('ed.penaltyValue')}
       />
       <span className="field__suffix">{suffix}</span>
     </div>
