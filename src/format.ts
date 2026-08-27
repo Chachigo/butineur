@@ -1,4 +1,5 @@
 import { DAY, dayNum, rythme } from './engine'
+import { lang, tr } from './i18n'
 import type { Task } from './types'
 
 /**
@@ -6,17 +7,24 @@ import type { Task } from './types'
  * flattened real differences to the same figure. A round amount stays written
  * round: "10 €", not "10,00 €".
  */
+const nf = new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 export function fmt(n: number): string {
   const r = Math.round(n * 100) / 100
-  return Number.isInteger(r) ? String(r) : r.toFixed(2).replace('.', ',')
+  return Number.isInteger(r) ? String(r) : nf.format(r)
 }
 
 export const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n))
 
-const dt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' })
-const dtTime = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+const decimalSep = (1.1).toLocaleString(lang).charAt(1)
 
-const dtDue = new Intl.DateTimeFormat('fr-FR', {
+/** A number written as the local keyboard types it: comma or dot, per language. */
+export const decimalInput = (n: number) => String(n).replace('.', decimalSep)
+
+const dt = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short' })
+const dtTime = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+const dtDue = new Intl.DateTimeFormat(lang, {
   weekday: 'long',
   day: 'numeric',
   month: 'long',
@@ -26,7 +34,7 @@ const dtDue = new Intl.DateTimeFormat('fr-FR', {
 
 export const formatDate = (ts: number) => dt.format(ts)
 export const formatDateTime = (ts: number) => dtTime.format(ts)
-/** "dimanche 2 août à 20:00" — the deadline spelled out, in the editor. */
+/** "dimanche 2 août à 20:00" / "Sunday 2 August at 20:00" — in the editor. */
 export const formatDueLong = (ts: number) => dtDue.format(ts)
 
 /**
@@ -38,27 +46,30 @@ export const formatDueLong = (ts: number) => dtDue.format(ts)
  */
 export function relativeDay(ts: number, now = Date.now(), dayStart = 0): string {
   const d = dayNum(ts, dayStart) - dayNum(now, dayStart)
-  if (d === 0) return "aujourd'hui"
-  if (d === 1) return 'demain'
-  if (d === -1) return 'hier'
-  if (d < 0) return `en retard de ${-d} j`
-  if (d <= 7) return `dans ${d} j`
-  return `le ${formatDate(ts)}`
+  if (d === 0) return tr('day.today')
+  if (d === 1) return tr('day.tomorrow')
+  if (d === -1) return tr('day.yesterday')
+  if (d < 0) return tr('day.late', { n: -d })
+  if (d <= 7) return tr('day.in', { n: d })
+  return tr('day.on', { date: formatDate(ts) })
 }
 
-const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+const weekday = new Intl.DateTimeFormat(lang, { weekday: 'long' })
+
+/** Name of a weekday, `Date.getDay()` numbering. 4 Jan 1970 was a Sunday. */
+export const weekdayName = (n: number) => weekday.format(new Date(1970, 0, 4 + (n % 7)))
 
 /** The rhythm spelled out — the list badge says the same thing as the editor. */
 export function rythmeLabel(repeat: NonNullable<Task['repeat']>): string {
   switch (rythme(repeat)) {
     case 'jour':
-      return 'chaque jour'
+      return tr('rhythm.daily')
     case 'semaine':
-      return `chaque ${JOURS[repeat.weekday! % 7]}`
+      return tr('rhythm.weekly', { day: weekdayName(repeat.weekday!) })
     case 'mois':
-      return `le ${repeat.monthday} du mois`
+      return tr('rhythm.monthly', { n: repeat.monthday! })
     case 'glissant':
-      return `tous les ${repeat.everyDays} j`
+      return tr('rhythm.rolling', { n: repeat.everyDays })
   }
 }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { now as clock } from '../debug'
-import { fmt, formatDateTime, signed } from '../format'
+import { decimalInput, fmt, formatDateTime, signed } from '../format'
+import { tr } from '../i18n'
 import { addEvent, uid, useDB } from '../store'
 import type { LedgerEntry } from '../types'
 import { useCloseOnBack } from './useCloseOnBack'
@@ -10,7 +11,7 @@ export default function History({ entries, currency }: { entries: LedgerEntry[];
   const events = useDB().events
   const [corrige, setCorrige] = useState<LedgerEntry | null>(null)
 
-  if (entries.length === 0) return <p className="empty">Rien ne s’est encore passé.</p>
+  if (entries.length === 0) return <p className="empty">{tr('history.empty')}</p>
 
   /**
    * Only a free-form spending can be corrected: a catalogue purchase is redone
@@ -34,12 +35,14 @@ export default function History({ entries, currency }: { entries: LedgerEntry[];
             </div>
             <div className="entry__meta">
               <span>{formatDateTime(e.ts)}</span>
-              {e.base > 0 && <span className="chip">base {fmt(e.base)}</span>}
-              {e.penalty < 0 && <span className="chip chip--neg">retard {fmt(e.penalty)}</span>}
-              {e.multiplierBonus > 0.05 && <span className="chip chip--bonus">série +{fmt(e.multiplierBonus)}</span>}
-              {e.tierBonus > 0 && <span className="chip chip--bonus">palier +{fmt(e.tierBonus)}</span>}
+              {e.base > 0 && <span className="chip">{tr('history.base', { n: fmt(e.base) })}</span>}
+              {e.penalty < 0 && <span className="chip chip--neg">{tr('history.late', { n: fmt(e.penalty) })}</span>}
+              {e.multiplierBonus > 0.05 && (
+                <span className="chip chip--bonus">{tr('history.streak', { n: fmt(e.multiplierBonus) })}</span>
+              )}
+              {e.tierBonus > 0 && <span className="chip chip--bonus">{tr('history.tier', { n: fmt(e.tierBonus) })}</span>}
               {libre(e) && (
-                <button className="entry__edit" onClick={() => setCorrige(e)} aria-label="Modifier">
+                <button className="entry__edit" onClick={() => setCorrige(e)} aria-label={tr('common.edit')}>
                   ✏️
                 </button>
               )}
@@ -68,7 +71,7 @@ function CorrigerDepense({
   onClose: () => void
 }) {
   const [label, setLabel] = useState(entry.label)
-  const [montant, setMontant] = useState(String(Math.abs(entry.total)).replace('.', ','))
+  const [montant, setMontant] = useState(decimalInput(Math.abs(entry.total)))
   useCloseOnBack(true, onClose)
 
   const valeur = +montant.replace(',', '.')
@@ -82,7 +85,7 @@ function CorrigerDepense({
       ts: entry.ts,
       kind: 'spend',
       amount: valeur,
-      label: label.trim() || 'Dépense',
+      label: label.trim() || tr('history.defaultLabel'),
     })
     onClose()
   }
@@ -91,32 +94,32 @@ function CorrigerDepense({
     <div className="sheet" onClick={onClose}>
       <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
         <header className="sheet__head">
-          <h2>Corriger la dépense</h2>
-          <button className="sheet__x" onClick={onClose} aria-label="Fermer">
+          <h2>{tr('history.fix')}</h2>
+          <button className="sheet__x" onClick={onClose} aria-label={tr('common.close')}>
             ✕
           </button>
         </header>
 
         <div className="sheet__body">
           <label className="field">
-            <span className="field__label">Pour quoi ?</span>
+            <span className="field__label">{tr('history.what')}</span>
             <input
               className="input"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              aria-label="Libellé de la dépense"
+              aria-label={tr('history.label')}
             />
           </label>
 
           <label className="field">
-            <span className="field__label">Montant</span>
+            <span className="field__label">{tr('history.amount')}</span>
             <span className="field__row">
               <input
                 className="input input--sm"
                 inputMode="decimal"
                 value={montant}
                 onChange={(e) => setMontant(e.target.value)}
-                aria-label="Montant"
+                aria-label={tr('history.amount')}
               />
               <span className="field__suffix">{currency}</span>
             </span>
@@ -125,10 +128,10 @@ function CorrigerDepense({
 
         <footer className="sheet__foot">
           <button className="btn" onClick={onClose}>
-            Annuler
+            {tr('common.cancel')}
           </button>
           <button className="btn btn--go" onClick={enregistrer} disabled={!(valeur > 0)}>
-            Enregistrer
+            {tr('common.save')}
           </button>
         </footer>
       </div>

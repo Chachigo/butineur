@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import type { Tier } from '../types'
 import NumberInput from './NumberInput'
 
@@ -26,7 +27,7 @@ export default function TierEditor({ tiers, onChange, unit, currency, max }: Pro
             min={1}
             max={max}
             onChange={(at) => set(i, { at })}
-            aria-label={`Palier ${i + 1} : ${unit}`}
+            aria-label={tr('tier.at', { n: i + 1, unit })}
           />
           <span className="tier__unit">{unit}</span>
           <span className="tier__arrow">→</span>
@@ -34,13 +35,13 @@ export default function TierEditor({ tiers, onChange, unit, currency, max }: Pro
             className="input input--xs"
             value={t.bonus}
             onChange={(bonus) => set(i, { bonus })}
-            aria-label={`Bonus du palier ${i + 1}`}
+            aria-label={tr('tier.bonus', { n: i + 1 })}
           />
           <span className="tier__unit">{currency}</span>
           <button
             className="tier__del"
             onClick={() => onChange(tiers.filter((_, j) => j !== i))}
-            aria-label="Retirer ce palier"
+            aria-label={tr('tier.remove')}
           >
             ✕
           </button>
@@ -50,7 +51,7 @@ export default function TierEditor({ tiers, onChange, unit, currency, max }: Pro
         className="link"
         onClick={() => onChange([...tiers, { at: (tiers[tiers.length - 1]?.at ?? 0) + 1, bonus: 10 }])}
       >
-        + ajouter un palier
+        {tr('tier.add')}
       </button>
     </div>
   )

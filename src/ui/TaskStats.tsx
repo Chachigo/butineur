@@ -1,5 +1,6 @@
 import { dueTsFor, rewardAtStreak, type Replay } from '../engine'
 import { fmt, formatDueLong, rythmeLabel } from '../format'
+import { rich, tr } from '../i18n'
 import type { Task } from '../types'
 import Icon from './Icon'
 import { useCloseOnBack } from './useCloseOnBack'
@@ -43,51 +44,54 @@ export default function TaskStats({
         <header className="sheet__head">
           <Icon className="task__icon" icon={task.icon ?? ''} fallback={task.counter ? '🎯' : '✓'} />
           <h2>{task.name}</h2>
-          <button className="sheet__x" onClick={onClose} aria-label="Fermer">
+          <button className="sheet__x" onClick={onClose} aria-label={tr('common.close')}>
             ✕
           </button>
         </header>
 
         <div className="sheet__body">
           <div className="stats">
-            <Chiffre valeur={String(streak)} legende={s?.frozen ? 'série en gel 🧊' : 'série 🔥'} />
-            <Chiffre valeur={String(s?.bestStreak ?? 0)} legende="record" />
-            <Chiffre valeur={`${fmt(gagne)} ${currency}`} legende="gagné en tout" />
+            <Chiffre valeur={String(streak)} legende={tr(s?.frozen ? 'sheet.frozen' : 'sheet.streak')} />
+            <Chiffre valeur={String(s?.bestStreak ?? 0)} legende={tr('sheet.record')} />
+            <Chiffre valeur={`${fmt(gagne)} ${currency}`} legende={tr('sheet.earned')} />
           </div>
 
-          {task.repeat && <p className="hint">Revient {rythmeLabel(task.repeat)}.</p>}
-          {due !== null && <p className="hint">Prochaine échéance : {formatDueLong(due)}.</p>}
+          {task.repeat && <p className="hint">{tr('sheet.comesBack', { rhythm: rythmeLabel(task.repeat) })}</p>}
+          {due !== null && <p className="hint">{tr('sheet.nextDue', { date: formatDueLong(due) })}</p>}
 
           {prochain ? (
             <p className="hint">
-              Prochain palier à la <strong>{prochain.at}ᵉ</strong> — encore{' '}
-              <strong>{prochain.at - streak}</strong>, pour{' '}
-              <strong>
-                +{fmt(prochain.bonus)} {currency}
-              </strong>
-              .
+              {rich(
+                tr('sheet.nextTier', {
+                  n: prochain.at,
+                  left: prochain.at - streak,
+                  bonus: fmt(prochain.bonus),
+                  cur: currency,
+                }),
+              )}
             </p>
           ) : (
-            task.streak && <p className="hint">Tous les paliers sont franchis.</p>
+            task.streak && <p className="hint">{tr('sheet.allTiers')}</p>
           )}
 
           {task.streak?.multiplier && (
             <p className="hint">
-              La prochaine validation rapporterait{' '}
-              <strong>
-                {fmt(rewardAtStreak(task, streak + 1))} {currency}
-              </strong>
-              .
+              {rich(
+                tr('sheet.nextPays', {
+                  amount: fmt(rewardAtStreak(task, streak + 1)),
+                  cur: currency,
+                }),
+              )}
             </p>
           )}
         </div>
 
         <footer className="sheet__foot">
           <button className="btn" onClick={onClose}>
-            Fermer
+            {tr('common.close')}
           </button>
           <button className="btn btn--go" onClick={onEdit}>
-            Modifier
+            {tr('common.edit')}
           </button>
         </footer>
       </div>

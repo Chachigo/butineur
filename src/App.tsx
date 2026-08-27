@@ -9,6 +9,7 @@ import {
   takeNewTaskRequest,
   widgetPayload,
 } from './native'
+import { tr, type Key } from './i18n'
 import { deleteTask, quitterAtelier, uid, update, useDB } from './store'
 import type { Task } from './types'
 import Balance from './ui/Balance'
@@ -24,11 +25,11 @@ import { useCloseOnBack } from './ui/useCloseOnBack'
 
 type Tab = 'tasks' | 'shop' | 'history' | 'stats'
 
-const TABS: [Tab, string][] = [
-  ['tasks', 'Tâches'],
-  ['shop', 'Boutique'],
-  ['history', 'Historique'],
-  ['stats', 'Stats'],
+const TABS: [Tab, Key][] = [
+  ['tasks', 'tabs.tasks'],
+  ['shop', 'tabs.shop'],
+  ['history', 'tabs.history'],
+  ['stats', 'tabs.stats'],
 ]
 
 export default function App() {
@@ -134,8 +135,10 @@ export default function App() {
       {/* Un décalage oublié ressemblerait à un bug : il s'annonce, et se coupe d'un tap. */}
       {timeOffset() !== 0 && (
         <button className="timewarp" onClick={() => void quitterAtelier()}>
-          ⏱ debug : {timeOffset() > 0 ? '+' : '−'}
-          {Math.round(Math.abs(timeOffset()) / DAY)} j — revenir au présent
+          {tr('app.timewarp', {
+            sign: timeOffset() > 0 ? '+' : '−',
+            n: Math.round(Math.abs(timeOffset()) / DAY),
+          })}
         </button>
       )}
 
@@ -155,10 +158,10 @@ export default function App() {
             className={tab === id ? 'tab tab--on' : 'tab'}
             onClick={() => setTab(id)}
           >
-            {label}
+            {tr(label)}
           </button>
         ))}
-        <button className="tab tab--icon" onClick={() => setSettingsOpen(true)} aria-label="Réglages">
+        <button className="tab tab--icon" onClick={() => setSettingsOpen(true)} aria-label={tr('app.settings')}>
           ⚙
         </button>
       </nav>

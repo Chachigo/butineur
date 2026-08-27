@@ -1,0 +1,70 @@
+/**
+ * The reference language. Every other file is typed on this one, so TypeScript
+ * refuses to compile when a key is missing — the safety net a JSON file loaded
+ * at runtime would not have. Adding a language is one file plus one line in
+ * `i18n.ts`.
+ */
+export default {
+  // --- dates and rhythms (format.ts) ---
+  'day.today': 'today',
+  'day.tomorrow': 'tomorrow',
+  'day.yesterday': 'yesterday',
+  'day.late': '{n} d late',
+  'day.in': 'in {n} d',
+  'day.on': 'on {date}',
+  'rhythm.daily': 'every day',
+  'rhythm.weekly': 'every {day}',
+  'rhythm.monthly': 'day {n} of the month',
+  'rhythm.rolling': 'every {n} d',
+  // --- tabs, tiers, guided tour ---
+  'tabs.tasks': 'Tasks',
+  'tabs.shop': 'Shop',
+  'tabs.history': 'History',
+  'tabs.stats': 'Stats',
+  'tier.at': 'Tier {n}: {unit}',
+  'tier.bonus': 'Bonus of tier {n}',
+  'tier.remove': 'Remove this tier',
+  'tier.add': '+ add a tier',
+  'tuto.1.title': 'Tasks pay',
+  'tuto.1.text': 'Every task you complete credits your fun-money budget. The amount is yours to set: five euros for the dishes if that is what motivates you.',
+  'tuto.2.title': 'The shop spends',
+  'tuto.2.text': 'You keep there what you want to treat yourself to, with its price. Buying takes it off the budget — and nothing stops you adding a spending outside the catalogue.',
+  'tuto.3.title': 'The rhythm decides everything',
+  'tuto.3.text': 'Every day, every week, every month, or every N days. It is what says when the task comes back, when it is late, and when it becomes available again.',
+  'tuto.4.title': 'The streak rewards consistency',
+  'tuto.4.text': 'It goes up one step per cycle met. One day late freezes it 🧊 without breaking it; beyond that, it starts over from zero.',
+  'tuto.5.title': 'Widgets, without opening the app',
+  'tuto.5.text': 'The balance, a counter, the list of tasks to complete. A tap from the home screen counts even with the app closed, with the time of the gesture.',
+  'tuto.start': 'Start',
+  'tuto.skip': 'Skip',
+  'tuto.next': 'Next',
+  // --- app shell ---
+  'app.settings': 'Settings',
+  'app.timewarp': '⏱ debug: {sign}{n} d — back to the present',
+  // --- task sheet ---
+  'common.close': 'Close',
+  'common.edit': 'Edit',
+  'common.cancel': 'Cancel',
+  'common.save': 'Save',
+  'common.delete': 'Delete',
+  'sheet.streak': 'streak 🔥',
+  'sheet.frozen': 'streak frozen 🧊',
+  'sheet.record': 'record',
+  'sheet.earned': 'earned in total',
+  'sheet.comesBack': 'Comes back {rhythm}.',
+  'sheet.nextDue': 'Next deadline: {date}.',
+  'sheet.nextTier': 'Next tier at *{n}* in a row — *{left}* to go, for *+{bonus} {cur}*.',
+  'sheet.allTiers': 'Every tier has been crossed.',
+  'sheet.nextPays': 'The next completion would pay *{amount} {cur}*.',
+  // --- history ---
+  'history.empty': 'Nothing has happened yet.',
+  'history.base': 'base {n}',
+  'history.late': 'late {n}',
+  'history.streak': 'streak +{n}',
+  'history.tier': 'tier +{n}',
+  'history.fix': 'Correct the spending',
+  'history.what': 'What for?',
+  'history.label': 'Label of the spending',
+  'history.amount': 'Amount',
+  'history.defaultLabel': 'Spending',
+}
