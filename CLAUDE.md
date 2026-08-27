@@ -107,16 +107,10 @@ npm run screenshots  # captures du README, sur des données de démo (dev server
   `src/i18n.tsx`, avec sa clé dans `src/lang/en.ts` (la référence) et
   `src/lang/fr.ts`. `aria-label` compris. La fonction s'appelle `tr` et non `t`,
   parce que `t` désigne une tâche partout ailleurs.
-- Debug natif : **`Log.e`, jamais `Log.d`** (filtré sur le téléphone de Cléa).
+- Debug natif : **`Log.e`, jamais `Log.d`** — le second est filtré sur le
+  téléphone qui sert aux tests.
 - Suppression douce (`deletedAt`) partout : la synchro du lot 3 en dépendra.
 - Les raccourcis assumés portent un commentaire `ponytail:` avec leur plafond.
-- Les tâches et la checklist de tests vivent dans le **kanban Vikunja**, plus dans un
-  fichier — à lire avant de répondre, la colonne `Claude` est la file d'entrée.
-  [.todo/ToDo-Cléa.md](.todo/ToDo-Cléa.md) ne garde que les conventions.
-- Une carte de la colonne `brainstorming` demande un **avis avant décision** : répondre
-  **en commentaire sur la carte**, et ne rien coder tant qu'elle n'est pas passée en `Claude`.
-- Les autres avis / réponses aux questions vont dans
-  [.todo/questions-reponses.md](.todo/questions-reponses.md), pas dans le chat.
 - Nouvelle version : bumper **`package.json` et `android/app/build.gradle`** (versionCode
   compris), pousser le tag `vX.Y.Z` — la CI attache l'APK signé à une release en brouillon —
   puis écrire la note de version (nouveautés + corrections) avec un lien vers chaque
