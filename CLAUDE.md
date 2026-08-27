@@ -119,7 +119,8 @@ npm run screenshots  # captures du README, sur des données de démo (dev server
   [.todo/questions-reponses.md](.todo/questions-reponses.md), pas dans le chat.
 - Nouvelle version : bumper **`package.json` et `android/app/build.gradle`** (versionCode
   compris), pousser le tag `vX.Y.Z` — la CI attache l'APK signé à une release en brouillon —
-  puis écrire la note de version (nouveautés + corrections) avec un lien vers chaque commit.
+  puis écrire la note de version (nouveautés + corrections) avec un lien vers chaque
+  commit — **en anglais d'abord, le français en dessous**, comme le README.
 - **La clé de release ne change jamais** : elle vit hors du dépôt
   (`~/.android-keys/`), son chemin et son mot de passe dans
   `android/keystore.properties`, non versionné. La CI la relit depuis les secrets
