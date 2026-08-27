@@ -49,6 +49,12 @@ dans [Développement](../README.fr.md#développement).
   étaient signées avec une clé de développement : en venant de l'une d'elles,
   sauvegarder ses données (Réglages → Sauvegarde), désinstaller, installer la
   1.0.0, restaurer.
+- Un échec **« conflict »** à l'installation veut dire qu'une autre copie de
+  Butineur est encore sur le téléphone, signée d'une autre clé. Pas forcément
+  dans le profil qu'on regarde : Android ne garde qu'une signature par nom de
+  paquet pour tout l'appareil, donc un clone oublié dans un profil de travail
+  (Island, Shelter, espace privé) bloque l'installation depuis partout. Il faut
+  le supprimer lui aussi.
 - Obtainium interroge l'API GitHub sans jeton, donc avec une limite par adresse
   IP. Si la vérification des mises à jour échoue, ajouter un jeton GitHub dans
   les réglages d'Obtainium.

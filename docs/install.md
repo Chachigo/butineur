@@ -48,5 +48,10 @@ and your history are kept: an update never touches the data.
   so this one will not change. The betas up to 0.6.0-beta were signed with a
   development key: coming from one of those, save your data
   (Settings → Backup), uninstall, install 1.0.0, restore.
+- A **"conflict" failure** while installing means another copy of Butineur is
+  still on the phone, signed with a different key. It does not have to be in the
+  profile you are looking at: Android keeps one signature per package name for
+  the whole device, so a clone left in a work profile (Island, Shelter, Private
+  space) blocks the install from everywhere. Remove that one too.
 - Obtainium queries the GitHub API anonymously, which is rate-limited by IP. If
   update checks start failing, add a GitHub token in Obtainium's settings.
