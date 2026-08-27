@@ -15,6 +15,21 @@ import { addEvent, quitterAtelier, replaceAll, setSettings, uid, update, useDB }
 import NumberInput from './NumberInput'
 import { useCloseOnBack } from './useCloseOnBack'
 
+/**
+ * Lien d'issue GitHub avec la version de l'appli et celle du téléphone déjà
+ * remplies : personne ne pense à les donner, et sans elles un bug n'est pas
+ * reproductible. Le lien ouvre le gabarit `bug.yml`, qui exige le reste.
+ */
+const lienBug = () => {
+  const appareil = navigator.userAgent.match(/Android [\d.]+(; [^;)]+?)?(?= Build|\))/)?.[0] ?? ''
+  const q = new URLSearchParams({
+    template: 'bug.yml',
+    version: __VERSION__,
+    android: appareil.replace('; ', ', '),
+  })
+  return `https://github.com/Chachigo/butineur/issues/new?${q}`
+}
+
 const pad = (n: number) => String(n).padStart(2, '0')
 const minutesToTime = (m: number) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`
 const timeToMinutes = (t: string) => {
@@ -298,6 +313,9 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
           >
             Revoir la présentation
           </button>
+          <a className="btn" href={lienBug()} target="_blank" rel="noreferrer">
+            Signaler un bug
+          </a>
         </section>
 
         <footer className="about">

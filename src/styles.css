@@ -1010,6 +1010,14 @@ button:focus-visible {
   font-weight: 600;
 }
 
+/* Un lien qui doit avoir l'air d'un bouton (« Signaler un bug »). */
+a.btn {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+}
+
 .btn--go {
   background: var(--go);
   color: var(--go-ink);
