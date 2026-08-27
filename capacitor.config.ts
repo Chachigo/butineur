@@ -5,15 +5,15 @@ const config: CapacitorConfig = {
   appName: 'Butineur',
   webDir: 'dist',
   android: {
-    // Les widgets lisent le même fichier SharedPreferences que @capacitor/preferences.
+    // The widgets read the same SharedPreferences file @capacitor/preferences writes.
     backgroundColor: '#0e0e14',
   },
   plugins: {
-    // L'appli est sombre quel que soit le thème du téléphone. Sans ça, le
-    // plugin SystemBars suit le réglage système et repeignait les icônes de la
-    // barre d'état en noir — invisibles sur le bandeau sombre du web. Le régler
-    // ici plutôt qu'en Java : Capacitor l'applique après `onCreate`, il gagne
-    // de toute façon sur le thème comme sur tout appel qu'on ferait avant lui.
+    // The app is dark whatever the phone's theme. Without this, the SystemBars
+    // plugin follows the system setting and repainted the status bar icons
+    // black — invisible on the web view's dark header. Set here rather than in
+    // Java: Capacitor applies it after `onCreate`, so it wins over the theme
+    // and over any call we could make before it.
     SystemBars: {
       style: 'DARK',
     },

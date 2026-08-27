@@ -135,7 +135,7 @@ describe('cycles', () => {
     })
 
     it('reopens the day after the deadline, not seven days after the completion', () => {
-      const s = state(t, [done(2)]) // fait mercredi, pour le dimanche 11
+      const s = state(t, [done(2)]) // done on Wednesday, for Sunday the 11th
       expect(isAvailable(t, s, at(5))).toBe(false) // samedi : rien à refaire
       expect(isAvailable(t, s, at(7))).toBe(true) // lundi : nouveau cycle
     })
@@ -153,7 +153,7 @@ describe('cycles', () => {
     })
 
     it('keeps the configured time instead of drifting on every completion', () => {
-      const tard = at(0) + 9 * 3_600_000 // validée à 21 h, une heure trop tard
+      const tard = at(0) + 9 * 3_600_000 // completed at 21:00, one hour too late
       const s = replay([done(0, { ts: tard })], [t], tard).perTask.get('t1')
       const d = new Date(dueTsFor(t, s, tard)!)
       expect(d.getHours()).toBe(20)
@@ -216,13 +216,13 @@ describe('streak', () => {
     const big = task({ repeat: daily, streak: { tiers: [{ at: 2, bonus: 100 }], multiplier: null } })
     const { balance, perTask } = replay([done(0), done(1), done(5), done(6)], [big], at(6))
     expect(perTask.get('t1')!.streak).toBe(2)
-    expect(balance).toBe(40 + 200) // 4 validations à 10, le palier 2 franchi deux fois
+    expect(balance).toBe(40 + 200) // 4 completions at 10, tier 2 crossed twice
   })
 
   it('remembers the lost streak so it can be announced', () => {
     const { perTask } = replay([done(0), done(1), done(2)], [t], at(9))
     const s = perTask.get('t1')!
-    expect(s.streak).toBe(0) // rompue par le simple passage du temps
+    expect(s.streak).toBe(0) // broken by the mere passing of time
     expect(s.brokenStreak).toBe(3)
     expect(s.bestStreak).toBe(3)
   })
@@ -238,15 +238,15 @@ describe('streak', () => {
   it('freezes the streak on a missed cycle instead of breaking it', () => {
     const { perTask } = replay([done(0), done(1), done(3)], [t], at(3))
     const s = perTask.get('t1')!
-    expect(s.streak).toBe(2) // le rattrapage tient la série, sans la faire monter
-    expect(s.frozen).toBe(false) // rattrapée, donc dégelée
+    expect(s.streak).toBe(2) // catching up holds the streak without growing it
+    expect(s.frozen).toBe(false) // caught up, so thawed
   })
 
   it('does not freeze while the current cycle is still open', () => {
     const { perTask } = replay([done(0), done(1)], [t], at(2))
     const s = perTask.get('t1')!
     expect(s.streak).toBe(2)
-    expect(s.frozen).toBe(false) // le jour 2 est le cycle en cours, pas un cycle manqué
+    expect(s.frozen).toBe(false) // day 2 is the current cycle, not a missed one
   })
 
   it('announces the freeze as soon as the cycle passes, without a completion', () => {
@@ -270,13 +270,13 @@ describe('streak', () => {
 
   // The freeze lasts one day, not one cycle: otherwise a weekly task done every
   // other week kept its streak forever.
-  describe('hebdomadaire', () => {
+  describe('weekly', () => {
     const h = task({ repeat: { everyDays: 7, weekday: 1 } })
 
     it('holds through one day late, without growing', () => {
       const { perTask } = replay([done(0), done(7), done(15)], [h], at(15))
       const s = perTask.get('t1')!
-      expect(s.streak).toBe(2) // le retard d'un jour ne casse pas, mais ne compte pas
+      expect(s.streak).toBe(2) // one day late does not break it, but does not count
       expect(s.brokenStreak).toBe(0)
       expect(s.frozen).toBe(false)
     })
@@ -364,7 +364,7 @@ describe('counter', () => {
     // 8/8 → 7/8: the target is no longer reached, its 10 go back.
     const { balance, perTask } = replay([...events, count(0, -1)], [t], at(0))
     expect(perTask.get('t1')!.count).toBe(7)
-    expect(balance).toBe(3) // il reste le bonus intermédiaire de 4
+    expect(balance).toBe(3) // the intermediate bonus of 4 remains
   })
 
   it('also refunds the intermediate tiers that were left behind', () => {
@@ -727,7 +727,7 @@ describe('the past is not recomputed', () => {
   })
 
   it('falls back on the current rhythm for an event predating the freeze', () => {
-    const anciens = [done(0), done(1), done(2)] // sans `repeat` figé
+    const anciens = [done(0), done(1), done(2)] // without a frozen `repeat`
     expect(replay(anciens, [quotidienne], at(2)).perTask.get('t1')!.streak).toBe(3)
   })
 
@@ -759,7 +759,7 @@ describe('the past is not recomputed', () => {
     })
 
     it('falls back on the current bonuses for an event predating the freeze', () => {
-      const anciens = [done(0), done(1), done(2)] // sans `streak` figé
+      const anciens = [done(0), done(1), done(2)] // without a frozen `streak`
       const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
       expect(replay(anciens, [gros], at(2)).balance).toBeCloseTo(10 + 20 + 30)
     })
@@ -794,7 +794,7 @@ describe('the past is not recomputed', () => {
     })
 
     it('falls back on the current counter for an event predating the freeze', () => {
-      const anciens = [count(0, 1), count(0, 1), count(0, 1)] // sans gel
+      const anciens = [count(0, 1), count(0, 1), count(0, 1)] // without a freeze
       expect(replay(anciens, [{ ...cnt, reward: 100 }], at(1)).balance).toBeCloseTo(104)
     })
   })

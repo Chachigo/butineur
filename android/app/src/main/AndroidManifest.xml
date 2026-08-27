@@ -24,7 +24,7 @@
 
         </activity>
 
-        <!-- Widgets d'écran d'accueil -->
+        <!-- Home screen widgets -->
         <receiver
             android:name=".BalanceWidget"
             android:exported="false">
@@ -58,13 +58,13 @@
                 android:resource="@xml/widget_todo_info" />
         </receiver>
 
-        <!-- Alimente la liste défilante du widget todo. -->
+        <!-- Feeds the scrolling list of the todo widget. -->
         <service
             android:name=".TodoWidgetService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
-        <!-- Exportée : c'est le launcher qui la lance quand on pose le widget. -->
+        <!-- Exported: the launcher starts it when the widget is dropped. -->
         <activity
             android:name=".CounterConfigActivity"
             android:exported="true"
@@ -89,13 +89,13 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Rappels d'échéance (Android 13+ exige une autorisation explicite). -->
+    <!-- Deadline reminders (Android 13+ requires an explicit grant). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!--
-      Sans ça, `canScheduleExactAlarms()` est faux sur Android 12+ et le plugin
-      retombe sur une alarme inexacte : un rappel posé à 9:00 arrivait avec des
-      heures de retard. USE_EXACT_ALARM est accordée d'office aux applis de
-      rappel ; en dessous d'Android 13, SCHEDULE_EXACT_ALARM l'est aussi.
+      Without this, `canScheduleExactAlarms()` is false on Android 12+ and the
+      plugin falls back on an inexact alarm: a reminder set for 9:00 arrived
+      hours late. USE_EXACT_ALARM is granted outright to reminder apps; below
+      Android 13, so is SCHEDULE_EXACT_ALARM.
     -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />

@@ -8,7 +8,7 @@
     android:orientation="vertical"
     android:padding="8dp">
 
-    <!-- Emoji ou glyphe Phosphor : une seule des deux est visible. -->
+    <!-- Emoji or Phosphor glyph: only one of the two is ever visible. -->
     <TextView
         android:id="@+id/counter_icon"
         android:layout_width="wrap_content"
@@ -23,12 +23,11 @@
         android:contentDescription="@null"
         android:visibility="gone" />
 
-    <!-- Une seule ligne, quitte à rétrécir : sur une grille dense la cellule
-         est étroite, et un nom ou une unité longue partait à la ligne. Le
-         redimensionnement automatique est API 26+, en dessous il ne reste que
-         la coupure — pas de retour à la ligne dans les deux cas.
-         ponytail: pas de mise en page par taille de widget (RemoteViews
-         responsive, API 31+) ; à sortir seulement si rétrécir ne suffit plus. -->
+    <!-- One line, shrinking if it has to: on a dense grid the cell is narrow,
+         and a long name or unit used to wrap. Auto-sizing is API 26+, below
+         that only ellipsizing is left — no wrapping in either case.
+         ponytail: no per-widget-size layout (responsive RemoteViews, API 31+);
+         only worth it if shrinking stops being enough. -->
     <TextView
         android:id="@+id/counter_name"
         android:layout_width="match_parent"

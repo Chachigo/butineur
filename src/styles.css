@@ -567,7 +567,7 @@ body::after {
   color: var(--dim);
 }
 
-/* --- bouton flottant --- */
+/* --- floating button --- */
 /* --- full page (settings) --- */
 .page {
   max-width: 640px;
@@ -654,7 +654,7 @@ body:has(.sheet) .fab {
   display: none;
 }
 
-/* Clavier ouvert : le bouton flottant recouvrait le champ, il s'efface. */
+/* Keyboard open: the floating button covered the field, so it hides. */
 body.kbd .fab {
   display: none;
 }
@@ -921,7 +921,7 @@ button:focus-visible {
   color: var(--go);
 }
 
-/* --- sections repliables --- */
+/* --- collapsible sections --- */
 .sect {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1160,7 +1160,7 @@ a.btn {
   }
 }
 
-/* Petit bouton-choix, pour des options qui tiennent en un mot. */
+/* Small choice button, for options that fit in one word. */
 .chip-btn {
   flex: 1 1 0;
   min-width: 0;
@@ -1217,7 +1217,7 @@ a.btn {
   padding: 8px 0;
 }
 
-/* --- fiche d'une tâche --- */
+/* --- task details --- */
 .stats {
   display: flex;
   flex-wrap: wrap;
