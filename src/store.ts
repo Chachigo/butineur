@@ -178,6 +178,23 @@ export function saveTaskTree(parent: Task, children: Task[]) {
   })
 }
 
+/**
+ * Manual order of the list, one write for the lot. Only the rows that actually
+ * move are rewritten — renumbering everything would bump `updatedAt` on tasks
+ * nobody touched, and batch-3 sync would replay them for nothing.
+ */
+export const saveOrder = (ids: string[]) =>
+  update((d) => {
+    const at = new Map(ids.map((id, i) => [id, i]))
+    const now = Date.now()
+    return {
+      ...d,
+      tasks: d.tasks.map((t) =>
+        at.has(t.id) && t.order !== at.get(t.id) ? { ...t, order: at.get(t.id), updatedAt: now } : t,
+      ),
+    }
+  })
+
 export const saveShopItem = (s: ShopItem) =>
   update((d) => ({ ...d, shopItems: upsert(d.shopItems, { ...s, updatedAt: Date.now() }) }))
 

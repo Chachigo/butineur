@@ -59,6 +59,11 @@ export type Task = {
    * own reward is the bonus for the full bouquet.
    */
   parentId?: string
+  /**
+   * Manual rank in the list, renumbered from 0 on each reorder by hand. Absent =
+   * never moved: those tasks all tie, and urgency sorts them as it always did.
+   */
+  order?: number
   archived: boolean
   updatedAt: number
   deletedAt: number | null

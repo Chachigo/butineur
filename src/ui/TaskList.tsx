@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  type MouseEvent,
+  type RefObject,
+} from 'react'
 import {
   childrenOf,
   computePenalty,
@@ -14,7 +22,7 @@ import { now as clock } from '../debug'
 import { fmt, relativeDay, rythmeLabel } from '../format'
 import { tr } from '../i18n'
 import { burst, coinFly, pop } from '../fx'
-import { addEvent, deleteTask, saveTaskTree, uid, useDB } from '../store'
+import { addEvent, deleteTask, saveOrder, saveTaskTree, uid, useDB } from '../store'
 import type { Task } from '../types'
 import Icon from './Icon'
 import { useCloseOnBack } from './useCloseOnBack'
@@ -47,8 +55,19 @@ export default function TaskList({
   modeles,
   onNew,
 }: Props) {
-  // Most urgent on top: late, then deadline approaching, then available.
-  const sorted = [...tasks].sort((a, b) => rank(a, rep, now, dayStart) - rank(b, rep, now, dayStart))
+  /*
+   * What is done today drops to the bottom, and above it the hand-made order
+   * rules. Urgency only decides between rows that were never moved: they all
+   * tie at the same rank, so the sort falls through to it — a list untouched by
+   * the grip is still the old one, most urgent on top.
+   */
+  const rang = new Map(tasks.map((t) => [t.id, rank(t, rep, now, dayStart)]))
+  const fini = (t: Task) => (rang.get(t.id) === 3 ? 1 : 0)
+  // Never moved sorts last, so a task created after a reorder lands at the end.
+  const aLaMain = (t: Task) => t.order ?? 1e9
+  const sorted = [...tasks].sort(
+    (a, b) => fini(a) - fini(b) || aLaMain(a) - aLaMain(b) || rang.get(a.id)! - rang.get(b.id)!,
+  )
 
   /*
    * A completed task drops to the bottom of the list — but not right away.
@@ -72,7 +91,53 @@ export default function TaskList({
   }
   const affichees = gele ? [...tasks].sort((a, b) => place(a.id) - place(b.id)) : sorted
   // A subtask is shown under its parent, never on its own line at the top level.
-  const racines = affichees.filter((t) => !t.parentId)
+  const parRang = affichees.filter((t) => !t.parentId)
+
+  /*
+   * Reorder by dragging the grip, in selection mode. The order being dragged
+   * lives in a ref: the moves are followed on `window` and not on the grip,
+   * because React moves the dragged row in the DOM and Chrome drops its pointer
+   * capture on the way — the rest of the drag would land on the row underneath.
+   * Nothing is written before the release.
+   */
+  const liste = useRef<HTMLUListElement>(null)
+  const ordre = useRef<string[] | null>(null)
+  const [, redessiner] = useReducer((n: number) => n + 1, 0)
+  const racines = ordre.current
+    ? ordre.current.flatMap((id) => parRang.filter((t) => t.id === id))
+    : parRang
+
+  const poignee = (id: string) => ({
+    onPointerDown: () => {
+      ordre.current = racines.map((t) => t.id)
+
+      const bouger = (e: globalThis.PointerEvent) => {
+        const cours = ordre.current
+        if (!cours) return
+        // Rows are re-measured on every move: they have already shifted.
+        const lignes = [...(liste.current?.querySelectorAll<HTMLElement>('li[data-racine]') ?? [])]
+        const vise = lignes.findIndex((l) => e.clientY < l.getBoundingClientRect().bottom)
+        const to = vise === -1 ? lignes.length - 1 : vise
+        const from = cours.indexOf(id)
+        if (to === from || to < 0) return
+        cours.splice(to, 0, ...cours.splice(from, 1))
+        redessiner()
+      }
+
+      const lacher = () => {
+        window.removeEventListener('pointermove', bouger)
+        window.removeEventListener('pointerup', lacher)
+        window.removeEventListener('pointercancel', lacher)
+        if (ordre.current) saveOrder(ordre.current)
+        ordre.current = null
+        redessiner()
+      }
+
+      window.addEventListener('pointermove', bouger)
+      window.addEventListener('pointerup', lacher)
+      window.addEventListener('pointercancel', lacher)
+    },
+  })
 
   const sel = useSelection(affichees, deleteTask)
   useCloseOnBack(sel.selecting, sel.stop)
@@ -107,7 +172,7 @@ export default function TaskList({
         </p>
       )}
 
-      <ul className="list">
+      <ul className="list" ref={liste}>
         {racines.map((t) => {
           const subs = childrenOf(t.id, affichees)
           const ouvert = deplies.has(t.id)
@@ -127,6 +192,8 @@ export default function TaskList({
                 tasks={tasks}
                 ouvert={ouvert}
                 onPlier={() => plier(t.id)}
+                racine
+                poignee={poignee(t.id)}
               />
               {ouvert &&
                 subs.map((sub) => (
@@ -211,6 +278,9 @@ type RowProps = Omit<Props, 'onNew' | 'modeles'> & {
   /** Set on a parent only: the chevron state and what toggles it. */
   ouvert?: boolean
   onPlier?: () => void
+  /** Top-level row: it alone carries the reorder grip and can be dragged. */
+  racine?: boolean
+  poignee?: { onPointerDown: () => void }
 }
 
 function TaskRow({
@@ -227,6 +297,8 @@ function TaskRow({
   onValider,
   ouvert,
   onPlier,
+  racine,
+  poignee,
 }: RowProps) {
   const events = useDB().events
   const s = rep.perTask.get(task.id)
@@ -348,6 +420,7 @@ function TaskRow({
 
   return (
     <li
+      data-racine={racine ? '' : undefined}
       className={`task${spent ? ' task--done' : ''}${late ? ' task--late' : ''}${
         selected ? ' task--picked' : ''
       }${task.parentId ? ' task--sub' : ''}`}
@@ -401,7 +474,13 @@ function TaskRow({
         </span>
       </button>
 
-      {selecting ? null : task.counter ? (
+      {selecting ? (
+        racine && (
+          <span className="task__grip" aria-label={tr('list.move')} role="button" {...poignee}>
+            ≡
+          </span>
+        )
+      ) : task.counter ? (
         <div className="task__counter-wrap">
           <div className="task__counter">
             <button className="round" onClick={bump(-1)} disabled={count === 0} aria-label={tr('list.minus')}>

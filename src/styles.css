@@ -202,7 +202,7 @@ body::after {
   overflow: hidden;
 }
 
-/* Une sous-tâche se lit sous son parent : le retrait dit l'appartenance. */
+/* A subtask reads under its parent: the indent says what it belongs to. */
 .task--sub {
   margin-left: 28px;
   background: var(--panel-2);
@@ -266,6 +266,25 @@ body::after {
   background: var(--go);
   border-color: var(--go);
   color: var(--go-ink);
+}
+
+/*
+ * Reorder grip, in selection mode only. `touch-action: none` so the finger
+ * drags the row instead of scrolling the page.
+ */
+.task__grip {
+  display: grid;
+  place-items: center;
+  padding: 0 16px;
+  font-size: 22px;
+  color: var(--dim);
+  touch-action: none;
+  cursor: grab;
+}
+
+.list li:has(.task__grip:active) {
+  opacity: 0.85;
+  transform: scale(1.02);
 }
 
 .selbar {
