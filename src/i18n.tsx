@@ -40,6 +40,10 @@ export async function setLang(l: Lang | 'system'): Promise<void> {
   location.reload()
 }
 
+// Screen readers pick their pronunciation from this: the app switches language
+// without a server, so the attribute has to follow.
+globalThis.document?.documentElement.setAttribute('lang', lang)
+
 const dict = LANGS[lang]
 
 /** `tr('day.late', { n })` — `{name}` placeholders are substituted. */
