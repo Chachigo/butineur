@@ -47,8 +47,9 @@ tous les deux, ils ne peuvent donc pas se contredire.
   avec le temps : c'est ce qui fait qu'une tâche faite en avance ne rapproche
   pas l'échéance suivante, et qu'un retard ne saute pas un cycle.
 - **La série ne regarde ni l'échéance ni la pénalité** : seulement l'écart entre
-  deux validations (`gap > everyDays + 1`). Les deux sanctions sont
-  indépendantes, c'est voulu.
+  deux validations (`gap > everyDays + 1`). La tolérance vaut **un jour**, pas un
+  cycle — sinon une hebdomadaire faite une semaine sur deux gardait sa série.
+  Les deux sanctions sont indépendantes, c'est voulu.
 - `everyDays` reste le rythme en jours dans tous les cas — il règle aussi les
   périodes de compteur et la tolérance de série (mensuel = 31, `ponytail:`).
 

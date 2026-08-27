@@ -39,13 +39,18 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
   const buy = (item: ShopItem) => (e: MouseEvent<HTMLButtonElement>) =>
     spend(item.price, item.name, item.id, e.currentTarget)
 
+  /** Ferme et vide : sinon la saisie abandonnée revient à la dépense suivante. */
+  const closeFree = () => {
+    setFreeOpen(false)
+    setFreeAmount('')
+    setFreeLabel('')
+  }
+
   const spendFree = (e: MouseEvent<HTMLButtonElement>) => {
     const amount = +freeAmount.replace(',', '.')
     if (!(amount > 0)) return
     spend(amount, freeLabel.trim() || 'Dépense', undefined, e.currentTarget)
-    setFreeAmount('')
-    setFreeLabel('')
-    setFreeOpen(false)
+    closeFree()
   }
 
   return (
@@ -82,11 +87,11 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
       </div>
 
       {freeOpen && (
-        <div className="sheet" onClick={() => setFreeOpen(false)}>
+        <div className="sheet" onClick={closeFree}>
           <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
             <header className="sheet__head">
               <h2>Autre dépense</h2>
-              <button className="sheet__x" onClick={() => setFreeOpen(false)} aria-label="Fermer">
+              <button className="sheet__x" onClick={closeFree} aria-label="Fermer">
                 ✕
               </button>
             </header>
@@ -127,7 +132,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
             </div>
 
             <footer className="sheet__foot">
-              <button className="btn" onClick={() => setFreeOpen(false)}>
+              <button className="btn" onClick={closeFree}>
                 Annuler
               </button>
               <button

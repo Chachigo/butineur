@@ -369,7 +369,12 @@ export async function syncNotifications(specs: NotifSpec[]): Promise<void> {
       id: s.id,
       title: s.title,
       body: s.body,
-      schedule: { at: new Date(s.at) },
+      // `allowWhileIdle` sinon le plugin pose un `set(RTC)` : ni exact, ni
+      // réveillant, donc repoussé par le Doze jusqu'à ce qu'on prenne le
+      // téléphone en main. C'est ce qui faisait arriver les rappels en retard,
+      // ou pas du tout. Avec, et avec USE_EXACT_ALARM au manifeste, il pose un
+      // `setExactAndAllowWhileIdle(RTC_WAKEUP)`.
+      schedule: { at: new Date(s.at), allowWhileIdle: true },
     })),
   })
 }

@@ -30,7 +30,7 @@ const PAGES: [string, string, string][] = [
   [
     '🔥',
     'La série récompense la régularité',
-    'Elle monte d’un cran par cycle tenu. Un cycle manqué la met en gel 🧊 sans la casser — c’est le deuxième qui la rompt.',
+    'Elle monte d’un cran par cycle tenu. Un jour de retard la met en gel 🧊 sans la casser ; au-delà, elle repart de zéro.',
   ],
   [
     '📱',

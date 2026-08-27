@@ -258,10 +258,11 @@ export type Replay = {
 /**
  * Fait avancer la série d'un cran.
  *
- * Un cycle manqué ne casse pas : il **gèle** la série, conservée mais figée.
- * C'est le deuxième cycle manqué qui la rompt. Sans ce palier, un jour de
- * tolérance valait un cycle entier sur une tâche quotidienne : la faire un
- * jour sur deux suffisait à monter une série « quotidienne » à l'infini.
+ * Un retard ne casse pas tout de suite : il **gèle** la série, conservée mais
+ * figée. La tolérance est d'**un jour**, pas d'un cycle : sur une hebdomadaire,
+ * un cycle entier de rattrapage revenait à la faire une semaine sur deux sans
+ * jamais rompre la série. Pour une quotidienne, un jour et un cycle sont la
+ * même chose — le comportement n'y change pas.
  *
  * Atteindre l'objectif d'un compteur compte pour une validation : sans ça, le
  * réglage « Bonus de série » ne servait à rien sur ces tâches — trois jours à
@@ -279,8 +280,8 @@ function avancerSerie(s: TaskState, ts: number, every: number, day: (t: number) 
   if (gap <= every) {
     s.streak += 1
     s.frozen = false
-  } else if (gap <= 2 * every) {
-    // Rattrapé après un cycle manqué : la série tient, mais ne gagne rien.
+  } else if (gap <= every + 1) {
+    // Rattrapé dans la journée de tolérance : la série tient, sans monter.
     s.frozen = false
   } else {
     // On garde ce qu'on vient de perdre : l'interface doit pouvoir le dire.
@@ -555,7 +556,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     // c'est le simple passage du temps qui les prononce.
     if (s.lastDoneTs !== null) {
       const ecart = today - day(s.lastDoneTs)
-      if (ecart > 2 * every) {
+      if (ecart > every + 1) {
         if (s.streak > 0) s.brokenStreak = s.streak
         s.streak = 0
         s.frozen = false

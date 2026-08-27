@@ -261,6 +261,40 @@ describe('série', () => {
     const { perTask } = replay([done(0), done(2), done(4), done(6), done(8)], [t], at(8))
     expect(perTask.get('t1')!.streak).toBe(1)
   })
+
+  // Le gel vaut un jour, pas un cycle : sinon une hebdomadaire faite une semaine
+  // sur deux gardait sa série indéfiniment.
+  describe('hebdomadaire', () => {
+    const h = task({ repeat: { everyDays: 7, weekday: 1 } })
+
+    it('tient sur un jour de retard, sans monter', () => {
+      const { perTask } = replay([done(0), done(7), done(15)], [h], at(15))
+      const s = perTask.get('t1')!
+      expect(s.streak).toBe(2) // le retard d'un jour ne casse pas, mais ne compte pas
+      expect(s.brokenStreak).toBe(0)
+      expect(s.frozen).toBe(false)
+    })
+
+    it('casse au deuxième jour de retard', () => {
+      const { perTask } = replay([done(0), done(7), done(16)], [h], at(16))
+      const s = perTask.get('t1')!
+      expect(s.streak).toBe(1)
+      expect(s.brokenStreak).toBe(2)
+    })
+
+    it('gèle pendant la journée de tolérance, puis rompt', () => {
+      expect(replay([done(0), done(7)], [h], at(15)).perTask.get('t1')!).toMatchObject({
+        streak: 2,
+        frozen: true,
+      })
+      expect(replay([done(0), done(7)], [h], at(16)).perTask.get('t1')!.streak).toBe(0)
+    })
+
+    it('ne se maintient plus une semaine sur deux', () => {
+      const { perTask } = replay([done(0), done(14), done(28)], [h], at(28))
+      expect(perTask.get('t1')!.streak).toBe(1)
+    })
+  })
 })
 
 describe('cycles manqués', () => {

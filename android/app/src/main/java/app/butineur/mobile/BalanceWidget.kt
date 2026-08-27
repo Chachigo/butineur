@@ -14,6 +14,12 @@ class BalanceWidget : AppWidgetProvider() {
         ids.forEach { manager.updateAppWidget(it, render(context)) }
     }
 
+    /** Porte d'entrée de l'alarme de bascule de jour, pour les trois widgets. */
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == Widgets.ACTION_DAY) Widgets.refreshAll(context)
+    }
+
     companion object {
         fun render(ctx: Context): RemoteViews =
             RemoteViews(ctx.packageName, R.layout.widget_balance).apply {

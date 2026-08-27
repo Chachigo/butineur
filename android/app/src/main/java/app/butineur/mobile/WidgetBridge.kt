@@ -1,8 +1,11 @@
 package app.butineur.mobile
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Build
 import android.view.View
@@ -99,6 +102,9 @@ fun RemoteViews.tint(viewId: Int, color: Int) {
 }
 
 object Widgets {
+    /** Action interne : « le jour a basculé, redessine ». */
+    const val ACTION_DAY = "app.butineur.mobile.DAY_CHANGED"
+
     /**
      * @param rebuild refaire la disposition du widget liste. Inutile après un
      * simple tap — et contre-productif, cf. [TodoWidget.refresh].
@@ -110,5 +116,30 @@ object Widgets {
         mgr.getAppWidgetIds(ComponentName(ctx, CounterWidget::class.java))
             .forEach { mgr.updateAppWidget(it, CounterWidget.render(ctx, it)) }
         TodoWidget.refresh(ctx, rebuild)
+        armDayChange(ctx)
+    }
+
+    /**
+     * Redessine tout à la prochaine bascule de jour.
+     *
+     * `updatePeriodMillis` ne suffisait pas — le système la reporte quand
+     * l'appareil dort, et un compteur fini restait affiché « 8/8 🎉 » le
+     * lendemain tant que l'appli n'avait pas été rouverte. L'alarme est réarmée
+     * à chaque redessin, donc elle ne s'épuise pas.
+     *
+     * ponytail: alarme inexacte (`setAndAllowWhileIdle`), pas de permission à
+     * demander. Quelques minutes de retard sur un changement de jour ne se
+     * voient pas ; passer en exacte si un jour ça compte.
+     */
+    private fun armDayChange(ctx: Context) {
+        val i = Intent(ctx, BalanceWidget::class.java).setAction(ACTION_DAY)
+        val pi = PendingIntent.getBroadcast(
+            ctx,
+            0,
+            i,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        (ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager)
+            .setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, Store.nextDayStart(ctx), pi)
     }
 }

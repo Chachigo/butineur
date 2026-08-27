@@ -91,4 +91,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Rappels d'échéance (Android 13+ exige une autorisation explicite). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+      Sans ça, `canScheduleExactAlarms()` est faux sur Android 12+ et le plugin
+      retombe sur une alarme inexacte : un rappel posé à 9:00 arrivait avec des
+      heures de retard. USE_EXACT_ALARM est accordée d'office aux applis de
+      rappel ; en dessous d'Android 13, SCHEDULE_EXACT_ALARM l'est aussi.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 </manifest>

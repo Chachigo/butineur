@@ -21,12 +21,14 @@ import com.capacitorjs.plugins.localnotifications.TimedNotificationPublisher
 object Notifs {
 
     /**
-     * Le web dérive trois identifiants d'une même tâche : échéance (base),
-     * rappel (base + 1) et encouragement (base + 2). On les coupe tous les trois.
+     * Le web dérive les identifiants d'une tâche par cycle : échéance
+     * (base + 3i), rappel (base + 3i + 1) et encouragement (base + 2). Il en
+     * programme `CYCLES_AVANCE` = 4 d'avance — on coupe donc toute la plage,
+     * sinon les cycles suivants sonnaient encore après validation au widget.
      */
     fun cancelForTask(ctx: Context, base: Int) {
         if (base == 0) return
-        for (id in base..base + 2) {
+        for (id in base..base + 11) {
             cancelAlarm(ctx, id)
             NotificationManagerCompat.from(ctx).cancel(id)
         }

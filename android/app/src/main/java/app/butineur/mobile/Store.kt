@@ -259,6 +259,22 @@ object Store {
         return (base + pendingToday(ctx, t.id)).coerceIn(0, t.target)
     }
 
+    /**
+     * Instant de la prochaine bascule de jour, réglage `dayStart` compris.
+     * C'est là qu'un compteur repart à zéro — donc là qu'il faut redessiner.
+     */
+    fun nextDayStart(ctx: Context): Long {
+        val shift = (prefs(ctx).getString(KEY_DAY_START, null)?.toIntOrNull() ?: 0) * 60_000L
+        val c = Calendar.getInstance()
+        c.timeInMillis = System.currentTimeMillis() - shift
+        c.set(Calendar.HOUR_OF_DAY, 0)
+        c.set(Calendar.MINUTE, 0)
+        c.set(Calendar.SECOND, 0)
+        c.set(Calendar.MILLISECOND, 0)
+        c.add(Calendar.DAY_OF_MONTH, 1)
+        return c.timeInMillis + shift
+    }
+
     /** Même définition que `dayNum` côté web, réglage de bascule compris. */
     private fun dayNum(ctx: Context, ts: Long): Long {
         val shift = (prefs(ctx).getString(KEY_DAY_START, null)?.toIntOrNull() ?: 0) * 60_000L
