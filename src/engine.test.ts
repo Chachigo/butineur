@@ -20,6 +20,7 @@ import {
   upcomingDues,
 } from './engine'
 import { parseBackup, serialize } from './backup'
+import { tr } from './i18n'
 import { fakeStreak, undoDebugEvents } from './debug'
 import { notificationSpecs } from './native'
 import type { DB, Event, Task } from './types'
@@ -328,7 +329,8 @@ describe('missed cycles', () => {
     // Days 0 and 4 reach the target; day 2 stops at the tier.
     const { entries } = replay([count(0), count(0), count(2), count(4), count(4)], [c], at(4))
     expect(entries.filter(isDone).map((e) => e.target)).toEqual([true, true])
-    expect(entries.filter((e) => !isDone(e)).every((e) => e.label.includes('palier'))).toBe(true)
+    const tier = tr('log.tier', { task: '', n: 1 }).replace(/\{|\}/g, '').trim()
+    expect(entries.filter((e) => !isDone(e)).every((e) => e.label.includes(tier))).toBe(true)
     // Only days 0 and 4 count: days 1, 2 and 3 are missed.
     expect(missedCycles([c], entries, at(4))).toBe(3)
   })
@@ -664,10 +666,14 @@ describe('backup', () => {
   })
 
   it('refuses a foreign file rather than overwrite the database', () => {
-    expect(() => parseBackup('pas du json')).toThrow(/JSON/)
-    expect(() => parseBackup('{"app":"autre"}')).toThrow(/Butineur/)
-    expect(() => parseBackup('{"app":"butineur","format":99}')).toThrow(/inconnu/)
-    expect(() => parseBackup('{"app":"butineur","format":1,"db":{}}')).toThrow(/incomplète/)
+    // Asserted through the dictionary: the tests must not depend on the
+    // machine's locale, which is what decides the interface language.
+    expect(() => parseBackup('not json')).toThrow(tr('bk.notJson'))
+    expect(() => parseBackup('{"app":"other"}')).toThrow(tr('bk.notButineur'))
+    expect(() => parseBackup('{"app":"butineur","format":99}')).toThrow(
+      tr('bk.unknownFormat', { format: '99' }),
+    )
+    expect(() => parseBackup('{"app":"butineur","format":1,"db":{}}')).toThrow(tr('bk.incomplete'))
   })
 })
 

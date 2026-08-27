@@ -297,6 +297,7 @@ const fr: Record<keyof typeof en, string> = {
   'cheer.lost': 'Série de {n} perdue. On repart d’ici ce soir ?',
   'cheer.close': '{n} d’affilée. Encore {left} et le palier tombe : +{bonus}.',
   'cheer.record': '{n} d’affilée — une de plus et c’est ton record.',
+  'bk.notJson': 'Ce fichier n’est pas du JSON valide.',
   'bk.notButineur': 'Ce fichier ne vient pas de Butineur.',
   'bk.unknownFormat': 'Format de sauvegarde inconnu ({format}).',
   'bk.incomplete': 'Sauvegarde incomplète : tâches ou journal manquants.',

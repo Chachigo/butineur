@@ -76,7 +76,7 @@ export function parseBackup(text: string): DB {
   try {
     parsed = JSON.parse(text)
   } catch {
-    throw new Error('Ce fichier n’est pas du JSON valide.')
+    throw new Error(tr('bk.notJson'))
   }
 
   const b = parsed as Partial<Backup>

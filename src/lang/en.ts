@@ -301,6 +301,7 @@ export default {
   'cheer.lost': 'Streak of {n} lost. Shall we start again tonight?',
   'cheer.close': '{n} in a row. {left} more and the tier drops: +{bonus}.',
   'cheer.record': '{n} in a row — one more and it is your record.',
+  'bk.notJson': 'This file is not valid JSON.',
   'bk.notButineur': 'This file does not come from Butineur.',
   'bk.unknownFormat': 'Unknown backup format ({format}).',
   'bk.incomplete': 'Incomplete backup: tasks or log missing.',
