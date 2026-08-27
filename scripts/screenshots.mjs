@@ -1,11 +1,11 @@
 /**
- * Captures d'écran pour le README et le blog, avec des données de démo —
- * jamais les vraies tâches. Prérequis : `npm run dev` en cours.
+ * Screenshots for the README and the blog, on demo data — never the real tasks.
+ * Prerequisite: `npm run dev` running.
  *
- *   node scripts/screenshots.mjs [dossier de sortie]
+ *   node scripts/screenshots.mjs [output folder]
  *
- * Le semis vit dans `screenshots-seed.js` et s'écrit directement dans
- * IndexedDB : c'est la même base que l'appli, sans passer par l'interface.
+ * The seed lives in `screenshots-seed.js` and writes straight into IndexedDB:
+ * the same database as the app, without going through the interface.
  */
 import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises'
@@ -29,7 +29,7 @@ const chrome = spawn(
   { stdio: 'ignore' },
 )
 process.on('exit', () => chrome.kill())
-// Le port de debug met une seconde à s'ouvrir ; on réessaie plutôt que de parier.
+// The debug port takes a second to open; we retry rather than gamble.
 let targets
 for (let i = 0; i < 30 && !targets; i++) {
   await new Promise((r) => setTimeout(r, 500))
@@ -65,16 +65,16 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 await mkdir(OUT, { recursive: true })
 await send('Page.enable')
-// 400 × 860 est un écran de téléphone raisonnable ; le facteur d'échelle règle
-// la taille des fichiers. À 1, la capture fait 400 × 1290 et pèse le tiers de
-// ce qu'elle pesait à 2,5. `DSF=2` pour du 800 × 1720, à zoomer.
+// 400 × 860 is a reasonable phone screen; the scale factor sets the file size.
+// At 1, a capture is 400 × 1290 and weighs a third of what it weighed at 2.5.
+// `DSF=2` for 800 × 1720, to zoom into.
 await send('Emulation.setDeviceMetricsOverride', {
   width: 400,
   height: 860,
   deviceScaleFactor: Number(process.env.DSF) || 1,
   mobile: true,
 })
-// Les animations d'entrée fausseraient une capture prise trop tôt.
+// Entrance animations would spoil a capture taken too early.
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
 
 console.log('semis :', await evaluate(seed))
@@ -105,13 +105,13 @@ await click('.task__body', 'Vaisselle')
 await shot('02-fiche')
 await click('.sheet__x')
 
-// L'éditeur du sport : c'est lui qui porte un multiplicateur, donc la
-// simulation la plus parlante.
+// The sport task's editor: it is the one carrying a multiplier, hence the most
+// telling simulation.
 await click('.task__body', '20 minutes de sport')
 await click('.btn--go', 'Modifier')
 await wait(400)
 await shot('03-editeur')
-// Le bloc des séries est plus bas dans l'éditeur.
+// The streak block sits further down the editor.
 await evaluate(`document.querySelector('.sheet__body, .editor, form')?.scrollBy(0, 950)`)
 await wait(400)
 await shot('04-editeur-serie')

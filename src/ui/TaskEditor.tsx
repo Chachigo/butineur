@@ -35,24 +35,24 @@ export function blankTask(defaultReward: number): Task {
 }
 
 /**
- * Borne les paliers quand l'objectif baisse : le compteur plafonne à l'objectif,
- * un palier au-delà ne tomberait jamais.
+ * Clamps the tiers when the target goes down: the counter caps at the target, so
+ * a tier beyond it would never be crossed.
  */
 function retarget(counter: NonNullable<Task['counter']>, next: number): Tier[] {
   const clamped = counter.tiers.map((t) => ({ ...t, at: Math.min(t.at, next) }))
-  // Le recalage peut faire doublon : un seul palier par valeur.
+  // The clamping can create duplicates: one tier per value only.
   return [...new Map(clamped.map((t) => [t.at, t])).values()].sort((a, b) => a.at - b.at)
 }
 
 const BEFORE_UNITS = { minutes: 1, heures: 60, jours: 1440 } as const
 
-/** `kind` absent = heure fixe : c'était le seul mode avant. */
+/** Missing `kind` = fixed time: it was the only mode before. */
 const remindKind = (t: Task): 'time' | 'jour' | 'before' =>
   t.remind && 'kind' in t.remind && (t.remind.kind === 'before' || t.remind.kind === 'jour')
     ? t.remind.kind
     : 'time'
 
-/** La plus grande unité qui tombe juste, pour afficher « 2 jours » et non « 2880 minutes ». */
+/** The largest unit that divides evenly, to show "2 days" and not "2880 minutes". */
 function beforeUnit(t: Task): keyof typeof BEFORE_UNITS {
   const m = (t.remind as { minutes?: number })?.minutes ?? 0
   if (m % BEFORE_UNITS.jours === 0) return 'jours'
@@ -60,7 +60,7 @@ function beforeUnit(t: Task): keyof typeof BEFORE_UNITS {
   return 'minutes'
 }
 
-/** Lundi d'abord comme en France ; la valeur reste celle de `Date.getDay()`. */
+/** Monday first as in France; the value stays the one from `Date.getDay()`. */
 const WEEKDAYS: [number, string, string][] = [
   [1, 'L', 'lundi'],
   [2, 'M', 'mardi'],
@@ -79,12 +79,12 @@ const RYTHMES: [Rythme, string][] = [
 ]
 
 /**
- * Le rythme choisi décide seul des champs : deux réglages ne peuvent plus se
- * contredire, puisqu'un seul existe à la fois.
+ * The chosen rhythm alone decides the fields: two settings can no longer
+ * contradict each other, since only one exists at a time.
  *
- * ponytail: le mensuel pose `everyDays` à 31, ce qui suffit aux périodes de
- * compteur et à la tolérance de série ; l'échéance, elle, suit le vrai
- * calendrier. À reprendre le jour où un compteur mensuel apparaît.
+ * ponytail: the monthly rhythm sets `everyDays` to 31, which is enough for
+ * counter periods and streak tolerance; the deadline itself follows the real
+ * calendar. To revisit the day a monthly counter shows up.
  */
 function newRepeat(r: Rythme, prev: NonNullable<Task['repeat']>): NonNullable<Task['repeat']> {
   const now = new Date()
@@ -100,10 +100,10 @@ function newRepeat(r: Rythme, prev: NonNullable<Task['repeat']>): NonNullable<Ta
   }
 }
 
-/** L'échéance en toutes lettres : c'est elle qui rend le réglage lisible. */
+/** The deadline spelled out: that is what makes the setting readable. */
 function NextDue({ task, state }: { task: Task; state?: TaskState }) {
-  // L'état réel de la tâche, sinon un cycle glissant annoncerait l'échéance
-  // d'une tâche neuve au lieu de la sienne.
+  // The task's real state, otherwise a rolling cycle would announce the deadline
+  // of a brand new task instead of its own.
   const due = dueTsFor(task, state)
   if (due === null) return null
   return <p className="hint">Prochaine échéance : {formatDueLong(due)}</p>
@@ -116,9 +116,9 @@ const PENALTY_KINDS: [Penalty['kind'], string][] = [
 ]
 
 /**
- * Une dégressive « par jour » ne veut rien dire sur une tâche quotidienne : un
- * jour de retard, c'est déjà le cycle suivant. On propose un pourcentage sec,
- * qui sanctionne l'heure et non le jour.
+ * A "per day" decay means nothing on a daily task: one day late is already the
+ * next cycle. A flat percentage is offered instead, which punishes the hour and
+ * not the day.
  */
 const defaultPenalty = (t: Task): Penalty =>
   t.repeat && rythme(t.repeat) === 'jour'
@@ -142,7 +142,7 @@ export default function TaskEditor({
 
   useCloseOnBack(true, onClose)
 
-  // Un objectif à zéro serait atteint d'emblée et paierait aussitôt.
+  // A target of zero would be reached straight away and pay immediately.
   const missingTarget = !!t.counter && t.counter.target < 1
   const canSave = !!t.name.trim() && !missingTarget
 
@@ -195,7 +195,7 @@ export default function TaskEditor({
             title="Tâche rapide"
             hint="Un bouton pour la reposer dans la liste"
             on={!!t.template}
-            // Un modèle attend d'être ressorti : ni rythme ni échéance à tenir.
+            // A template waits to be pulled out: no rhythm and no deadline to meet.
             onToggle={(v) => patch({ template: v, repeat: v ? null : t.repeat })}
           >
             <p className="hint">
@@ -210,11 +210,11 @@ export default function TaskEditor({
             onToggle={(v) =>
               patch({
                 repeat: v ? { everyDays: 1 } : null,
-                // Retirer la répétition emporte la série : elle n'aurait plus de sens.
+                // Removing the repetition takes the streak with it: it would mean nothing.
                 streak: v ? t.streak : null,
-                // Une tâche qui revient est attendue à chaque tour : l'échéance
-                // vient avec, sans pénalité tant qu'on n'en demande pas une. Pas
-                // sur un compteur, qui se remplit dans la journée sans être en retard.
+                // A recurring task is expected on every round: the deadline comes
+                // with it, penalty-free until one is asked for. Not on a counter,
+                // which fills up during the day without ever being late.
                 due: v && !t.due && !t.counter ? { at: defaultDue(), penalty: { kind: 'none' } } : t.due,
               })
             }
@@ -280,8 +280,8 @@ export default function TaskEditor({
                       <NumberInput
                         className="input input--xs"
                         value={t.repeat.everyDays}
-                        // En dessous de 2, c'est « chaque jour » : le même réglage
-                        // à deux endroits n'aurait aucun sens.
+                        // Below 2 it is "every day": the same setting in two places
+                        // would make no sense.
                         min={2}
                         onChange={(everyDays) => patch({ repeat: { everyDays } })}
                         aria-label="Nombre de jours"
@@ -322,8 +322,8 @@ export default function TaskEditor({
             hint="Ex. 8 verres d’eau par jour"
             on={!!t.counter}
             onToggle={(v) =>
-              // Atteindre l'objectif verse la récompense de la tâche : pas de
-              // palier par défaut, ils ne servent qu'aux bonus intermédiaires.
+              // Reaching the target pays the task's reward: no tier by default,
+              // they only serve as intermediate bonuses.
               patch({ counter: v ? { target: 0, unit: 'fois', tiers: [] } : null })
             }
           >
@@ -466,8 +466,8 @@ export default function TaskEditor({
                   <button
                     type="button"
                     className={remindKind(t) === 'jour' ? 'chip-btn chip-btn--on' : 'chip-btn'}
-                    // Même besoin d'échéance que « avant » : on la pose au lieu
-                    // de laisser un bouton sans effet.
+                    // Same need for a deadline as "before": we lay one down rather
+                    // than leave a button with no effect.
                     onClick={() =>
                       patch({
                         remind: { kind: 'jour', time: '09:00' },
@@ -480,9 +480,10 @@ export default function TaskEditor({
                   <button
                     type="button"
                     className={remindKind(t) === 'before' ? 'chip-btn chip-btn--on' : 'chip-btn'}
-                    // Sans date limite il n'y avait rien à devancer, et le bouton
-                    // restait mort sans le dire. On pose l'échéance manquante —
-                    // sans pénalité, une date posée en passant ne doit rien coûter.
+                    // Without a deadline there was nothing to come ahead of, and
+                    // the button stayed dead without saying so. The missing deadline
+                    // is laid down — penalty-free, a date set in passing must cost
+                    // nothing.
                     onClick={() =>
                       patch({
                         remind: { kind: 'before', minutes: 60 },
@@ -688,9 +689,9 @@ export default function TaskEditor({
 }
 
 /**
- * Simulation d'une série : ce que la tâche rapporterait à chaque validation
- * d'affilée. Les montants viennent de la même fonction que le rejeu réel,
- * donc l'aperçu ne peut pas mentir sur le résultat.
+ * Streak simulation: what the task would pay on each completion in a row. The
+ * amounts come from the same function as the real replay, so the preview cannot
+ * lie about the result.
  */
 function StreakSim({
   task,
@@ -739,7 +740,7 @@ function StreakSim({
   )
 }
 
-/** Combien la tâche rapporte encore selon le retard, et quand elle ne vaut plus rien. */
+/** How much the task still pays depending on lateness, and when it is worth nothing. */
 function PenaltySim({ task, currency }: { task: Task; currency: string }) {
   const zero = daysUntilWorthless(task)
   const upTo = Math.min(8, (zero ?? 4) + 1)

@@ -32,23 +32,23 @@ const emit = () => listeners.forEach((l) => l())
 let timer: ReturnType<typeof setTimeout> | undefined
 function persist() {
   clearTimeout(timer)
-  // ponytail: réécriture du blob entier à chaque mutation. Passer à un store
-  // IndexedDB par événement si le journal dépasse quelques Mo.
+  // ponytail: the whole blob is rewritten on every mutation. Move to a
+  // per-event IndexedDB store if the log ever goes past a few MB.
   timer = setTimeout(() => void set(KEY, db), 300)
 }
 
 export const uid = () => crypto.randomUUID()
 
-/** Écrit sans attendre le débounce — un rechargement ne doit rien perdre. */
+/** Writes without waiting for the debounce — a reload must lose nothing. */
 export async function flush(): Promise<void> {
   clearTimeout(timer)
   await set(KEY, db)
 }
 
 /**
- * Quitter l'atelier : tout ce qui a été fabriqué ou validé pendant le décalage
- * est repris, puis on revient au présent. Sans ça, une validation faite
- * « demain » restait dans le journal avec une date à venir.
+ * Leaving the workshop: everything manufactured or completed while the clock was
+ * shifted is taken back, then we return to the present. Without this, a
+ * completion made "tomorrow" stayed in the log with a future date.
  */
 export async function quitterAtelier(): Promise<void> {
   update((d) => ({ ...d, events: [...d.events, ...undoDebugEvents(d.events)] }))
@@ -57,9 +57,9 @@ export async function quitterAtelier(): Promise<void> {
 }
 
 /**
- * La police Phosphor est passée en duotone : une icône y vaut deux caractères
- * au lieu d'un. Sans ce rattrapage, une icône choisie avant le changement ne
- * dessinerait plus que sa silhouette de fond, sans son détail.
+ * The Phosphor font moved to duotone: an icon is worth two characters there
+ * instead of one. Without this catch-up, an icon picked before the change would
+ * only draw its background silhouette, without its detail.
  */
 const migrerIcone = (icon?: string): string | undefined => {
   if (!icon?.startsWith('ph:')) return icon
@@ -68,14 +68,14 @@ const migrerIcone = (icon?: string): string | undefined => {
 }
 
 /**
- * Trois rattrapages, appliqués au chargement et à la restauration pour qu'une
- * sauvegarde plus ancienne reste lisible :
+ * Three catch-ups, applied on load and on restore so that an older backup stays
+ * readable:
  *
- * - le jour de la semaine a déménagé de `due` vers `repeat` — c'est le rythme
- *   qui le porte, pas l'échéance ;
- * - une tâche répétitive a forcément une échéance à chaque tour, elle porte
- *   donc toujours un `due` : sans pénalité, il ne fait qu'afficher la date ;
- * - les icônes Phosphor passent au duotone, cf. [migrerIcone].
+ * - the day of the week moved from `due` to `repeat` — the rhythm carries it,
+ *   not the deadline;
+ * - a repeating task necessarily has a deadline on every round, so it always
+ *   carries a `due`: without a penalty, it merely displays the date;
+ * - Phosphor icons move to duotone, see [migrerIcone].
  */
 const migrate = (tasks: Task[] = []): Task[] =>
   tasks.map((t) => {
@@ -89,20 +89,21 @@ const migrate = (tasks: Task[] = []): Task[] =>
   })
 
 /**
- * Fige sur les anciens événements ce dont le solde dépend, avec la définition
- * actuelle de la tâche.
+ * Freezes onto older events whatever the balance depends on, using the task's
+ * current definition.
  *
- * C'est déjà celle que le rejeu leur applique faute de mieux : le solde ne
- * bouge donc pas d'un centime au passage. Mais à partir de là, éditer la tâche
- * ne les touche plus — sans ce rattrapage, le gel ne protégerait que ce qui est
- * validé après la mise à jour, et tout l'historique resterait réinscriptible.
+ * That is already the one the replay applies to them for want of anything
+ * better: the balance therefore does not move by a cent. But from then on,
+ * editing the task no longer touches them — without this catch-up, the freeze
+ * would only protect what is completed after the update, and the whole history
+ * would stay rewritable.
  */
 const gelerEvents = (events: Event[] = [], tasks: Task[]): Event[] => {
   const byId = new Map(tasks.map((t) => [t.id, t]))
   return events.map((e) => {
     const t = 'taskId' in e ? byId.get(e.taskId) : undefined
     if (!t) return e
-    // `...e` en dernier : ce qui est déjà figé sur l'événement l'emporte.
+    // `...e` last: whatever is already frozen on the event wins.
     if (e.kind === 'complete') return { repeat: t.repeat, streak: t.streak, ...e }
     if (e.kind === 'count') return { baseReward: t.reward, counter: t.counter, repeat: t.repeat, ...e }
     return e
@@ -119,7 +120,7 @@ const migrateDB = (d: DB): DB => {
   }
 }
 
-/** Appelé une fois avant le premier rendu. */
+/** Called once before the first render. */
 export async function load() {
   const saved = await get<DB>(KEY)
   db = saved
@@ -145,8 +146,8 @@ const upsert = <T extends { id: string }>(list: T[], item: T): T[] =>
   list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item]
 
 /**
- * Un événement écrit pendant un décalage d'horloge est marqué : il n'a pas eu
- * lieu, et « revenir au présent » doit pouvoir le reprendre.
+ * An event written while the clock was shifted is marked: it never happened, and
+ * "back to the present" has to be able to take it back.
  */
 const marquer = (e: Event): Event => (timeOffset() ? { ...e, id: PREFIX + e.id } : e)
 
@@ -159,8 +160,8 @@ export const saveShopItem = (s: ShopItem) =>
   update((d) => ({ ...d, shopItems: upsert(d.shopItems, { ...s, updatedAt: Date.now() }) }))
 
 /**
- * Suppression douce : `deletedAt` permet à la synchro du lot 3 de propager
- * l'effacement, et les événements passés gardent leur valeur au solde.
+ * Soft delete: `deletedAt` lets the batch-3 sync propagate the removal, and past
+ * events keep their value in the balance.
  */
 export const deleteTask = (id: string) =>
   update((d) => ({
@@ -177,8 +178,8 @@ export const deleteShopItem = (id: string) =>
   }))
 
 /**
- * Remplace toute la base par une sauvegarde. Les réglages absents reprennent
- * leurs valeurs par défaut, pour qu'une sauvegarde plus ancienne reste lisible.
+ * Replaces the whole database with a backup. Missing settings fall back on their
+ * default values, so that an older backup stays readable.
  */
 export function replaceAll(next: DB) {
   update(() => migrateDB({ ...EMPTY, ...next, settings: { ...EMPTY.settings, ...next.settings } }))

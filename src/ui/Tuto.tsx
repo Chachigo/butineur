@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useCloseOnBack } from './useCloseOnBack'
 
 /**
- * Le tour du propriétaire, au premier lancement et rejouable depuis les
- * réglages. Le drapeau vit dans `localStorage` : c'est propre à l'appareil,
- * il n'a rien à faire dans une sauvegarde ni dans la synchro.
+ * The guided tour, on first launch and replayable from the settings. The flag
+ * lives in `localStorage`: it belongs to the device, it has no business in a
+ * backup nor in the sync.
  */
 const KEY = 'tutoVu'
 

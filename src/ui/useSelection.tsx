@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
 
 /**
- * Sélection multiple par appui long, partagée par la liste de tâches et la
- * boutique. `null` = pas en sélection ; un ensemble vide reste un mode actif,
- * on peut donc tout décocher sans quitter.
+ * Multi-selection by long press, shared by the task list and the shop.
+ * `null` = not selecting; an empty set is still an active mode, so everything
+ * can be unchecked without leaving it.
  */
 export function useSelection<T extends { id: string }>(items: T[], remove: (id: string) => void) {
   const [selection, setSelection] = useState<Set<string> | null>(null)
@@ -31,7 +31,7 @@ export function useSelection<T extends { id: string }>(items: T[], remove: (id: 
 
 export type Selection = ReturnType<typeof useSelection>
 
-/** Déclenche l'entrée en sélection après un appui maintenu. */
+/** Enters selection mode after a press held down. */
 export function useLongPress(onLongPress: () => void, active: boolean) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const cancel = () => clearTimeout(timer.current)

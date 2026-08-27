@@ -9,12 +9,12 @@ import android.net.Uri
 import android.widget.RemoteViews
 
 /**
- * Compteur paramétrable : chaque instance posée sur l'écran d'accueil est
- * associée à sa propre tâche, choisie via [CounterConfigActivity].
+ * Configurable counter: every instance dropped on the home screen is bound to
+ * its own task, chosen through [CounterConfigActivity].
  *
- * Le bouton + fonctionne appli fermée : il empile un fait dans la file et
- * redessine le widget. Aucun calcul de récompense ici — c'est le rejeu du
- * journal côté appli qui décide, donc les deux ne peuvent pas diverger.
+ * The + button works with the app closed: it stacks a fact in the queue and
+ * redraws the widget. No reward computation here — the replay of the log on the
+ * app side decides, so the two cannot diverge.
  */
 class CounterWidget : AppWidgetProvider() {
 
@@ -32,17 +32,17 @@ class CounterWidget : AppWidgetProvider() {
         )
         val taskId = Store.widgetTask(context, widgetId) ?: return
         val task = Store.task(context, taskId)
-        // Gain du cran courant, pas d'un cran figé : plusieurs taps d'affilée
-        // appli fermée doivent tous compter juste.
+        // Payout of the current step, not of a frozen one: several taps in a row
+        // with the app closed all have to count right.
         val gain = task?.gainAt(Store.displayedCount(context, task)) ?: 0.0
         val delta = intent.getIntExtra(EXTRA_DELTA, 1)
         Store.pushPending(context, taskId, delta, "count", gain)
-        // Objectif atteint par ce tap : le rappel n'a plus lieu d'être.
+        // Target reached by this tap: the reminder has no reason to exist.
         if (task != null && Store.displayedCount(context, task) >= task.target) {
             Notifs.cancelForTask(context, task.notifBase)
         }
-        // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
-        // Sans rebuild : la liste doit juste relire ses données.
+        // Every widget, not just this one: the balance has to follow.
+        // Without a rebuild: the list only needs to re-read its data.
         Widgets.refreshAll(context, rebuild = false)
     }
 
@@ -73,10 +73,10 @@ class CounterWidget : AppWidgetProvider() {
             val count = Store.displayedCount(ctx, task)
             val fini = count >= task.target
             /*
-             * Un widget ne sait pas animer : `RemoteViews` n'expose ni
-             * transition ni boucle. Ce qu'on peut faire, et qui se voit au
-             * rafraîchissement qui suit le tap, c'est fêter l'objectif — la
-             * ligne passe à l'accent et gagne son 🎉.
+             * A widget cannot animate: `RemoteViews` exposes neither transitions
+             * nor loops. What we can do, and what shows on the refresh following
+             * the tap, is celebrate the target — the row switches to the accent
+             * color and earns its 🎉.
              */
             v.setTextViewText(
                 R.id.counter_value,
@@ -87,8 +87,8 @@ class CounterWidget : AppWidgetProvider() {
                 if (fini) Store.accent(ctx) else ctx.getColor(R.color.widget_dim),
             )
 
-            // Objectif atteint : la coche remplace le +, et le bouton n'incrémente
-            // plus — le moteur plafonne de toute façon le compteur à l'objectif.
+            // Target reached: the tick replaces the +, and the button no longer
+            // increments — the engine caps the counter at the target anyway.
             val accent = Store.accent(ctx)
             if (fini) {
                 v.setTextViewText(R.id.counter_plus, "✓")
@@ -109,8 +109,8 @@ class CounterWidget : AppWidgetProvider() {
         private fun bump(ctx: Context, widgetId: Int, delta: Int): PendingIntent {
             val i = Intent(ctx, CounterWidget::class.java).apply {
                 action = ACTION_BUMP
-                // Les extras ne comptent pas dans l'égalité d'un Intent : sans data
-                // distincte, les boutons + et − partageraient le même PendingIntent.
+                // Extras do not count in Intent equality: without distinct data, the
+                // + and − buttons would share the same PendingIntent.
                 data = Uri.parse("bump://$widgetId/$delta")
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                 putExtra(EXTRA_DELTA, delta)

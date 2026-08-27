@@ -1,8 +1,8 @@
-// Injecté dans la page (Vite dev) : remplace la base par un jeu de démo.
-// Aucune donnée personnelle — tâches et loisirs génériques.
+// Injected into the page (Vite dev): replaces the database with a demo set.
+// No personal data — generic tasks and leisure items.
 (async () => {
-  // URL complète : injecté par le protocole de debug, ce code n'a pas d'URL de
-  // base, et un chemin absolu n'aurait rien contre quoi se résoudre.
+  // Full URL: injected through the debug protocol, this code has no base URL,
+  // and an absolute path would have nothing to resolve against.
   const { PHOSPHOR_GROUPS } = await import(new URL('/src/ui/icons.generated.ts', location.href).href)
   const CHARS = Object.fromEntries(PHOSPHOR_GROUPS.flatMap(([, l]) => l))
   const ph = (n) => 'ph:' + CHARS[n]
@@ -11,7 +11,7 @@
   const now = Date.now()
   let n = 0
   const uid = () => `demo-${++n}`
-  // Un jour donné, à une heure donnée.
+  // A given day, at a given hour.
   const at = (daysAgo, h = 9, m = 0) => {
     const d = new Date(now - daysAgo * DAY)
     d.setHours(h, m, 0, 0)
@@ -120,17 +120,17 @@
   const done = (taskId, daysAgo, baseReward, h = 9) =>
     events.push({ id: uid(), ts: at(daysAgo, h, 15), kind: 'complete', taskId, baseReward, penaltyFactor: 1, penaltyFlat: 0 })
 
-  // Vaisselle : 46 jours, deux oublis anciens — la série actuelle vaut 21.
+  // Dishes: 46 days, two old misses — the current streak is worth 21.
   for (let d = 45; d >= 1; d--) if (d !== 24 && d !== 23) done('vaisselle', d, 2, 20)
-  // Sport : un jour sur deux, quelques trous.
+  // Sport: every other day, a few gaps.
   for (let d = 44; d >= 1; d -= 2) if (d !== 18 && d !== 34) done('sport', d, 3, 18)
-  // Arrosage : tous les 3 jours.
+  // Watering: every 3 days.
   for (let d = 45; d >= 2; d -= 3) done('arroser', d, 1, 11)
-  // Hebdomadaires : on retombe sur le bon jour de la semaine.
+  // Weekly ones: we land back on the right day of the week.
   const jour = new Date(now).getDay()
   for (let d = (jour + 1) % 7 || 7; d <= 45; d += 7) done('aspirateur', d, 5, 15)
   for (let d = (jour + 5) % 7 || 7; d <= 45; d += 7) done('poubelles', d, 1.5, 19)
-  // Compteur d'eau : 8 verres par jour, et 5 sur 8 aujourd'hui.
+  // Water counter: 8 glasses a day, and 5 out of 8 today.
   for (let d = 30; d >= 1; d--)
     for (let i = 0; i < 8; i++) events.push({ id: uid(), ts: at(d, 8 + i, 30), kind: 'count', taskId: 'eau', delta: 1 })
   for (let i = 0; i < 5; i++) events.push({ id: uid(), ts: at(0, 8 + i, 30), kind: 'count', taskId: 'eau', delta: 1 })
@@ -166,7 +166,7 @@
     },
   }
 
-  // idb-keyval : base « keyval-store », magasin « keyval », clé « db ».
+  // idb-keyval: database "keyval-store", store "keyval", key "db".
   await new Promise((res, rej) => {
     const req = indexedDB.open('keyval-store', 1)
     req.onupgradeneeded = () => req.result.createObjectStore('keyval')

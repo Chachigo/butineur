@@ -3,34 +3,34 @@ import type { Event, LedgerEntry, Pending, Task, TaskState } from './types'
 export const DAY = 86_400_000
 
 /**
- * Numéro de jour local, insensible aux changements d'heure d'été.
+ * Local day number, immune to daylight saving shifts.
  *
- * `dayStart` est un décalage **en minutes** : à 270 (4 h 30), tout ce qui arrive
- * avant 4 h 30 compte encore pour la veille. Un compteur monté tard le soir se
- * termine donc bien sur la journée à laquelle on pense.
+ * `dayStart` is an offset **in minutes**: at 270 (4:30 am), anything happening
+ * before 4:30 am still counts for the day before. A counter filled late at night
+ * therefore lands on the day one has in mind.
  */
 export function dayNum(ts: number, dayStart = 0): number {
   const d = new Date(ts - dayStart * 60_000)
   return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY)
 }
 
-/** Tranche de `everyDays` jours alignée sur le calendrier. */
+/** Slice of `everyDays` days, aligned on the calendar. */
 export function periodKey(ts: number, everyDays: number, dayStart = 0): number {
   return Math.floor(dayNum(ts, dayStart) / Math.max(1, everyDays))
 }
 
 /**
- * Période d'un compteur : la fenêtre au bout de laquelle il repart à zéro.
+ * A counter's period: the window after which it resets to zero.
  *
- * Sans rythme, il n'y en a pas — un compteur ponctuel garde son avancement
- * jusqu'à ce qu'il aboutisse, il n'a aucune raison de se vider au coup de
- * minuit. Sinon c'est le cycle de la tâche, donc une remise à zéro à
- * l'échéance et pas sur une grille indépendante d'elle.
+ * Without a rhythm there is none — a one-shot counter keeps its progress until
+ * it completes, it has no reason to empty itself on the stroke of midnight.
+ * Otherwise it is the task's own cycle, so the reset happens on the due date and
+ * not on some grid unrelated to it.
  */
 export function counterPeriod(task: Task | undefined, ts: number, dayStart = 0): number {
   if (!task?.repeat) return 0
-  // Un cycle glissant n'a pas de grille tant que rien n'est validé, et un
-  // compteur ne produit pas de validation : on garde les tranches de N jours.
+  // A rolling cycle has no grid until something is completed, and a counter
+  // produces no completion: fall back on plain N-day slices.
   return rythme(task.repeat) === 'glissant'
     ? periodKey(ts, task.repeat.everyDays, dayStart)
     : firstCycleEnd(task, ts, dayStart)
@@ -39,19 +39,19 @@ export function counterPeriod(task: Task | undefined, ts: number, dayStart = 0):
 const everyDaysOf = (task: Task | undefined) => Math.max(1, task?.repeat?.everyDays ?? 1)
 
 /**
- * Rythme d'une tâche répétitive, déduit de ses champs plutôt que stocké : un
- * seul réglage à l'écran, donc aucune combinaison contradictoire possible.
+ * A repeating task's rhythm, derived from its fields rather than stored: a
+ * single control on screen, hence no contradictory combination possible.
  */
 export type Rythme = 'jour' | 'semaine' | 'mois' | 'glissant'
 
 export function rythme(repeat: NonNullable<Task['repeat']>): Rythme {
   if (repeat.monthday != null) return 'mois'
   if (repeat.weekday != null) return 'semaine'
-  // « Tous les 1 jours après chaque passage » n'existe pas : c'est le quotidien.
+  // "Every 1 day after each completion" is not a thing: that is just daily.
   return repeat.everyDays > 1 ? 'glissant' : 'jour'
 }
 
-/** Heure de l'échéance. Sans date limite, le cycle se ferme en fin de journée. */
+/** Time of day of the deadline. Without one, the cycle closes at end of day. */
 function dueHm(task: Task): [number, number] {
   const d = task.due ? new Date(task.due.at) : null
   return d && !Number.isNaN(+d) ? [d.getHours(), d.getMinutes()] : [23, 59]
@@ -63,20 +63,20 @@ const atHm = (d: Date, [h, m]: [number, number]) => {
   return +x
 }
 
-/** Le `md` du mois demandé, ramené au dernier jour quand le mois est trop court. */
+/** Day `md` of the given month, clamped to the last day when the month is short. */
 function monthdayTs(y: number, month: number, md: number, hm: [number, number]): number {
   const last = new Date(y, month + 1, 0).getDate()
   return atHm(new Date(y, month, Math.min(md, last)), hm)
 }
 
-/** Minuit du jour auquel `ts` appartient, `dayStart` compris. */
+/** Midnight of the day `ts` belongs to, `dayStart` included. */
 function startOfDay(ts: number, dayStart: number): number {
   const d = new Date(ts - dayStart * 60_000)
   d.setHours(0, 0, 0, 0)
   return +d + dayStart * 60_000
 }
 
-/** Prochaine échéance du calendrier strictement après `after`. */
+/** Next calendar deadline strictly after `after`. */
 function nextBoundary(task: Task, after: number): number {
   const r = task.repeat!
   const hm = dueHm(task)
@@ -94,7 +94,7 @@ function nextBoundary(task: Task, after: number): number {
   return +d
 }
 
-/** Échéance précédant `due` sur la même grille. */
+/** The deadline preceding `due` on the same grid. */
 function prevBoundary(task: Task, due: number): number {
   const r = task.repeat!
   const d = new Date(due)
@@ -106,16 +106,16 @@ function prevBoundary(task: Task, due: number): number {
 }
 
 /**
- * Échéance d'une tâche jamais validée : la prochaine du calendrier, celle
- * d'aujourd'hui comprise. Elle avance donc d'un cycle au lieu de rester au
- * passé — une tâche neuve n'est pas en retard depuis sa date de création.
+ * Deadline of a task never completed yet: the next one on the calendar, today's
+ * included. It therefore moves forward by one cycle instead of sitting in the
+ * past — a brand new task is not late since the day it was created.
  */
 function firstCycleEnd(task: Task, now: number, dayStart: number): number {
   if (rythme(task.repeat!) === 'glissant') return atHm(new Date(now), dueHm(task))
   return nextBoundary(task, startOfDay(now, dayStart) - 1)
 }
 
-/** Ouverture du cycle qui se ferme à `end` : le lendemain de l'échéance précédente. */
+/** Opening of the cycle closing at `end`: the day after the previous deadline. */
 function cycleOpen(task: Task, end: number, dayStart: number): number {
   const d = new Date(prevBoundary(task, end))
   d.setDate(d.getDate() + 1)
@@ -123,15 +123,15 @@ function cycleOpen(task: Task, end: number, dayStart: number): number {
 }
 
 /**
- * Échéance suivante une fois `ts` validé.
+ * The next deadline once `ts` has been completed.
  *
- * En calendaire, la validation remplit le cycle **ouvert au moment du tap** :
- * faire en avance ne rapproche pas l'échéance suivante, et rattraper un retard
- * ne laisse pas la tâche à refaire dans la foulée — elle repartait sinon pour
- * le cycle courant, qu'on venait pourtant de faire. Un tap tombé dans le
- * battement entre une échéance ratée et l'ouverture du cycle suivant remplit
- * bien le cycle raté, lui : c'est une tâche faite en retard, pas en avance.
- * En glissant, c'est le passage qui redémarre le compte — tout l'intérêt de ce rythme.
+ * On a calendar rhythm, a completion fills the cycle **open at the time of the
+ * tap**: doing it early does not pull the next deadline closer, and catching up
+ * on a late one does not leave the task to be done again right away — it would
+ * otherwise restart on the current cycle, which had just been done. A tap
+ * landing in the gap between a missed deadline and the opening of the next cycle
+ * does fill the missed one: that is a task done late, not early. On a rolling
+ * rhythm the completion itself restarts the count — the whole point of it.
  */
 function nextCycleEnd(task: Task, pending: number, ts: number, dayStart: number): number {
   const r = task.repeat!
@@ -140,23 +140,23 @@ function nextCycleEnd(task: Task, pending: number, ts: number, dayStart: number)
     d.setDate(d.getDate() + Math.max(1, r.everyDays))
     return atHm(d, dueHm(task))
   }
-  // `ts - 1` : une validation pile à l'échéance tient encore dans son cycle.
+  // `ts - 1`: a completion exactly on the deadline still belongs to its cycle.
   const end = nextBoundary(task, ts - 1)
   const rempli = ts >= cycleOpen(task, end, dayStart) ? nextBoundary(task, end) : end
-  // Un tap versé après coup par un widget ne doit jamais faire reculer l'échéance.
+  // A tap poured in late by a widget must never push the deadline backwards.
   return Math.max(pending, rempli)
 }
 
 export type Cycle = {
-  /** Ouverture : avant, la tâche est déjà faite pour ce tour. */
+  /** Opening: before it, the task is already done for this round. */
   from: number
-  /** Fermeture : après, on est en retard. */
+  /** Closing: after it, you are late. */
   end: number | null
 }
 
 /**
- * Le cycle que la prochaine validation vient remplir. Disponibilité et retard
- * en sortent tous les deux, donc ils ne peuvent plus se contredire.
+ * The cycle the next completion will fill. Availability and lateness both come
+ * out of it, so they can no longer contradict each other.
  */
 export function cycleFor(
   task: Task,
@@ -171,12 +171,12 @@ export function cycleFor(
   const end = s?.pendingDue ?? firstCycleEnd(task, now, dayStart)
   if (rythme(task.repeat) === 'glissant') return { from: startOfDay(end, dayStart), end }
 
-  // Une hebdomadaire due dimanche se fait du lundi au dimanche, pas de
-  // dimanche 20 h à dimanche 20 h.
+  // A weekly task due on Sunday is done from Monday to Sunday, not from Sunday
+  // 8 pm to Sunday 8 pm.
   return { from: cycleOpen(task, end, dayStart), end }
 }
 
-/** Échéance qui s'applique à la prochaine validation, ou null sans date limite. */
+/** Deadline applying to the next completion, or null when there is none. */
 export function dueTsFor(
   task: Task,
   s: TaskState | undefined,
@@ -188,14 +188,14 @@ export function dueTsFor(
 }
 
 /**
- * Les `n` prochaines échéances, la courante comprise.
+ * The next `n` deadlines, current one included.
  *
- * Sert à programmer des rappels plusieurs cycles d'avance, pour qu'ils
- * continuent de tomber sans qu'on ait à ouvrir l'appli. On y **suppose chaque
- * cycle tenu à temps** : `pendingDue` n'avance qu'à la validation, il n'existe
- * donc pas de « cycle suivant » tant que le courant n'est pas rempli. Une
- * supposition sans risque ici — rien de tout ça ne touche au solde, et le
- * moindre passage dans l'appli reprogramme tout sur l'état réel.
+ * Used to schedule reminders several cycles ahead, so they keep firing without
+ * having to open the app. It **assumes every cycle is met on time**:
+ * `pendingDue` only moves forward on a completion, so there is no "next cycle"
+ * as long as the current one is unfilled. A harmless assumption here — none of
+ * this touches the balance, and the slightest visit to the app reschedules
+ * everything on the real state.
  */
 export function upcomingDues(
   task: Task,
@@ -215,8 +215,8 @@ export function upcomingDues(
 }
 
 /**
- * Pénalité de retard, figée sur l'événement à la validation.
- * `factor` multiplie la récompense, `flat` en retire un montant fixe.
+ * Late penalty, frozen onto the event at completion time.
+ * `factor` scales the reward, `flat` subtracts a fixed amount from it.
  */
 export function computePenalty(
   task: Task,
@@ -237,7 +237,7 @@ function penaltyAt(task: Task, ts: number, due: number | null): { factor: number
     case 'percent':
       return { factor: clamp01(1 - p.percent / 100), flat: 0 }
     case 'decay': {
-      // Être en retard coûte au moins un jour de décroissance.
+      // Being late costs at least one day of decay.
       const daysLate = Math.max(1, Math.ceil((ts - due) / DAY))
       return { factor: clamp01(1 - (p.percentPerDay * daysLate) / 100), flat: 0 }
     }
@@ -251,22 +251,22 @@ const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 export type Replay = {
   balance: number
   perTask: Map<string, TaskState>
-  /** Anti-chronologique : le plus récent d'abord. */
+  /** Reverse chronological: most recent first. */
   entries: LedgerEntry[]
 }
 
 /**
- * Fait avancer la série d'un cran.
+ * Moves the streak up one step.
  *
- * Un retard ne casse pas tout de suite : il **gèle** la série, conservée mais
- * figée. La tolérance est d'**un jour**, pas d'un cycle : sur une hebdomadaire,
- * un cycle entier de rattrapage revenait à la faire une semaine sur deux sans
- * jamais rompre la série. Pour une quotidienne, un jour et un cycle sont la
- * même chose — le comportement n'y change pas.
+ * Being late does not break it right away: it **freezes** the streak, kept but
+ * stuck. The tolerance is **one day**, not one cycle: on a weekly task, a whole
+ * cycle of grace amounted to doing it every other week and never losing the
+ * streak. On a daily task a day and a cycle are the same thing — nothing changes
+ * there.
  *
- * Atteindre l'objectif d'un compteur compte pour une validation : sans ça, le
- * réglage « Bonus de série » ne servait à rien sur ces tâches — trois jours à
- * 3/3 laissaient la série à zéro.
+ * Reaching a counter's target counts as a completion: without that, the "streak
+ * bonus" setting was useless on those tasks — three days at 3/3 left the streak
+ * at zero.
  */
 function avancerSerie(s: TaskState, ts: number, every: number, day: (t: number) => number): void {
   if (s.lastDoneTs === null) {
@@ -275,16 +275,16 @@ function avancerSerie(s: TaskState, ts: number, every: number, day: (t: number) 
     return
   }
   const gap = day(ts) - day(s.lastDoneTs)
-  // gap === 0 : refait le même jour, la série ne bouge pas.
+  // gap === 0: done again the same day, the streak does not move.
   if (gap <= 0) return
   if (gap <= every) {
     s.streak += 1
     s.frozen = false
   } else if (gap <= every + 1) {
-    // Rattrapé dans la journée de tolérance : la série tient, sans monter.
+    // Caught up within the day of grace: the streak holds, without growing.
     s.frozen = false
   } else {
-    // On garde ce qu'on vient de perdre : l'interface doit pouvoir le dire.
+    // Keep what was just lost: the interface has to be able to say it.
     s.brokenStreak = s.streak
     s.streak = 1
     s.frozen = false
@@ -293,13 +293,13 @@ function avancerSerie(s: TaskState, ts: number, every: number, day: (t: number) 
 }
 
 /**
- * La tâche telle qu'elle était au moment du tap.
+ * The task as it stood at the time of the tap.
  *
- * L'événement fige tout ce dont le solde dépend — récompense, rythme, bonus de
- * série, compteur — parce que le rejeu, lui, lit la tâche d'aujourd'hui : sans
- * ce gel, changer une récompense ou un multiplicateur réécrivait l'historique
- * entier et faisait sauter le solde. Un événement d'avant ce gel ne porte pas
- * le champ : il retombe sur la définition courante, faute de mieux.
+ * The event freezes everything the balance depends on — reward, rhythm, streak
+ * bonus, counter — because the replay itself reads today's task: without that
+ * freeze, changing a reward or a multiplier rewrote the whole history and made
+ * the balance jump. An event predating the freeze carries no such field: it
+ * falls back on the current definition, for want of anything better.
  */
 type Gel = {
   repeat?: Task['repeat']
@@ -333,12 +333,12 @@ const freshState = (): TaskState => ({
 })
 
 /**
- * Rejoue tout le journal pour obtenir le solde et l'état de chaque tâche.
- * Fonction pure et déterministe : deux appareils ayant les mêmes événements
- * aboutissent forcément au même solde, sans résolution de conflit.
+ * Replays the whole log to get the balance and the state of every task.
+ * Pure and deterministic: two devices holding the same events necessarily reach
+ * the same balance, with no conflict resolution.
  *
- * ponytail: rejeu intégral à chaque chargement, O(n) sur le journal. Ajouter un
- * checkpoint (solde figé + curseur) si ça dépasse ~50k événements.
+ * ponytail: full replay on every load, O(n) over the log. Add a checkpoint
+ * (frozen balance + cursor) if it ever goes past ~50k events.
  */
 export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStart = 0): Replay {
   const day = (ts: number) => dayNum(ts, dayStart)
@@ -348,10 +348,10 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
   let balance = 0
 
   /**
-   * Une correction ne s'écrit pas dans l'historique : elle efface la ligne
-   * qu'elle corrige. On retient donc où chaque gain de compteur a été inscrit —
-   * clé « objectif » ou « palier N » d'une tâche — pour pouvoir l'enlever si
-   * l'utilisateur redescend.
+   * A correction does not write itself into the history: it erases the line it
+   * corrects. So we remember where every counter payout was recorded — the
+   * "target" or "tier N" key of a task — in order to remove it if the user
+   * counts back down.
    */
   const paidLine = new Map<string, number>()
   const erased = new Set<number>()
@@ -360,7 +360,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     paidLine.set(key, entries.length)
     entries.push(entry)
   }
-  /** Reprend exactement ce qui a été versé, même si la tâche a changé depuis. */
+  /** Takes back exactly what was paid, even if the task has changed since. */
   const refund = (key: string): number => {
     const i = paidLine.get(key)
     paidLine.delete(key)
@@ -375,13 +375,12 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     return s
   }
 
-  // Les annulations sont connues d'avance : l'événement visé est simplement
-  // sauté, comme s'il n'avait jamais eu lieu. Séries et compteurs se
-  // recalculent donc tout seuls.
+  // Undos are known up front: the targeted event is simply skipped, as if it
+  // had never happened. Streaks and counters therefore recompute themselves.
   const undone = new Set<string>()
   for (const e of events) if (e.kind === 'undo') undone.add(e.targetId)
 
-  // `id` départage les événements de même horodatage : deux appareils trient pareil.
+  // `id` breaks ties between events sharing a timestamp: two devices sort alike.
   const sorted = [...events]
     .filter((e): e is Exclude<Event, { kind: 'undo' }> => e.kind !== 'undo' && !undone.has(e.id))
     .sort((a, b) => a.ts - b.ts || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
@@ -409,8 +408,8 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     const s = stateOf(e.taskId)
 
     if (e.kind === 'count') {
-      // Le compteur tel qu'il était au tap : sa récompense, son objectif, ses
-      // paliers et son rythme de période. Éditer la tâche ne rejoue plus le passé.
+      // The counter as it stood at the tap: its reward, its target, its tiers
+      // and its period rhythm. Editing the task no longer replays the past.
       const alors = commeAlors(task, e)
       const target = alors?.counter?.target ?? Infinity
       const k = counterPeriod(alors, e.ts, dayStart)
@@ -420,23 +419,23 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
         s.targetPaid = false
         s.countTiersPaid = new Set()
       }
-      // L'objectif plafonne le compteur : au-delà, un tap de plus ne sert à rien
-      // et ne doit surtout pas décaler le franchissement d'un palier.
+      // The target caps the counter: past it, one more tap is useless and must
+      // above all not shift when a tier gets crossed.
       s.count = Math.min(target, Math.max(0, s.count + e.delta))
 
-      // Le solde suit le compteur dans les deux sens : atteindre l'objectif
-      // verse la récompense, redescendre en dessous la reprend. C'est ce que
-      // l'on attend en corrigeant une erreur de saisie — et c'est aussi ce qui
-      // rend le farming impossible, puisqu'un aller-retour se solde à zéro.
+      // The balance follows the counter both ways: reaching the target pays the
+      // reward, dropping back below takes it away. That is what one expects when
+      // fixing a mis-tap — and it is also what makes farming impossible, since a
+      // round trip nets zero.
       let base = 0
       const reached = alors != null && s.count >= target
       if (reached && !s.targetPaid) {
         s.targetPaid = true
         s.lastTargetTs = e.ts
         base = alors!.reward
-        // Atteindre l'objectif vaut validation : c'est ce qui fait vivre la
-        // série d'un compteur. Les bonus de série, eux, restent réservés aux
-        // validations tant que la règle des compteurs partiels n'est pas tranchée.
+        // Reaching the target counts as a completion: that is what keeps a
+        // counter's streak alive. Streak bonuses stay reserved for completions
+        // until the rule for partial counters is settled.
         avancerSerie(s, e.ts, everyDaysOf(alors), day)
         s.lastDoneTs = e.ts
         s.bestStreak = Math.max(s.bestStreak, s.streak)
@@ -458,7 +457,7 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
         base = -refund(`${e.taskId}:objectif`)
       }
 
-      // Même symétrie sur les paliers intermédiaires.
+      // Same symmetry on the intermediate tiers.
       let tierBonus = 0
       for (const t of alors?.counter?.tiers ?? []) {
         const crossed = t.at <= s.count
@@ -487,10 +486,10 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
       continue
     }
 
-    // --- validation d'une tâche ---
-    // Ce qui est figé sur l'événement prime — rythme et bonus de série :
-    // modifier la tâche aujourd'hui ne doit ni réparer ni casser ce qui s'est
-    // joué hier, ni revaloriser ce qui a déjà été payé.
+    // --- completing a task ---
+    // What is frozen on the event wins — rhythm and streak bonus: editing the
+    // task today must neither repair nor break what played out yesterday, nor
+    // re-price what has already been paid.
     const alors = commeAlors(task, e)
     const every = everyDaysOf(alors)
     avancerSerie(s, e.ts, every, day)
@@ -503,8 +502,8 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
       }
     }
 
-    // Le cycle rempli, on passe au suivant. Calculé ici et pas à la lecture :
-    // il dépend de l'échéance qui était en cours, donc de tout l'historique.
+    // The cycle is filled, move on to the next. Computed here and not at read
+    // time: it depends on the deadline then in force, hence on the whole history.
     if (alors?.repeat) {
       s.pendingDue = nextCycleEnd(
         alors,
@@ -537,8 +536,8 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     })
   }
 
-  // Recadrage sur l'instant présent : un compteur d'hier repart à zéro, une
-  // série dont la fenêtre est passée est rompue.
+  // Re-framing on the present moment: yesterday's counter goes back to zero, a
+  // streak whose window has passed is broken.
   const today = day(now)
   for (const t of tasks) {
     const s = stateOf(t.id)
@@ -552,8 +551,8 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
         s.countTiersPaid = new Set()
       }
     }
-    // Le gel comme la rupture se voient sans attendre la prochaine validation :
-    // c'est le simple passage du temps qui les prononce.
+    // Freeze and break both show without waiting for the next completion: the
+    // mere passing of time is what pronounces them.
     if (s.lastDoneTs !== null) {
       const ecart = today - day(s.lastDoneTs)
       if (ecart > every + 1) {
@@ -567,19 +566,18 @@ export function replay(events: Event[], tasks: Task[], now = Date.now(), dayStar
     }
   }
 
-  // Les lignes corrigées disparaissent, elles n'ont plus rien à raconter.
+  // Corrected lines disappear, they have nothing left to tell.
   const kept = entries.filter((_, i) => !erased.has(i))
   kept.reverse()
   return { balance, perTask, entries: kept }
 }
 
 /**
- * Cycles manqués sur l'historique d'une tâche répétitive : l'écart entre deux
- * validations consécutives (ou la dernière et maintenant) au-delà d'un cycle.
- * Simplification pour un chiffre d'affichage global : utilise le rythme
- * actuel de la tâche, pas celui figé sur chaque événement comme le fait le
- * rejeu — une répétitive change rarement de rythme, et rien ici ne touche au
- * solde.
+ * Cycles missed over a repeating task's history: the gap between two consecutive
+ * completions (or the last one and now) beyond a single cycle.
+ * A simplification for one global display figure: it uses the task's current
+ * rhythm, not the one frozen on each event as the replay does — a repeating task
+ * rarely changes rhythm, and nothing here touches the balance.
  */
 export function missedCycles(tasks: Task[], entries: LedgerEntry[], now: number, dayStart = 0): number {
   let total = 0
@@ -606,8 +604,8 @@ export function missedCycles(tasks: Task[], entries: LedgerEntry[], now: number,
 }
 
 /**
- * Ce que rapporterait la tâche à la n-ième validation d'affilée, à l'heure.
- * Sert à simuler l'effet d'un multiplicateur avant de le régler.
+ * What the task would pay on the n-th completion in a row, on time.
+ * Used to simulate the effect of a multiplier before settling on it.
  */
 export function rewardAtStreak(task: Task, streak: number): number {
   const m = task.streak?.multiplier
@@ -618,17 +616,17 @@ export function rewardAtStreak(task: Task, streak: number): number {
   return task.reward * factor + tier
 }
 
-/** Ce que rapporterait la tâche validée avec `daysLate` jours de retard. */
+/** What the task would pay when completed `daysLate` days late. */
 export function rewardAfterDays(task: Task, daysLate: number): number {
   const due = dueTsFor(task, undefined)
   if (due === null) return task.reward
-  // Pile n jours après l'échéance : `penaltyAt` arrondit au jour supérieur, un
-  // décalage d'une milliseconde compterait un jour de retard en trop.
+  // Exactly n days after the deadline: `penaltyAt` rounds days up, so being one
+  // millisecond off would count one extra day late.
   const { factor, flat } = penaltyAt(task, due + Math.max(0, daysLate) * DAY, due)
   return Math.max(0, task.reward * factor - flat)
 }
 
-/** Premier jour de retard où la tâche ne rapporte plus rien, ou null si elle rapporte toujours. */
+/** First day late at which the task pays nothing, or null if it always pays. */
 export function daysUntilWorthless(task: Task): number | null {
   if (!task.due) return null
   for (let d = 0; d <= 60; d++) {
@@ -637,7 +635,7 @@ export function daysUntilWorthless(task: Task): number | null {
   return null
 }
 
-/** Rang auquel le multiplicateur atteint son plafond, ou null s'il n'y en a pas. */
+/** Rank at which the multiplier hits its cap, or null when there is none. */
 export function streakAtCap(task: Task): number | null {
   const m = task.streak?.multiplier
   if (!m || m.perStep <= 0) return null
@@ -645,8 +643,8 @@ export function streakAtCap(task: Task): number | null {
 }
 
 /**
- * Dernière validation encore active d'une tâche, celle qu'« annuler » vise.
- * Les événements déjà annulés sont ignorés, sinon on annulerait dans le vide.
+ * A task's last completion still standing, the one "undo" aims at.
+ * Already undone events are skipped, otherwise undo would hit thin air.
  */
 export type CompleteEvent = Extract<Event, { kind: 'complete' }>
 
@@ -662,7 +660,7 @@ export function lastCompletion(events: Event[], taskId: string): CompleteEvent |
   return found
 }
 
-/** Une tâche répétitive n'est re-validable qu'au cycle suivant. */
+/** A repeating task can only be completed again on the next cycle. */
 export function isAvailable(
   task: Task,
   s: TaskState | undefined,
@@ -676,14 +674,14 @@ export function isAvailable(
 }
 
 /**
- * Convertit les taps faits sur un widget en événements du journal.
+ * Turns taps made on a widget into log events.
  *
- * La pénalité est calculée avec l'horodatage du tap, pas celui du versement :
- * valider dans les temps depuis l'écran d'accueil puis rouvrir l'appli trois
- * jours plus tard ne doit pas coûter de retard.
+ * The penalty is computed with the timestamp of the tap, not that of the pour:
+ * completing on time from the home screen then reopening the app three days
+ * later must not cost a late penalty.
  *
- * ponytail: un rejeu par élément, O(n²) sur la file. Elle contient une poignée
- * de taps ; à revoir seulement si les widgets deviennent l'usage principal.
+ * ponytail: one replay per item, O(n²) over the queue. It holds a handful of
+ * taps; revisit only if widgets become the main way of using the app.
  */
 export function pendingToEvents(
   items: Pending[],
@@ -712,9 +710,9 @@ export function pendingToEvents(
         streak: task.streak,
       })
     } else {
-      // Le gel se fait au versement, pas au tap : le natif n'envoie que des
-      // faits. C'est la tâche d'aujourd'hui, mais figée une bonne fois — une
-      // édition ultérieure ne rejouera plus ce tap-là.
+      // The freeze happens at pour time, not at tap time: the native side only
+      // sends facts. It is today's task, but frozen once and for all — a later
+      // edit will no longer replay that particular tap.
       const task = byId.get(p.taskId)
       added.push({
         id: newId(),
@@ -732,13 +730,13 @@ export function pendingToEvents(
 }
 
 /**
- * Tâches à usage unique accomplies avant aujourd'hui : elles ont fait leur temps.
- * On les efface le lendemain plutôt qu'à l'instant, pour qu'elles restent
- * visibles et annulables le jour même. Leurs événements — donc leurs gains —
- * survivent à la suppression.
+ * One-shot tasks completed before today: they have served their purpose.
+ * They are cleared the next day rather than on the spot, so they stay visible
+ * and undoable for the rest of the day. Their events — hence their payouts —
+ * outlive the deletion.
  *
- * Un compteur sans répétition en fait partie : il ne se refera pas, une fois
- * son objectif atteint il n'a plus rien à faire dans la liste.
+ * A counter with no repetition belongs here too: it will not happen again, and
+ * once its target is reached it has nothing left to do in the list.
  */
 export function staleOneShots(
   tasks: Task[],
@@ -757,7 +755,7 @@ export function staleOneShots(
     .map((t) => t.id)
 }
 
-/** Aperçu de ce que rapporterait une validation maintenant, pour l'afficher avant le tap. */
+/** Preview of what completing now would pay, to show it before the tap. */
 export function previewReward(task: Task, s: TaskState | undefined, now = Date.now()): number {
   const { factor, flat } = computePenalty(task, now, s)
   const penalized = Math.max(0, task.reward * factor - flat)

@@ -1,11 +1,11 @@
 /**
- * Convertit un SVG simple (uniquement des `<path>`) en VectorDrawable Android.
+ * Converts a simple SVG (`<path>` elements only) into an Android VectorDrawable.
  *
- * Android Studio sait le faire, mais pas en ligne de commande : sans ça, on ne
- * peut pas régénérer l'icône de façon reproductible. Volontairement limité aux
- * chemins — c'est tout ce dont on a besoin, et ça évite d'écrire un moteur SVG.
+ * Android Studio can do it, but not from the command line: without this the icon
+ * cannot be regenerated reproducibly. Deliberately limited to paths — that is
+ * all we need, and it saves writing an SVG engine.
  *
- *   node scripts/svg-to-vector.mjs entree.svg sortie.xml [taille_dp]
+ *   node scripts/svg-to-vector.mjs input.svg output.xml [size_dp]
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 
@@ -21,13 +21,13 @@ const viewBox = svg.match(/viewBox="([^"]+)"/)?.[1]
 if (!viewBox) throw new Error('viewBox absent — impossible de connaître le repère du dessin')
 const [, , vw, vh] = viewBox.trim().split(/[\s,]+/).map(Number)
 
-/** Noto écrit `style="fill:#abc"`, Twemoji `fill="#abc"` : on accepte les deux. */
+/** Noto writes `style="fill:#abc"`, Twemoji `fill="#abc"`: both are accepted. */
 function fillOf(attrs) {
   const direct = attrs.match(/\bfill="([^"]*)"/)?.[1]
   const styled = attrs.match(/style="[^"]*\bfill:\s*([^;"]+)/)?.[1]
   const raw = (direct ?? styled ?? '#000000').trim()
   if (raw === 'none') return null
-  // VectorDrawable veut du #RRGGBB, pas de noms de couleur.
+  // VectorDrawable wants #RRGGBB, not color names.
   return raw.startsWith('#') ? raw.toUpperCase() : '#000000'
 }
 

@@ -7,16 +7,16 @@ import android.graphics.Paint
 import androidx.core.content.res.ResourcesCompat
 
 /**
- * Dessine un glyphe Phosphor dans un bitmap.
+ * Draws a Phosphor glyph into a bitmap.
  *
- * `android:fontFamily="@font/phosphor"` ne suffit pas : une `RemoteViews` est
- * inflatée par le launcher, pas par l'appli, et la police n'y est pas résolue —
- * le widget affichait un carré vide. On rend donc le caractère ici, dans notre
- * propre processus où la police est disponible, et on envoie une image.
+ * `android:fontFamily="@font/phosphor"` is not enough: a `RemoteViews` is
+ * inflated by the launcher, not by the app, and the font is not resolved there —
+ * the widget showed an empty square. So the character is rendered here, in our
+ * own process where the font is available, and an image is sent instead.
  *
- * La police est duotone : le web envoie **deux** caractères à la même position,
- * le fond puis le détail. On les dessine l'un sur l'autre, dans les deux
- * couleurs — sinon le widget n'afficherait qu'une silhouette pleine.
+ * The font is duotone: the web side sends **two** characters at the same
+ * position, the background then the detail. They are drawn on top of each other,
+ * in both colors — otherwise the widget would only show a solid silhouette.
  */
 object Glyph {
 
@@ -35,12 +35,12 @@ object Glyph {
         paint.typeface = tf
         paint.textSize = size * 0.86f
 
-        // Centrage vertical sur les métriques réelles, pas sur la boîte.
+        // Vertical centering on the real metrics, not on the box.
         val fm = paint.fontMetrics
         val baseline = size / 2f - (fm.ascent + fm.descent) / 2f
         val canvas = Canvas(bmp)
 
-        // Un point de code peut tenir sur deux `Char` : on découpe dessus.
+        // A code point can span two `Char`s: we split on those.
         val points = char.codePoints().toArray()
         paint.color = accent
         canvas.drawText(String(Character.toChars(points[0])), size / 2f, baseline, paint)

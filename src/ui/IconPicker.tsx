@@ -4,13 +4,13 @@ import { PHOSPHOR_GROUPS } from './icons.generated'
 import { useCloseOnBack } from './useCloseOnBack'
 
 /**
- * Deux banques : les icônes Phosphor (par défaut, sobres et cohérentes) et une
- * sélection d'emoji pour ceux qui n'ont pas d'équivalent tracé — les animaux,
- * la nourriture précise, les visages.
+ * Two banks: the Phosphor icons (the default, sober and consistent) and a
+ * selection of emoji for what has no drawn equivalent — animals, specific food,
+ * faces.
  */
-// Mêmes catégories que la banque d'icônes : on cherche au même endroit dans
-// les deux. Les emoji couvrent ce qu'un trait ne rend pas — les visages, les
-// animaux précis, la nourriture nommée.
+// Same categories as the icon bank: you look in the same place in both. Emoji
+// cover what a line drawing cannot render — faces, specific animals, named
+// food.
 const EMOJI_GROUPS: [string, string[]][] = [
   ['Maison', ['🧹', '🧼', '🧺', '🛏️', '🚿', '🛁', '🪣', '🍽️', '🗑️', '♻️', '🚽', '🧻', '🪠', '🧴', '🪥', '🧽', '🛋️', '🔧', '🪛', '🔨', '🧯', '💡', '🔑', '📦', '🛒', '👜']],
   ['Corps', ['🏃', '🏋️', '🧘', '🚴', '🤸', '💪', '🚶', '🏊', '🧠', '👁️', '💇', '☯️']],

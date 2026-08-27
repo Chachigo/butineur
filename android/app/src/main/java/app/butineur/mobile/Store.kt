@@ -10,19 +10,19 @@ data class CounterTask(
     val id: String,
     val name: String,
     val icon: String,
-    /** Glyphe Phosphor : à rendre avec `@font/phosphor` plutôt qu'en emoji. */
+    /** Phosphor glyph: to be drawn with `@font/phosphor` rather than as emoji. */
     val iconPh: Boolean,
     val count: Int,
     val target: Int,
     val unit: String,
-    /** Jour auquel `count` se rapporte : au-delà, le compteur est reparti à zéro. */
+    /** Day `count` refers to: past it, the counter has gone back to zero. */
     val day: Long,
-    /** Gain de chaque cran, chiffré par le web : `gains[i]` fait passer de i à i+1. */
+    /** Payout of each step, priced by the web side: `gains[i]` goes from i to i+1. */
     val gains: List<Double>,
-    /** Base des identifiants de notification de cette tâche. */
+    /** Base of this task's notification ids. */
     val notifBase: Int,
 ) {
-    /** Ce que rapporterait le prochain +1, depuis le compte affiché. */
+    /** What the next +1 would pay, from the displayed count. */
     fun gainAt(count: Int): Double = gains.getOrElse(count) { 0.0 }
 }
 
@@ -31,24 +31,24 @@ data class TodoTask(
     val name: String,
     val icon: String,
     val iconPh: Boolean,
-    /** « count » ou « complete » : ce que le bouton déclenche. */
+    /** "count" or "complete": what the button triggers. */
     val kind: String,
-    /** Déjà formaté par le web — le natif ne calcule aucun montant. */
+    /** Already formatted by the web side — the native side computes no amount. */
     val label: String,
-    /** Ce que le prochain tap rapportera, chiffré par le web. */
+    /** What the next tap will pay, priced by the web side. */
     val gain: Double,
     val done: Boolean,
-    /** Base des identifiants de notification de cette tâche. */
+    /** Base of this task's notification ids. */
     val notifBase: Int,
 )
 
 /**
- * Le pont avec le web.
+ * The bridge to the web side.
  *
- * @capacitor/preferences écrit dans ce même fichier SharedPreferences, en
- * clés/valeurs brutes. Les widgets lisent donc directement ce que le JS a
- * écrit : aucun plugin de lecture, aucune base partagée, aucune duplication
- * de la logique métier côté natif.
+ * @capacitor/preferences writes into this very SharedPreferences file, as raw
+ * key/values. The widgets therefore read straight from what the JS wrote: no
+ * reading plugin, no shared database, no duplication of the business logic on
+ * the native side.
  */
 object Store {
     private const val FILE = "CapacitorStorage"
@@ -71,10 +71,10 @@ object Store {
         ctx.applicationContext.getSharedPreferences(WIDGETS, Context.MODE_PRIVATE)
 
     /**
-     * Solde affiché : celui calculé par l'appli, plus ce que les taps en attente
-     * rapporteront. Le natif ne calcule aucune récompense — il additionne des
-     * montants que le web a déjà chiffrés et déposés dans la file. L'appli
-     * recalcule tout au rejeu à sa prochaine ouverture et corrige si besoin.
+     * Displayed balance: the one computed by the app, plus what the pending taps
+     * will pay. The native side computes no reward — it adds up amounts the web
+     * side has already priced and dropped in the queue. The app recomputes
+     * everything on replay at its next start and corrects if need be.
      */
     fun balance(ctx: Context): String {
         val raw = prefs(ctx).getString(KEY_BALANCE_RAW, null)?.toDoubleOrNull()
@@ -82,7 +82,7 @@ object Store {
         return format(raw + pendingGain(ctx))
     }
 
-    /** Même rendu que `fmt` côté web : arrondi au centime, virgule décimale. */
+    /** Same rendering as `fmt` on the web side: rounded to the cent, decimal comma. */
     private fun format(n: Double): String {
         val r = Math.round(n * 100) / 100.0
         return if (r == Math.floor(r)) r.toLong().toString()
@@ -94,7 +94,7 @@ object Store {
     fun budgetLabel(ctx: Context): String =
         prefs(ctx).getString(KEY_LABEL, null)?.ifEmpty { null } ?: "budget loisirs"
 
-    /** Couleur d'accentuation choisie dans les réglages, repli sur le vert. */
+    /** Accent color chosen in the settings, falling back to green. */
     fun accent(ctx: Context): Int =
         runCatching { android.graphics.Color.parseColor(prefs(ctx).getString(KEY_ACCENT, null)) }
             .getOrDefault(ctx.getColor(R.color.widget_go))
@@ -126,7 +126,7 @@ object Store {
     fun task(ctx: Context, id: String?): CounterTask? =
         if (id == null) null else tasks(ctx).firstOrNull { it.id == id }
 
-    /** Tâches à faire maintenant, déjà triées par urgence côté web. */
+    /** Tasks to do now, already sorted by urgency on the web side. */
     fun todo(ctx: Context): List<TodoTask> {
         val raw = prefs(ctx).getString(KEY_TODO, null) ?: return emptyList()
         return runCatching {
@@ -148,7 +148,7 @@ object Store {
         }.getOrDefault(emptyList())
     }
 
-    // --- association widget <-> tâche (le widget compteur est paramétrable) ---
+    // --- widget <-> task binding (the counter widget is configurable) ---
 
     fun widgetTask(ctx: Context, widgetId: Int): String? =
         widgetPrefs(ctx).getString("w$widgetId", null)
@@ -161,17 +161,17 @@ object Store {
         widgetPrefs(ctx).edit().remove("w$widgetId").apply()
     }
 
-    /** Drapeau lu puis effacé par l'appli au démarrage : elle ouvre l'éditeur. */
+    /** Flag read then cleared by the app on start: it opens the editor. */
     fun requestNewTask(ctx: Context) {
         prefs(ctx).edit().putString("newTaskRequested", "1").apply()
     }
 
-    // --- file des taps faits depuis un widget ---
+    // --- queue of taps made from a widget ---
 
     /**
-     * Incrément fait appli fermée. La file est append-only, exactement comme le
-     * journal d'événements : le widget est un troisième « appareil » qui ne sait
-     * qu'ajouter des faits. L'appli la vide au démarrage suivant, rien ne se perd.
+     * Increment made with the app closed. The queue is append-only, exactly like
+     * the event log: the widget is a third "device" that only knows how to add
+     * facts. The app drains it on the next start, nothing is lost.
      */
     fun pushPending(
         ctx: Context,
@@ -193,7 +193,7 @@ object Store {
         p.edit().putString(KEY_PENDING, arr.toString()).apply()
     }
 
-    /** Somme des gains annoncés par le web pour les taps pas encore versés. */
+    /** Sum of the payouts announced by the web side for taps not yet poured. */
     private fun pendingGain(ctx: Context): Double {
         val arr = readPending(prefs(ctx).getString(KEY_PENDING, null))
         var sum = 0.0
@@ -202,9 +202,9 @@ object Store {
     }
 
     /**
-     * Tâches validées depuis le widget mais pas encore versées au journal.
-     * Elles disparaissent de la liste « à faire » : sans ça, un tap ne
-     * donnerait aucun retour visible tant que l'appli n'a pas été rouverte.
+     * Tasks completed from the widget but not yet poured into the log. They
+     * disappear from the "to do" list: without this, a tap gave no visible
+     * feedback until the app was reopened.
      */
     fun pendingCompleted(ctx: Context): Set<String> {
         val arr = readPending(prefs(ctx).getString(KEY_PENDING, null))
@@ -243,16 +243,16 @@ object Store {
     }
 
     /**
-     * Ce que le widget doit afficher : le compte écrit par l'appli s'il date bien
-     * d'aujourd'hui, plus les taps qu'elle n'a pas encore récupérés. Plafonné à
-     * l'objectif, comme dans le moteur.
+     * What the widget has to display: the count written by the app if it really
+     * dates from today, plus the taps it has not collected yet. Capped at the
+     * target, as in the engine.
      *
-     * C'est ce qui permet au widget de savoir qu'un objectif est atteint sans que
-     * l'appli tourne : aucun service en arrière-plan n'est nécessaire.
+     * This is what lets the widget know a target is reached without the app
+     * running: no background service is needed.
      *
-     * ponytail: granularité au jour. Un compteur réglé sur plusieurs jours peut
-     * afficher 0 à tort tant que l'appli n'a pas été rouverte — elle recalcule
-     * tout au rejeu, donc le solde reste juste.
+     * ponytail: day granularity. A counter set over several days may wrongly show
+     * 0 until the app is reopened — the app recomputes everything on replay, so
+     * the balance stays right.
      */
     fun displayedCount(ctx: Context, t: CounterTask): Int {
         val base = if (t.day == dayNum(ctx, System.currentTimeMillis())) t.count else 0
@@ -260,8 +260,8 @@ object Store {
     }
 
     /**
-     * Instant de la prochaine bascule de jour, réglage `dayStart` compris.
-     * C'est là qu'un compteur repart à zéro — donc là qu'il faut redessiner.
+     * Instant of the next day rollover, `dayStart` setting included.
+     * That is when a counter goes back to zero — hence when to redraw.
      */
     fun nextDayStart(ctx: Context): Long {
         val shift = (prefs(ctx).getString(KEY_DAY_START, null)?.toIntOrNull() ?: 0) * 60_000L
@@ -275,7 +275,7 @@ object Store {
         return c.timeInMillis + shift
     }
 
-    /** Même définition que `dayNum` côté web, réglage de bascule compris. */
+    /** Same definition as `dayNum` on the web side, rollover setting included. */
     private fun dayNum(ctx: Context, ts: Long): Long {
         val shift = (prefs(ctx).getString(KEY_DAY_START, null)?.toIntOrNull() ?: 0) * 60_000L
         val local = Calendar.getInstance()

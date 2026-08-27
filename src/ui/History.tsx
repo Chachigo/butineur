@@ -5,7 +5,7 @@ import { addEvent, uid, useDB } from '../store'
 import type { LedgerEntry } from '../types'
 import { useCloseOnBack } from './useCloseOnBack'
 
-/** Le détail du calcul est visible : on doit pouvoir expliquer chaque montant. */
+/** The breakdown is visible: every amount has to be explainable. */
 export default function History({ entries, currency }: { entries: LedgerEntry[]; currency: string }) {
   const events = useDB().events
   const [corrige, setCorrige] = useState<LedgerEntry | null>(null)
@@ -13,8 +13,8 @@ export default function History({ entries, currency }: { entries: LedgerEntry[];
   if (entries.length === 0) return <p className="empty">Rien ne s’est encore passé.</p>
 
   /**
-   * Seule une dépense libre se corrige : un achat au catalogue se refait en
-   * changeant l'article, et un gain de tâche se rejoue depuis la tâche.
+   * Only a free-form spending can be corrected: a catalogue purchase is redone
+   * by changing the item, and a task payout is replayed from the task.
    */
   const libre = (e: LedgerEntry) => {
     const src = events.find((x) => x.id === e.eventId)
@@ -54,9 +54,9 @@ export default function History({ entries, currency }: { entries: LedgerEntry[];
 }
 
 /**
- * Corriger une dépense n'écrit pas dans le passé : on annule l'événement et on
- * en pose un neuf, à la même date. La ligne fautive disparaît de l'historique
- * au lieu de le doubler — même mécanique que l'annulation d'une validation.
+ * Correcting a spending does not write into the past: the event is undone and a
+ * fresh one is laid down, at the same date. The faulty line disappears from the
+ * history instead of being doubled — same mechanics as undoing a completion.
  */
 function CorrigerDepense({
   entry,
@@ -78,7 +78,7 @@ function CorrigerDepense({
     addEvent({ id: uid(), ts: clock(), kind: 'undo', targetId: entry.eventId })
     addEvent({
       id: uid(),
-      // La date d'origine : c'est la même dépense, corrigée.
+      // The original date: it is the same spending, corrected.
       ts: entry.ts,
       kind: 'spend',
       amount: valeur,

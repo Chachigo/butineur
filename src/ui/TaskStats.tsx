@@ -5,9 +5,9 @@ import Icon from './Icon'
 import { useCloseOnBack } from './useCloseOnBack'
 
 /**
- * La fiche d'une tâche qui revient : où en est la série, ce que rapporte le
- * prochain palier, quand tombe l'échéance. Tout vient du rejeu — c'est de
- * l'affichage, aucun calcul n'est refait ici.
+ * The detail sheet of a recurring task: where the streak stands, what the next
+ * tier pays, when the deadline falls. Everything comes from the replay — this is
+ * display, no computation is redone here.
  */
 export default function TaskStats({
   task,

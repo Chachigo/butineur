@@ -9,10 +9,10 @@ const MOIS = new Intl.DateTimeFormat('fr-FR', { month: 'short' })
 const SEMAINES = 53
 
 /**
- * Une case par jour sur l'année, toutes tâches confondues — l'onglet
- * remplace le graphe qui vivait sur chaque fiche de tâche. Tout vient du
- * rejeu (`rep.entries`, `rep.perTask`) : rien à recalculer nous-mêmes quand
- * l'atelier de debug retire ses événements de test, tout suit comme le solde.
+ * One cell per day over the year, all tasks together — the tab replaces the graph
+ * that used to live on each task sheet. Everything comes from the replay
+ * (`rep.entries`, `rep.perTask`): nothing for us to recompute when the debug
+ * workshop takes its test events back, it all follows like the balance.
  */
 export default function Stats({
   tasks,

@@ -17,33 +17,33 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 
 /**
- * Le seul plugin natif du projet. Il ne fait que deux choses : redessiner les
- * widgets, et rendre à l'appli les taps faits depuis ceux-ci. Toute la logique
- * de récompense reste côté web.
+ * The only native plugin of the project. It does two things: redraw the widgets,
+ * and hand back to the app the taps made from them. All the reward logic stays
+ * on the web side.
  */
 @CapacitorPlugin(name = "WidgetBridge")
 class WidgetBridge : Plugin() {
 
-    /** Appelé dès que le solde ou un compteur change. */
+    /** Called as soon as the balance or a counter changes. */
     @PluginMethod
     fun refresh(call: PluginCall) {
         Widgets.refreshAll(context)
         call.resolve()
     }
 
-    /** L'appli récupère la file des taps et la vide, au démarrage et au retour au premier plan. */
+    /** The app collects the tap queue and empties it, on start and on resume. */
     @PluginMethod
     fun drainPending(call: PluginCall) {
         call.resolve(JSObject().put("items", Store.drainPending(context)))
     }
 
     /**
-     * Propose d'épingler un widget sur l'écran d'accueil.
+     * Offers to pin a widget onto the home screen.
      *
-     * C'est le lanceur qui décide : il affiche sa propre confirmation, et
-     * certains refusent tout net. On rend donc ce qu'on sait — demandé ou non —
-     * pour que le web puisse expliquer la marche à suivre au lieu de rester
-     * muet. `kind` vaut « compteur » ou « liste ».
+     * The launcher decides: it shows its own confirmation, and some refuse
+     * outright. So we return what we know — asked or not — so the web side can
+     * explain what to do instead of staying silent. `kind` is either "compteur"
+     * or "liste".
      */
     @PluginMethod
     fun requestPin(call: PluginCall) {
@@ -61,9 +61,9 @@ class WidgetBridge : Plugin() {
 }
 
 /**
- * Une icône est soit un emoji — du texte — soit un glyphe Phosphor, rendu en
- * image par [Glyph]. Chaque disposition porte donc les deux vues, et on
- * n'affiche que celle qui convient.
+ * An icon is either an emoji — plain text — or a Phosphor glyph, rendered as an
+ * image by [Glyph]. Every layout therefore carries both views, and only the
+ * right one is shown.
  */
 fun RemoteViews.setIcon(
     ctx: Context,
@@ -83,7 +83,7 @@ fun RemoteViews.setIcon(
         setViewVisibility(imageId, View.VISIBLE)
         setViewVisibility(textId, View.GONE)
     } else {
-        // Emoji, ou repli si la police n'a pas pu être chargée.
+        // Emoji, or fallback when the font could not be loaded.
         setTextViewText(textId, if (isPhosphor) fallback else icon.ifEmpty { fallback })
         setViewVisibility(textId, View.VISIBLE)
         setViewVisibility(imageId, View.GONE)
@@ -91,9 +91,9 @@ fun RemoteViews.setIcon(
 }
 
 /**
- * Teinte un bouton avec la couleur d'accentuation choisie dans les réglages.
- * `setBackgroundTintList` préserve les coins arrondis du drawable, contrairement
- * à un `setBackgroundColor`. API 31+ ; en dessous, la couleur par défaut reste.
+ * Tints a button with the accent color chosen in the settings.
+ * `setBackgroundTintList` preserves the drawable's rounded corners, unlike a
+ * `setBackgroundColor`. API 31+; below that, the default color stays.
  */
 fun RemoteViews.tint(viewId: Int, color: Int) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -102,12 +102,12 @@ fun RemoteViews.tint(viewId: Int, color: Int) {
 }
 
 object Widgets {
-    /** Action interne : « le jour a basculé, redessine ». */
+    /** Internal action: "the day has rolled over, redraw". */
     const val ACTION_DAY = "app.butineur.mobile.DAY_CHANGED"
 
     /**
-     * @param rebuild refaire la disposition du widget liste. Inutile après un
-     * simple tap — et contre-productif, cf. [TodoWidget.refresh].
+     * @param rebuild rebuild the list widget's layout. Useless after a plain tap
+     * — and counter-productive, see [TodoWidget.refresh].
      */
     fun refreshAll(ctx: Context, rebuild: Boolean = true) {
         val mgr = AppWidgetManager.getInstance(ctx)
@@ -120,16 +120,16 @@ object Widgets {
     }
 
     /**
-     * Redessine tout à la prochaine bascule de jour.
+     * Redraws everything at the next day rollover.
      *
-     * `updatePeriodMillis` ne suffisait pas — le système la reporte quand
-     * l'appareil dort, et un compteur fini restait affiché « 8/8 🎉 » le
-     * lendemain tant que l'appli n'avait pas été rouverte. L'alarme est réarmée
-     * à chaque redessin, donc elle ne s'épuise pas.
+     * `updatePeriodMillis` was not enough — the system postpones it while the
+     * device sleeps, and a finished counter still showed "8/8 🎉" the next day
+     * until the app was reopened. The alarm is rearmed on every redraw, so it
+     * never runs out.
      *
-     * ponytail: alarme inexacte (`setAndAllowWhileIdle`), pas de permission à
-     * demander. Quelques minutes de retard sur un changement de jour ne se
-     * voient pas ; passer en exacte si un jour ça compte.
+     * ponytail: inexact alarm (`setAndAllowWhileIdle`), no permission to ask for.
+     * A few minutes late on a day change does not show; move to an exact alarm if
+     * it ever matters.
      */
     private fun armDayChange(ctx: Context) {
         val i = Intent(ctx, BalanceWidget::class.java).setAction(ACTION_DAY)

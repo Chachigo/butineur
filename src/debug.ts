@@ -2,13 +2,11 @@ import { DAY } from './engine'
 import type { Event, Task } from './types'
 
 /**
- * Atelier de debug. Il n'existe que pour observer en dix secondes ce qui
- * demanderait des jours : échéances, séries rompues, remise à zéro des
- * compteurs, rappels programmés.
+ * Debug workshop. It exists only to watch in ten seconds what would otherwise
+ * take days: deadlines, broken streaks, counter resets, scheduled reminders.
  *
- * Le décalage vit dans `localStorage`, pas dans les réglages : c'est un outil
- * d'appareil, il n'a rien à faire dans une sauvegarde ni dans la synchro du
- * lot 3.
+ * The time offset lives in `localStorage`, not in the settings: it is a
+ * device-level tool, it has no business in a backup nor in the batch-3 sync.
  */
 const KEY = 'debugOffset'
 const KEY_OUVERT = 'debugOuvert'
@@ -16,9 +14,9 @@ const KEY_OUVERT = 'debugOuvert'
 export const timeOffset = (): number => Number(localStorage.getItem(KEY)) || 0
 
 /**
- * L'atelier reste ouvert jusqu'à ce qu'on le referme : retaper sept fois à
- * chaque passage dans les réglages serait pénible. Comme le décalage, ça vit
- * dans `localStorage` — c'est propre à l'appareil, pas à la base.
+ * The workshop stays open until it is closed: tapping seven times on every visit
+ * to the settings would be tedious. Like the time offset, this lives in
+ * `localStorage` — it belongs to the device, not to the database.
  */
 export const atelierOuvert = (): boolean => localStorage.getItem(KEY_OUVERT) === '1'
 
@@ -27,12 +25,12 @@ export function setAtelierOuvert(ouvert: boolean): void {
   else localStorage.removeItem(KEY_OUVERT)
 }
 
-/** L'heure que voit l'appli. Sans décalage, c'est `Date.now()` tout court. */
+/** The time the app sees. Without an offset, plain `Date.now()`. */
 export const now = (): number => Date.now() + timeOffset()
 
 /**
- * Un rechargement suffit à tout remettre d'aplomb : rien de dérivé n'est
- * stocké, le solde et les cycles se recalculent du journal à la lecture.
+ * A reload is enough to set everything straight again: nothing derived is
+ * stored, balance and cycles are recomputed from the log on read.
  */
 export function setTimeOffset(ms: number): void {
   if (ms) localStorage.setItem(KEY, String(ms))
@@ -40,14 +38,14 @@ export function setTimeOffset(ms: number): void {
   location.reload()
 }
 
-/** Les événements fabriqués se reconnaissent à leur identifiant, pour pouvoir les retirer. */
+/** Manufactured events are recognised by their id, so they can be taken back. */
 export const PREFIX = 'dbg-'
 export const isDebugEvent = (id: string) => id.startsWith(PREFIX)
 
 /**
- * `n` validations d'affilée, une par cycle, la dernière à l'instant.
- * Ce sont de vrais événements : la série qu'ils produisent est calculée par le
- * moteur comme n'importe quelle autre, sinon la simulation ne prouverait rien.
+ * `n` completions in a row, one per cycle, the last one just now.
+ * These are real events: the streak they produce is computed by the engine like
+ * any other, otherwise the simulation would prove nothing.
  */
 export function fakeStreak(task: Task, n: number, at = now()): Event[] {
   const every = Math.max(1, task.repeat?.everyDays ?? 1)
@@ -65,18 +63,19 @@ export function fakeStreak(task: Task, n: number, at = now()): Event[] {
 }
 
 /**
- * De quoi annuler tout ce que l'atelier a laissé : ce qu'il a fabriqué, et ce
- * qu'on a validé pendant que l'horloge était décalée — ces événements-là
- * portent une date à venir, qu'aucun geste réel ne peut produire.
+ * Everything needed to undo what the workshop left behind: what it manufactured,
+ * and what was completed while the clock was shifted — those events carry a
+ * future date, which no real gesture can produce.
  *
- * On n'efface rien du journal, on empile des `undo`, exactement comme le
- * bouton d'annulation : le solde revient au centime près et la règle d'or tient.
+ * Nothing is erased from the log, `undo` events are stacked instead, exactly
+ * like the undo button: the balance comes back to the cent and the golden rule
+ * holds.
  */
 export function undoDebugEvents(events: Event[], at = Date.now()): Event[] {
   const annules = new Set(events.filter((e) => e.kind === 'undo').map((e) => e.targetId))
   return events
-    // Les annulations portent le même préfixe : sans ce garde-fou, chaque clic
-    // annulerait les annulations précédentes et le journal enflerait sans fin.
+    // Undo events carry the same prefix: without this guard, every click would
+    // undo the previous undos and the log would swell without end.
     .filter((e) => e.kind !== 'undo' && (isDebugEvent(e.id) || e.ts > at) && !annules.has(e.id))
     .map((e, i) => ({ id: `${PREFIX}undo-${at}-${i}`, ts: at, kind: 'undo' as const, targetId: e.id }))
 }

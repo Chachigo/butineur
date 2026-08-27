@@ -7,7 +7,7 @@ type Props = {
   max?: number
   step?: number | 'any'
   className?: string
-  /** Avec un placeholder, `0` s'affiche vide : le champ suggère au lieu d'imposer. */
+  /** With a placeholder, `0` shows as empty: the field suggests instead of imposing. */
   placeholder?: string
   'aria-label'?: string
 }
@@ -15,15 +15,16 @@ type Props = {
 const clamp = (n: number, min?: number, max?: number) =>
   Math.min(max ?? Infinity, Math.max(min ?? -Infinity, n))
 
-/** Le clavier français produit une virgule ; `Number` n'en veut pas. */
+/** The French keyboard produces a comma; `Number` will not take one. */
 const parse = (s: string) => Number(s.replace(',', '.'))
 
 /**
- * Champ numérique qui accepte d'être vide pendant la saisie.
+ * Number field that accepts being empty while typing.
  *
- * Clamper la valeur à chaque frappe empêchait d'effacer « 8 » pour taper « 3 » :
- * dès le champ vidé, la borne minimale se réécrivait dedans. Ici le texte tapé
- * appartient au champ tant qu'il a le focus, et le clamp n'a lieu qu'à la sortie.
+ * Clamping the value on every keystroke made it impossible to erase "8" to type
+ * "3": as soon as the field was emptied, the lower bound wrote itself back in.
+ * Here the typed text belongs to the field for as long as it has focus, and the
+ * clamp only happens on blur.
  */
 export default function NumberInput({
   value,
@@ -39,7 +40,7 @@ export default function NumberInput({
   const [text, setText] = useState(() => shown(value))
   const [editing, setEditing] = useState(false)
 
-  // On ne suit les changements venus d'ailleurs que quand l'utilisateur ne tape pas.
+  // Changes coming from elsewhere are only followed while the user is not typing.
   useEffect(() => {
     if (!editing) setText(shown(value))
   }, [value, editing])
@@ -57,14 +58,14 @@ export default function NumberInput({
       onChange={(e) => {
         setText(e.target.value)
         const n = parse(e.target.value)
-        // Seules les valeurs déjà valides remontent ; le clamp attend le blur.
+        // Only already-valid values are propagated; the clamp waits for the blur.
         if (e.target.value !== '' && Number.isFinite(n)) onChange(n)
       }}
       placeholder={placeholder}
       onBlur={() => {
         setEditing(false)
         const n = parse(text)
-        // Vidé alors qu'un placeholder existe : on laisse à zéro, c'est « non renseigné ».
+        // Emptied while a placeholder exists: left at zero, meaning "not set".
         if (text === '' && placeholder) {
           if (value !== 0) onChange(0)
           return

@@ -1,32 +1,31 @@
 /**
- * Extrait de Phosphor la table nom -> caractères des seules icônes retenues,
- * et copie la police là où Android et le web la lisent.
+ * Extracts from Phosphor the name -> characters table of the selected icons
+ * only, and copies the font where Android and the web read it.
  *
- * Une seule police pour les deux plateformes : le web affiche le(s)
- * caractère(s), le widget Android les affiche avec `@font/phosphor`. Pas de
- * rastérisation SVG à écrire côté Kotlin.
+ * A single font for both platforms: the web draws the character(s), the Android
+ * widget draws them with `@font/phosphor`. No SVG rasterisation to write on the
+ * Kotlin side.
  *
- * Police duotone : chaque icône y porte DEUX caractères (fond, détail) à la
- * même position — c'est ce qui donne les deux tons, pas un réglage CSS sur
- * une police à un seul caractère. On stocke les deux à la suite dans la
- * valeur de l'icône (`ph:` + fond + détail) : web et Android dessinent l'un
- * sur l'autre, sans jamais avoir besoin de connaître le nom de l'icône.
+ * Duotone font: every icon carries TWO characters (background, detail) at the
+ * same position — that is what gives the two tones, not a CSS setting over a
+ * single-character font. Both are stored back to back in the icon value
+ * (`ph:` + background + detail): web and Android draw one over the other,
+ * without ever needing to know the icon's name.
  *
- * La police copiée ici est la complète ; `scripts/subset-font.py` la réduit
- * ensuite aux seules icônes retenues. Passer par `npm run icons`, qui enchaîne
- * les deux — sinon on embarque 1510 icônes pour celles qu'on utilise.
+ * The font copied here is the complete one; `scripts/subset-font.py` then cuts
+ * it down to the selected icons only. Go through `npm run icons`, which chains
+ * both — otherwise we ship 1510 icons for the ones we actually use.
  */
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs'
 
 const SRC = 'node_modules/@phosphor-icons/web/src/duotone'
-// Uniquement pour retrouver, à la migration, quelle icône portait un ancien
-// caractère de la police à un seul ton (avant ce changement).
+// Only to find out, at migration time, which icon carried an old single-tone
+// character of the font (before that change).
 const SRC_REGULAR = 'node_modules/@phosphor-icons/web/src/regular'
 
-// Choisies pour ce que fait l'appli. Grouper ici sert directement le sélecteur.
-// Une icône n'appartient qu'à un seul groupe — le contrôle plus bas le garantit,
-// sinon elle apparaissait deux fois dans le sélecteur, sélectionnée aux deux
-// endroits à la fois.
+// Picked for what the app does. Grouping them here directly serves the picker.
+// An icon belongs to a single group — the check further down guarantees it,
+// otherwise it showed up twice in the picker, selected in both places at once.
 const GROUPS = {
   Maison: ['broom', 'washing-machine', 'bed', 'shower', 'bathtub', 'toilet', 'toilet-paper',
     'towel', 'trash', 'trash-simple', 'recycle', 'basket', 'bag', 'couch', 'fan', 'wall',
@@ -70,8 +69,8 @@ if (doublons.length) {
 }
 
 const css = readFileSync(`${SRC}/style.css`, 'utf8')
-// Chaque icône a deux règles à la suite : `:before` (fond, 20% d'opacité)
-// puis `:after` (détail, plein).
+// Every icon has two rules back to back: `:before` (background, 20% opacity)
+// then `:after` (detail, full).
 const duotone = new Map()
 for (const m of css.matchAll(
   /\.ph-duotone\.ph-([a-z0-9-]+):before\s*\{\s*content:\s*"\\([a-f0-9]+)"[^}]*\}\s*\.ph-duotone\.ph-\1:after\s*\{\s*content:\s*"\\([a-f0-9]+)"/g,

@@ -4,7 +4,7 @@ import App from './App'
 import { load } from './store'
 import './styles.css'
 
-// On rend après le chargement : pas d'écran vide intermédiaire à gérer.
+// Render after loading: no intermediate blank screen to deal with.
 void load().then(() =>
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

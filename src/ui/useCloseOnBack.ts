@@ -1,15 +1,14 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * Panneaux ouverts, du plus ancien au plus récent. Le bouton « retour » ferme
- * toujours le dernier — un sélecteur d'icône se referme donc avant l'éditeur
- * qui le contient.
+ * Open panels, oldest to most recent. The "back" button always closes the last
+ * one — an icon picker therefore closes before the editor that contains it.
  */
 const stack: (() => void)[] = []
 
 declare global {
   interface Window {
-    /** Appelé par MainActivity au bouton retour. Vrai si un panneau a été fermé. */
+    /** Called by MainActivity on the back button. True if a panel was closed. */
     butineurBack?: () => boolean
   }
 }
@@ -24,12 +23,12 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Ferme un panneau au bouton « retour » du téléphone.
+ * Closes a panel on the phone's "back" button.
  *
- * On ne passe pas par l'historique de la WebView : `canGoBack()` ignore les
- * entrées ajoutées par `pushState` dans le montage Capacitor, le natif croyait
- * donc n'avoir rien à fermer. C'est le web qui répond, puisque c'est lui qui
- * sait quels panneaux sont ouverts.
+ * We do not go through the WebView history: `canGoBack()` ignores the entries
+ * added by `pushState` in the Capacitor setup, so the native side believed it
+ * had nothing to close. The web side answers, since it is the one that knows
+ * which panels are open.
  */
 export function useCloseOnBack(open: boolean, onClose: () => void) {
   const latest = useRef(onClose)

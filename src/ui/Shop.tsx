@@ -26,7 +26,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
   const sel = useSelection(items, deleteShopItem)
   useCloseOnBack(sel.selecting, sel.stop)
 
-  /** Refusé par défaut : c'est un garde-fou d'interface, le journal sait aller en négatif. */
+  /** Refused by default: an interface guard, the log itself can go negative. */
   const tooExpensive = (amount: number) => !allowNegative && amount > balance
 
   const spend = (amount: number, label: string, shopItemId: string | undefined, el: HTMLElement) => {
@@ -39,7 +39,7 @@ export default function Shop({ items, balance, currency, allowNegative, balanceR
   const buy = (item: ShopItem) => (e: MouseEvent<HTMLButtonElement>) =>
     spend(item.price, item.name, item.id, e.currentTarget)
 
-  /** Ferme et vide : sinon la saisie abandonnée revient à la dépense suivante. */
+  /** Closes and clears: otherwise the abandoned input comes back on the next spending. */
   const closeFree = () => {
     setFreeOpen(false)
     setFreeAmount('')
@@ -232,7 +232,7 @@ const blankItem = (): ShopItem => ({
   deletedAt: null,
 })
 
-/** Même structure que l'éditeur de tâche : mêmes champs, mêmes boutons, même ordre. */
+/** Same structure as the task editor: same fields, same buttons, same order. */
 function ItemEditor({ item, onClose }: { item: ShopItem; onClose: () => void }) {
   const db = useDB()
   const [s, setS] = useState(item)

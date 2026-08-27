@@ -9,11 +9,11 @@ import android.content.Intent
 import android.widget.RemoteViews
 
 /**
- * Toutes les tâches en cours, validables directement depuis l'écran d'accueil.
+ * Every live task, completable straight from the home screen.
  *
- * Il n'évalue aucune récompense : il empile un fait dans la file et la liste se
- * redessine. L'appli calcule le montant au versement, avec l'horodatage du tap —
- * valider à l'heure puis rouvrir l'appli plus tard ne coûte donc pas de retard.
+ * It evaluates no reward: it stacks a fact in the queue and the list redraws.
+ * The app computes the amount at pour time, with the timestamp of the tap — so
+ * completing on time then reopening the app later costs no late penalty.
  */
 class TodoWidget : AppWidgetProvider() {
 
@@ -26,7 +26,7 @@ class TodoWidget : AppWidgetProvider() {
         super.onReceive(context, intent)
         if (intent.action != ACTION_TAP) return
 
-        // Raccourci « + » de l'en-tête : on note l'intention et on ouvre l'appli.
+        // The "+" shortcut in the header: note the intent and open the app.
         if (intent.getBooleanExtra(EXTRA_NEW, false)) {
             Store.requestNewTask(context)
             context.startActivity(
@@ -37,20 +37,20 @@ class TodoWidget : AppWidgetProvider() {
         }
 
         val taskId = intent.getStringExtra(EXTRA_TASK) ?: return
-        // Un compteur déjà à son objectif : plus rien à ajouter, on ouvre l'appli.
+        // A counter already at its target: nothing left to add, open the app.
         if (intent.getBooleanExtra(EXTRA_DONE, false)) return
 
         val kind = intent.getStringExtra(EXTRA_KIND) ?: "complete"
         val gain = if (kind == "count") {
-            // Compteur : le gain dépend du cran, il vit dans `widgetTasks`.
+            // Counter: the payout depends on the step, it lives in `widgetTasks`.
             Store.task(context, taskId)?.let { it.gainAt(Store.displayedCount(context, it)) } ?: 0.0
         } else {
             Store.todo(context).firstOrNull { it.id == taskId }?.gain ?: 0.0
         }
         Store.pushPending(context, taskId, 1, kind, gain)
 
-        // La tâche est faite : on coupe ses rappels, sinon ils partaient quand
-        // même — l'appli, fermée, ne pouvait pas les déprogrammer elle-même.
+        // The task is done: its reminders are cancelled, otherwise they still
+        // fired — the app, being closed, could not unschedule them itself.
         val counter = Store.task(context, taskId)
         val fini = if (kind == "count") {
             counter != null && Store.displayedCount(context, counter) >= counter.target
@@ -60,8 +60,8 @@ class TodoWidget : AppWidgetProvider() {
                 ?: Store.todo(context).firstOrNull { it.id == taskId }?.notifBase
             if (base != null) Notifs.cancelForTask(context, base)
         }
-        // Tous les widgets, pas seulement celui-ci : le solde doit suivre.
-        // Sans rebuild : la liste doit juste relire ses données.
+        // Every widget, not just this one: the balance has to follow.
+        // Without a rebuild: the list only needs to re-read its data.
         Widgets.refreshAll(context, rebuild = false)
     }
 
@@ -73,10 +73,9 @@ class TodoWidget : AppWidgetProvider() {
         const val EXTRA_NEW = "newTask"
 
         /**
-         * `rebuild` refait la disposition — nécessaire quand l'accent change,
-         * mais il réinstalle l'adaptateur et peut annuler le rafraîchissement
-         * de la liste. Après un simple tap, on se contente de signaler que les
-         * données ont bougé.
+         * `rebuild` rebuilds the layout — needed when the accent changes, but it
+         * reinstalls the adapter and can cancel the list refresh. After a plain
+         * tap we simply signal that the data has changed.
          */
         fun refresh(ctx: Context, rebuild: Boolean = true) {
             val mgr = AppWidgetManager.getInstance(ctx)
@@ -93,8 +92,8 @@ class TodoWidget : AppWidgetProvider() {
 
             val adapter = Intent(ctx, TodoWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-                // Rend l'intent unique par widget, sinon toutes les instances
-                // partageraient le même adaptateur.
+                // Makes the intent unique per widget, otherwise every instance
+                // would share the same adapter.
                 data = android.net.Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
             }
             v.setRemoteAdapter(R.id.todo_list, adapter)
@@ -117,7 +116,7 @@ class TodoWidget : AppWidgetProvider() {
             )
         }
 
-        /** Modèle rempli par chaque ligne : il doit rester mutable. */
+        /** Template filled in by each row: it has to stay mutable. */
         private fun template(ctx: Context): PendingIntent {
             val i = Intent(ctx, TodoWidget::class.java).apply { action = ACTION_TAP }
             return PendingIntent.getBroadcast(

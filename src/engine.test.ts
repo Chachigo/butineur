@@ -19,7 +19,7 @@ import { parseBackup, serialize } from './backup'
 import { fakeStreak, undoDebugEvents } from './debug'
 import type { Event, Task } from './types'
 
-// Lundi 5 janvier 2026, midi — loin de tout changement d'heure.
+// Monday 5 January 2026, noon — far from any daylight saving change.
 const T0 = new Date(2026, 0, 5, 12, 0, 0).getTime()
 const at = (days: number) => T0 + days * DAY
 
@@ -50,8 +50,8 @@ const done = (days: number, over: Partial<Extract<Event, { kind: 'complete' }>> 
   penaltyFlat: 0,
   ...over,
 })
-// Chaque tap décalé de quelques millisecondes : à horodatage égal le moteur
-// départage par identifiant, et « c10 » passerait avant « c9 ».
+// Every tap offset by a few milliseconds: on equal timestamps the engine breaks
+// ties by id, and "c10" would come before "c9".
 const count = (days: number, delta = 1, id?: string): Event => {
   const n = ++seq
   return { id: id ?? `c${n}`, ts: at(days) + n, kind: 'count', taskId: 't1', delta }
@@ -59,10 +59,10 @@ const count = (days: number, delta = 1, id?: string): Event => {
 
 const daily = { everyDays: 1 }
 
-describe('pénalité de retard', () => {
+describe('late penalty', () => {
   const t = task({ reward: 50, due: { at: new Date(at(0)).toISOString(), penalty: { kind: 'decay', percentPerDay: 20 } } })
 
-  it('décroît par jour de retard et ne passe jamais sous zéro', () => {
+  it('decays per day late and never goes below zero', () => {
     expect(computePenalty(t, at(0), undefined).factor).toBe(1)
     expect(computePenalty(t, at(1), undefined).factor).toBeCloseTo(0.8)
     expect(computePenalty(t, at(3), undefined).factor).toBeCloseTo(0.4)
@@ -70,16 +70,16 @@ describe('pénalité de retard', () => {
     expect(computePenalty(t, at(50), undefined).factor).toBe(0)
   })
 
-  it('ne rend jamais une tâche en retard coûteuse', () => {
+  it('never makes a late task cost money', () => {
     const flat = task({ reward: 10, due: { at: new Date(at(0)).toISOString(), penalty: { kind: 'flat', amount: 999 } } })
     const p = computePenalty(flat, at(1), undefined)
     const { balance } = replay([done(1, { baseReward: 10, penaltyFactor: p.factor, penaltyFlat: p.flat })], [flat])
     expect(balance).toBe(0)
   })
 
-  it("glisse d'un cycle sur une tâche répétitive au lieu d'être en retard à vie", () => {
+  it('slides by one cycle on a repeating task instead of being late forever', () => {
     const rep = task({ repeat: { everyDays: 7 }, due: { at: new Date(at(0)).toISOString(), penalty: { kind: 'percent', percent: 50 } } })
-    // Dernier passage au jour 10 : la prochaine échéance est le jour 17, pas le jour 0.
+    // Last completion on day 10: the next deadline is day 17, not day 0.
     const s = replay([done(10)], [rep], at(10)).perTask.get('t1')
     expect(computePenalty(rep, at(16), s).factor).toBe(1)
     expect(computePenalty(rep, at(18), s).factor).toBeCloseTo(0.5)
@@ -87,66 +87,67 @@ describe('pénalité de retard', () => {
 })
 
 describe('cycles', () => {
-  // T0 = lundi 5 janvier 2026, midi. Échéance à 20 h.
+  // T0 = Monday 5 January 2026, noon. Deadline at 8 pm.
   const vingtHeures = new Date(at(0))
   vingtHeures.setHours(20, 0, 0, 0)
   const due = { at: vingtHeures.toISOString(), penalty: { kind: 'none' as const } }
   const state = (t: Task, evts: Event[]) =>
     replay(evts, [t], evts[evts.length - 1].ts).perTask.get('t1')
 
-  describe('hebdomadaire', () => {
+  describe('weekly', () => {
     const t = task({ repeat: { everyDays: 7, weekday: 0 }, due }) // dimanche
 
-    it('vise le prochain dimanche, pas une date figée', () => {
+    it('aims at the next Sunday, not at a fixed date', () => {
       const d = dueTsFor(t, undefined, at(0))!
       expect(new Date(d).getDay()).toBe(0)
       expect(new Date(d).getHours()).toBe(20)
       expect(dayNum(d) - dayNum(at(0))).toBe(6) // lundi → dimanche
     })
 
-    it('ne rapproche pas l’échéance quand on s’y prend en avance', () => {
-      // Fait samedi, la veille de l'échéance : la suivante est le dimanche
-      // d'après, pas celui de demain.
+    it('does not pull the deadline closer when done early', () => {
+      // Done on Saturday, the day before the deadline: the next one is the
+      // Sunday after, not tomorrow's.
       const s = state(t, [done(5)])
       expect(dayNum(dueTsFor(t, s, at(5))!) - dayNum(at(5))).toBe(8)
     })
 
-    it('rattraper un retard remplit la semaine en cours, pas celle qu’on a ratée', () => {
-      // Faite le dimanche 11, puis le dimanche 18 manqué et rattrapé le
-      // mercredi 21 : ce mercredi tombe dans la semaine du 19 au 25, c'est donc
-      // elle qui est remplie — sinon la tâche restait à refaire le jour même.
+    it('catching up fills the current week, not the one that was missed', () => {
+      // Done on Sunday the 11th, then Sunday the 18th missed and caught up on
+      // Wednesday the 21st: that Wednesday falls in the week of the 19th to the
+      // 25th, so that is the week filled — otherwise the task was left to do
+      // again the very same day.
       const s = state(t, [done(6), done(16)])
       expect(dayNum(dueTsFor(t, s, at(16))!) - dayNum(at(16))).toBe(11)
       expect(isAvailable(t, s, at(16))).toBe(false)
     })
 
-    it('un rattrapage tombé avant l’ouverture du cycle suivant reste un retard', () => {
-      // Dimanche 18 raté de trois heures : le cycle du 19 n'est pas ouvert, le
-      // tap solde bien celui qu'on vient de manquer.
+    it('a catch-up landing before the next cycle opens stays a late completion', () => {
+      // Sunday the 18th missed by three hours: the cycle of the 19th is not open
+      // yet, so the tap does settle the one just missed.
       const s = state(t, [done(6), done(13, { ts: at(13) + 11 * 3_600_000 })])
       expect(new Date(dueTsFor(t, s, at(13))!).getDay()).toBe(0)
       expect(dayNum(dueTsFor(t, s, at(13))!) - dayNum(at(13))).toBe(7)
     })
 
-    it('rouvre le lendemain de l’échéance, pas sept jours après le passage', () => {
+    it('reopens the day after the deadline, not seven days after the completion', () => {
       const s = state(t, [done(2)]) // fait mercredi, pour le dimanche 11
       expect(isAvailable(t, s, at(5))).toBe(false) // samedi : rien à refaire
       expect(isAvailable(t, s, at(7))).toBe(true) // lundi : nouveau cycle
     })
   })
 
-  describe('quotidienne', () => {
+  describe('daily', () => {
     const t = task({ repeat: { everyDays: 1 }, due })
 
-    it('ne reste pas à faire après une validation en chaîne cassée', () => {
-      // Faite le 5, plus rien pendant six jours — la série est rompue — puis
-      // validée le 11 : elle remplit la journée du 11, pas celle qu'on a ratée.
+    it('is not left pending after a completion on a broken chain', () => {
+      // Done on the 5th, nothing for six days — the streak is broken — then
+      // completed on the 11th: it fills the 11th, not the day that was missed.
       const s = state(t, [done(0), done(6)])
       expect(isAvailable(t, s, at(6))).toBe(false)
       expect(dayNum(dueTsFor(t, s, at(6))!) - dayNum(at(6))).toBe(1)
     })
 
-    it('garde l’heure réglée au lieu de la décaler à chaque passage', () => {
+    it('keeps the configured time instead of drifting on every completion', () => {
       const tard = at(0) + 9 * 3_600_000 // validée à 21 h, une heure trop tard
       const s = replay([done(0, { ts: tard })], [t], tard).perTask.get('t1')
       const d = new Date(dueTsFor(t, s, tard)!)
@@ -155,10 +156,10 @@ describe('cycles', () => {
     })
   })
 
-  describe('mensuelle', () => {
+  describe('monthly', () => {
     const t = task({ repeat: { everyDays: 31, monthday: 31 }, due })
 
-    it('retombe sur le dernier jour des mois trop courts', () => {
+    it('falls back on the last day of months that are too short', () => {
       const janvier = state(t, [done(26)]) // 31 janvier
       const suivante = dueTsFor(t, janvier, at(26))!
       expect(new Date(suivante).getMonth()).toBe(1) // février
@@ -166,8 +167,8 @@ describe('cycles', () => {
     })
   })
 
-  describe('échéances à venir', () => {
-    it('suit la grille du calendrier, un dimanche après l’autre', () => {
+  describe('upcoming deadlines', () => {
+    it('follows the calendar grid, one Sunday after another', () => {
       const t = task({ repeat: { everyDays: 7, weekday: 0 }, due })
       const dues = upcomingDues(t, undefined, at(0), 0, 4)
       expect(dues).toHaveLength(4)
@@ -175,45 +176,45 @@ describe('cycles', () => {
       expect(dues.map((d) => dayNum(d) - dayNum(at(0)))).toEqual([6, 13, 20, 27])
     })
 
-    it('avance du rythme en glissant', () => {
+    it('moves forward by the rhythm on a rolling cycle', () => {
       const t = task({ repeat: { everyDays: 3 }, due })
       const dues = upcomingDues(t, undefined, at(0), 0, 3)
       expect(dues.map((d) => dayNum(d) - dayNum(at(0)))).toEqual([0, 3, 6])
     })
 
-    it('n’en rend qu’une pour une ponctuelle, et aucune sans date limite', () => {
+    it('returns only one for a one-shot task, and none without a deadline', () => {
       expect(upcomingDues(task({ due }), undefined, at(0))).toHaveLength(1)
       expect(upcomingDues(task({ repeat: { everyDays: 1 } }), undefined, at(0))).toEqual([])
     })
   })
 })
 
-describe('série', () => {
+describe('streak', () => {
   const t = task({
     repeat: daily,
     streak: { tiers: [{ at: 3, bonus: 5 }], multiplier: { perStep: 0.1, cap: 1.3 } },
   })
 
-  it('cumule palier et multiplicateur, et respecte le plafond', () => {
+  it('stacks tier and multiplier, and honours the cap', () => {
     const { balance, perTask } = replay([done(0), done(1), done(2), done(3), done(4)], [t], at(4))
-    //  10 + 11 + (12 + 5) + 13 + 13(plafonné)
+    //  10 + 11 + (12 + 5) + 13 + 13(capped)
     expect(balance).toBeCloseTo(64)
     expect(perTask.get('t1')!.streak).toBe(5)
   })
 
-  it('ne monte pas deux fois le même jour', () => {
+  it('does not grow twice on the same day', () => {
     const { perTask } = replay([done(0), done(0.1), done(0.2)], [t], at(0))
     expect(perTask.get('t1')!.streak).toBe(1)
   })
 
-  it('se rompt hors fenêtre et rejoue ses paliers ensuite', () => {
+  it('breaks outside the window and replays its tiers afterwards', () => {
     const big = task({ repeat: daily, streak: { tiers: [{ at: 2, bonus: 100 }], multiplier: null } })
     const { balance, perTask } = replay([done(0), done(1), done(5), done(6)], [big], at(6))
     expect(perTask.get('t1')!.streak).toBe(2)
     expect(balance).toBe(40 + 200) // 4 validations à 10, le palier 2 franchi deux fois
   })
 
-  it('retient la série perdue pour pouvoir l’annoncer', () => {
+  it('remembers the lost streak so it can be announced', () => {
     const { perTask } = replay([done(0), done(1), done(2)], [t], at(9))
     const s = perTask.get('t1')!
     expect(s.streak).toBe(0) // rompue par le simple passage du temps
@@ -221,7 +222,7 @@ describe('série', () => {
     expect(s.bestStreak).toBe(3)
   })
 
-  it('garde le record après une rupture puis une reprise', () => {
+  it('keeps the record after a break and a fresh start', () => {
     const { perTask } = replay([done(0), done(1), done(2), done(9), done(10)], [t], at(10))
     const s = perTask.get('t1')!
     expect(s.streak).toBe(2)
@@ -229,45 +230,45 @@ describe('série', () => {
     expect(s.bestStreak).toBe(3)
   })
 
-  it('gèle la série sur un cycle manqué au lieu de la casser', () => {
+  it('freezes the streak on a missed cycle instead of breaking it', () => {
     const { perTask } = replay([done(0), done(1), done(3)], [t], at(3))
     const s = perTask.get('t1')!
     expect(s.streak).toBe(2) // le rattrapage tient la série, sans la faire monter
     expect(s.frozen).toBe(false) // rattrapée, donc dégelée
   })
 
-  it('ne gèle pas tant que le cycle du jour est encore ouvert', () => {
+  it('does not freeze while the current cycle is still open', () => {
     const { perTask } = replay([done(0), done(1)], [t], at(2))
     const s = perTask.get('t1')!
     expect(s.streak).toBe(2)
     expect(s.frozen).toBe(false) // le jour 2 est le cycle en cours, pas un cycle manqué
   })
 
-  it('annonce le gel dès que le cycle passe, sans attendre une validation', () => {
+  it('announces the freeze as soon as the cycle passes, without a completion', () => {
     const { perTask } = replay([done(0), done(1)], [t], at(3))
     const s = perTask.get('t1')!
     expect(s.streak).toBe(2)
     expect(s.frozen).toBe(true)
   })
 
-  it('casse au deuxième cycle manqué', () => {
+  it('breaks on the second missed cycle', () => {
     const { perTask } = replay([done(0), done(1)], [t], at(5))
     const s = perTask.get('t1')!
     expect(s.streak).toBe(0)
     expect(s.brokenStreak).toBe(2)
   })
 
-  it('ne monte plus une série quotidienne faite un jour sur deux', () => {
+  it('no longer grows a daily streak done every other day', () => {
     const { perTask } = replay([done(0), done(2), done(4), done(6), done(8)], [t], at(8))
     expect(perTask.get('t1')!.streak).toBe(1)
   })
 
-  // Le gel vaut un jour, pas un cycle : sinon une hebdomadaire faite une semaine
-  // sur deux gardait sa série indéfiniment.
+  // The freeze lasts one day, not one cycle: otherwise a weekly task done every
+  // other week kept its streak forever.
   describe('hebdomadaire', () => {
     const h = task({ repeat: { everyDays: 7, weekday: 1 } })
 
-    it('tient sur un jour de retard, sans monter', () => {
+    it('holds through one day late, without growing', () => {
       const { perTask } = replay([done(0), done(7), done(15)], [h], at(15))
       const s = perTask.get('t1')!
       expect(s.streak).toBe(2) // le retard d'un jour ne casse pas, mais ne compte pas
@@ -275,14 +276,14 @@ describe('série', () => {
       expect(s.frozen).toBe(false)
     })
 
-    it('casse au deuxième jour de retard', () => {
+    it('breaks on the second day late', () => {
       const { perTask } = replay([done(0), done(7), done(16)], [h], at(16))
       const s = perTask.get('t1')!
       expect(s.streak).toBe(1)
       expect(s.brokenStreak).toBe(2)
     })
 
-    it('gèle pendant la journée de tolérance, puis rompt', () => {
+    it('freezes during the day of grace, then breaks', () => {
       expect(replay([done(0), done(7)], [h], at(15)).perTask.get('t1')!).toMatchObject({
         streak: 2,
         frozen: true,
@@ -290,127 +291,127 @@ describe('série', () => {
       expect(replay([done(0), done(7)], [h], at(16)).perTask.get('t1')!.streak).toBe(0)
     })
 
-    it('ne se maintient plus une semaine sur deux', () => {
+    it('no longer holds when done every other week', () => {
       const { perTask } = replay([done(0), done(14), done(28)], [h], at(28))
       expect(perTask.get('t1')!.streak).toBe(1)
     })
   })
 })
 
-describe('cycles manqués', () => {
+describe('missed cycles', () => {
   const t = task({ repeat: daily })
 
-  it('compte zéro sur une série sans trou', () => {
+  it('counts zero on a streak with no gap', () => {
     const events = [done(0), done(1), done(2), done(3)]
     const { entries } = replay(events, [t], at(3))
     expect(missedCycles([t], entries, at(3))).toBe(0)
   })
 
-  it('compte les jours sautés entre deux validations, et depuis la dernière', () => {
-    // 0, 1, puis 5 : les jours 2, 3, 4 sont manqués.
+  it('counts the days skipped between two completions, and since the last one', () => {
+    // 0, 1, then 5: days 2, 3 and 4 are missed.
     const { entries } = replay([done(0), done(1), done(5)], [t], at(5))
     expect(missedCycles([t], entries, at(5))).toBe(3)
-    // Observé à 10 sans nouvelle validation : 6, 7, 8, 9 s'ajoutent.
+    // Observed at 10 with no new completion: 6, 7, 8 and 9 add up.
     expect(missedCycles([t], entries, at(10))).toBe(7)
   })
 })
 
-describe('compteur', () => {
-  // Récompense 10 pour l'objectif, plus un bonus intermédiaire à 4.
+describe('counter', () => {
+  // Reward of 10 for the target, plus an intermediate bonus at 4.
   const t = task({ reward: 10, counter: { target: 8, unit: 'verres', tiers: [{ at: 4, bonus: 3 }] } })
 
-  it('verse la récompense à l’objectif, sans palier à y poser', () => {
+  it('pays the reward at the target, with no tier needed there', () => {
     const nu = task({ reward: 10, counter: { target: 2, unit: '', tiers: [] } })
     expect(replay([count(0)], [nu], at(0)).balance).toBe(0)
     expect(replay([count(0), count(0)], [nu], at(0)).balance).toBe(10)
   })
 
-  it('cumule les bonus intermédiaires avec la récompense', () => {
+  it('stacks the intermediate bonuses with the reward', () => {
     const events = [...Array(8)].map(() => count(0))
     expect(replay(events, [t], at(0)).balance).toBe(13) // 3 à mi-parcours + 10 à l'objectif
   })
 
-  it('ne paie l’objectif qu’une fois malgré deux incréments concurrents', () => {
+  it('pays the target only once despite two concurrent increments', () => {
     const seven = [1, 2, 3, 4, 5, 6, 7].map(() => count(0))
-    // Deux appareils hors-ligne franchissent l'objectif chacun de leur côté.
+    // Two offline devices each cross the target on their own.
     const events = [...seven, count(0, 1, 'phone'), count(0, 1, 'pc')]
     const { balance, perTask } = replay(events, [t], at(0))
     expect(perTask.get('t1')!.count).toBe(8) // plafonné à l'objectif
     expect(balance).toBe(13)
   })
 
-  it('reprend la récompense quand on redescend sous l’objectif', () => {
+  it('takes the reward back when dropping below the target', () => {
     const events = [...Array(8)].map(() => count(0))
     expect(replay(events, [t], at(0)).balance).toBe(13)
-    // 8/8 → 7/8 : l'objectif n'est plus atteint, ses 10 repartent.
+    // 8/8 → 7/8: the target is no longer reached, its 10 go back.
     const { balance, perTask } = replay([...events, count(0, -1)], [t], at(0))
     expect(perTask.get('t1')!.count).toBe(7)
     expect(balance).toBe(3) // il reste le bonus intermédiaire de 4
   })
 
-  it('rembourse aussi les paliers intermédiaires quittés', () => {
+  it('also refunds the intermediate tiers that were left behind', () => {
     const events = [...Array(8)].map(() => count(0))
     const retours = [...Array(5)].map(() => count(0, -1))
-    // Redescendu à 3 : ni l'objectif ni le palier de 4 ne tiennent.
+    // Back down to 3: neither the target nor the tier at 4 holds.
     expect(replay([...events, ...retours], [t], at(0)).balance).toBe(0)
   })
 
-  it('ne se laisse pas farmer par des allers-retours', () => {
+  it('cannot be farmed with round trips', () => {
     const events = [...Array(8)].map(() => count(0))
     events.push(count(0, -1), count(0, 1), count(0, -1), count(0, 1))
     expect(replay(events, [t], at(0)).balance).toBe(13)
   })
 
-  it('ne dépasse jamais l’objectif', () => {
+  it('never goes past the target', () => {
     const events = [...Array(12)].map(() => count(0))
     const { perTask, balance } = replay(events, [t], at(0))
     expect(perTask.get('t1')!.count).toBe(8)
     expect(balance).toBe(13)
   })
 
-  it('replafonne correctement après un retrait', () => {
+  it('caps correctly again after a decrement', () => {
     const events = [...Array(10)].map(() => count(0))
     events.push(count(0, -1), count(0, -1))
     expect(replay(events, [t], at(0)).perTask.get('t1')!.count).toBe(6)
   })
 
-  it('repaie l’objectif à chaque nouvelle période', () => {
+  it('pays the target again on every new period', () => {
     const quotidien = { ...t, repeat: daily }
     const jour1 = [...Array(8)].map(() => count(0))
     const jour2 = [...Array(8)].map(() => count(1))
     expect(replay([...jour1, ...jour2], [quotidien], at(1)).balance).toBe(26)
   })
 
-  it('repart à zéro à la période suivante', () => {
+  it('goes back to zero on the next period', () => {
     const quotidien = { ...t, repeat: daily }
     const { perTask, balance } = replay([count(0), count(0), count(1)], [quotidien], at(1))
     expect(perTask.get('t1')!.count).toBe(1)
     expect(balance).toBe(0)
   })
 
-  it('remet le compteur à zéro même sans événement aujourd’hui', () => {
+  it('resets the counter even with no event today', () => {
     const quotidien = { ...t, repeat: daily }
     const { perTask } = replay([count(0), count(0)], [quotidien], at(3))
     expect(perTask.get('t1')!.count).toBe(0)
   })
 
-  // La remise à zéro suit le cycle de la tâche, pas le calendrier : c'est ce
-  // qui distingue « 8 verres par jour » de « 30 km ce mois-ci ».
-  it('garde son avancement d’un jour à l’autre sans répétition', () => {
+  // The reset follows the task's cycle, not the calendar: that is what tells
+  // "8 glasses a day" apart from "30 km this month".
+  it('keeps its progress from day to day when there is no repetition', () => {
     const { perTask } = replay([count(0), count(0)], [t], at(5))
     expect(perTask.get('t1')!.count).toBe(2)
   })
 
-  it('ne repaie jamais l’objectif sans répétition', () => {
+  it('never pays the target twice when there is no repetition', () => {
     const huit = [...Array(8)].map(() => count(0))
     const encore = [...Array(8)].map(() => count(1))
     expect(replay([...huit, ...encore], [t], at(1)).balance).toBe(13)
   })
 
-  it('ne repart qu’au changement de cycle sur une hebdomadaire', () => {
-    // T0 = lundi 5 janvier, échéance le dimanche : le cycle court jusqu'au 11.
-    // Mercredi 7 et jeudi 8 sont dans le même cycle, mais dans deux tranches
-    // de sept jours différentes — c'est le cycle qui doit gagner.
+  it('only resets on a cycle change on a weekly task', () => {
+    // T0 = Monday 5 January, deadline on Sunday: the cycle runs to the 11th.
+    // Wednesday the 7th and Thursday the 8th are in the same cycle, but in two
+    // different seven-day slices — the cycle is what has to win.
     const hebdo = { ...t, repeat: { everyDays: 7, weekday: 0 } }
     const dans = replay([count(2), count(3)], [hebdo], at(3))
     expect(dans.perTask.get('t1')!.count).toBe(2)
@@ -419,20 +420,20 @@ describe('compteur', () => {
   })
 })
 
-describe('annulation', () => {
+describe('undo', () => {
   const t = task({ repeat: daily, streak: { tiers: [{ at: 2, bonus: 50 }], multiplier: null } })
 
-  it('retire du solde la validation annulée', () => {
+  it('removes the undone completion from the balance', () => {
     const e = done(0)
     expect(replay([e], [t], at(0)).balance).toBe(10)
     const annule: Event = { id: 'u1', ts: at(0), kind: 'undo', targetId: e.id }
     expect(replay([e, annule], [t], at(0)).balance).toBe(0)
   })
 
-  it('recalcule la série et reprend le palier', () => {
+  it('recomputes the streak and takes the tier back', () => {
     const a = done(0)
     const b = done(1)
-    // Deux jours d'affilée : le palier de 2 tombe.
+    // Two days in a row: the tier at 2 is crossed.
     expect(replay([a, b], [t], at(1)).balance).toBe(70)
 
     const annule: Event = { id: 'u2', ts: at(1), kind: 'undo', targetId: b.id }
@@ -441,22 +442,22 @@ describe('annulation', () => {
     expect(perTask.get('t1')!.streak).toBe(1)
   })
 
-  it('ne laisse aucune trace dans l’historique', () => {
+  it('leaves no trace in the history', () => {
     const e = done(0)
     const annule: Event = { id: 'u5', ts: at(0), kind: 'undo', targetId: e.id }
     const { entries } = replay([e, annule], [t], at(0))
-    // Ni la validation, ni une ligne « annulé » : la correction efface, elle n'écrit pas.
+    // Neither the completion nor an "undone" line: a correction erases, it does not write.
     expect(entries).toEqual([])
   })
 
-  it('efface la ligne du compteur redescendu sous son objectif', () => {
+  it('erases the line of a counter dropped back below its target', () => {
     const c = task({ reward: 10, counter: { target: 2, unit: '', tiers: [] } })
     const monte = [count(0), count(0)]
     expect(replay(monte, [c], at(0)).entries).toHaveLength(1)
     expect(replay([...monte, count(0, -1)], [c], at(0)).entries).toEqual([])
   })
 
-  it('reste sans effet si on annule deux fois', () => {
+  it('has no effect when undone twice', () => {
     const e = done(0)
     const u1: Event = { id: 'u3', ts: at(0), kind: 'undo', targetId: e.id }
     const u2: Event = { id: 'u4', ts: at(0), kind: 'undo', targetId: e.id }
@@ -464,57 +465,57 @@ describe('annulation', () => {
   })
 })
 
-describe('solde', () => {
-  it('autorise le négatif — bloquer rendrait les corrections impossibles', () => {
+describe('balance', () => {
+  it('allows going negative — blocking it would make corrections impossible', () => {
     const spend: Event = { id: 's1', ts: at(0), kind: 'spend', amount: 50, label: 'Ciné' }
     expect(replay([spend], []).balance).toBe(-50)
   })
 
-  it('ne dépend pas de l’ordre d’arrivée des événements', () => {
+  it('does not depend on the order in which events arrive', () => {
     const t = task({ repeat: daily, streak: { tiers: [{ at: 3, bonus: 5 }], multiplier: { perStep: 0.1, cap: 2 } } })
     const events = [done(0), done(1), done(2), done(3)]
     const shuffled = [events[2], events[0], events[3], events[1]]
     expect(replay(shuffled, [t]).balance).toBeCloseTo(replay(events, [t]).balance)
   })
 
-  it('garde les gains d’une tâche supprimée', () => {
+  it('keeps the payouts of a deleted task', () => {
     expect(replay([done(0)], []).balance).toBe(10)
   })
 })
 
-describe('simulation du multiplicateur', () => {
+describe('multiplier simulation', () => {
   const t = task({
     reward: 10,
     streak: { tiers: [{ at: 3, bonus: 5 }], multiplier: { perStep: 0.1, cap: 1.5 } },
   })
 
-  it('donne les mêmes montants que le rejeu réel', () => {
+  it('gives the same amounts as the real replay', () => {
     expect(rewardAtStreak(t, 1)).toBeCloseTo(10)
     expect(rewardAtStreak(t, 2)).toBeCloseTo(11)
     expect(rewardAtStreak(t, 3)).toBeCloseTo(17) // 12 + palier 5
     expect(rewardAtStreak(t, 9)).toBeCloseTo(15) // plafonné à ×1,5
   })
 
-  it('annonce le rang où le plafond est atteint', () => {
+  it('announces the rank at which the cap is reached', () => {
     expect(streakAtCap(t)).toBe(6)
     expect(streakAtCap(task())).toBeNull()
   })
 })
 
-describe('simulation de pénalité', () => {
+describe('penalty simulation', () => {
   const decay = task({
     reward: 50,
     due: { at: new Date(at(0)).toISOString(), penalty: { kind: 'decay', percentPerDay: 20 } },
   })
 
-  it('décroît puis tombe à zéro', () => {
+  it('decays then falls to zero', () => {
     expect(rewardAfterDays(decay, 0)).toBe(50)
     expect(rewardAfterDays(decay, 1)).toBeCloseTo(40)
     expect(rewardAfterDays(decay, 3)).toBeCloseTo(20)
     expect(rewardAfterDays(decay, 5)).toBe(0)
   })
 
-  it('annonce le jour où le gain devient nul', () => {
+  it('announces the day the payout becomes nothing', () => {
     expect(daysUntilWorthless(decay)).toBe(5)
     expect(daysUntilWorthless(task())).toBeNull()
     const soft = task({
@@ -525,29 +526,29 @@ describe('simulation de pénalité', () => {
   })
 })
 
-describe('purge des tâches à usage unique', () => {
-  it('efface le lendemain, pas le jour même', () => {
+describe('purging one-shot tasks', () => {
+  it('clears them the next day, not the same day', () => {
     const t = task()
     const evts = [done(0)]
     expect(staleOneShots([t], replay(evts, [t], at(0)), at(0))).toEqual([])
     expect(staleOneShots([t], replay(evts, [t], at(1)), at(1))).toEqual(['t1'])
   })
 
-  it('efface un compteur sans répétition une fois son objectif atteint', () => {
+  it('clears a counter without repetition once its target is reached', () => {
     const c = task({ counter: { target: 2, unit: '', tiers: [] } })
     const events = [count(0), count(0)]
-    // Le jour même il reste visible, le lendemain il s'en va.
+    // The same day it stays visible, the next day it goes.
     expect(staleOneShots([c], replay(events, [c], at(0)), at(0))).toEqual([])
     expect(staleOneShots([c], replay(events, [c], at(1)), at(1))).toEqual(['t1'])
   })
 
-  it('garde un compteur sans répétition dont l’objectif n’est pas atteint', () => {
+  it('keeps a counter without repetition whose target is not reached', () => {
     const c = task({ counter: { target: 5, unit: '', tiers: [] } })
     const events = [count(0), count(0)]
     expect(staleOneShots([c], replay(events, [c], at(3)), at(3))).toEqual([])
   })
 
-  it('épargne les répétitives et les compteurs qui reviennent', () => {
+  it('spares repeating tasks and counters that come back', () => {
     const rep = task({ id: 'r', repeat: daily })
     const cnt = task({ id: 'c', counter: { target: 2, unit: '', tiers: [] } })
     const evts: Event[] = [
@@ -557,22 +558,22 @@ describe('purge des tâches à usage unique', () => {
     expect(staleOneShots([rep, cnt], replay(evts, [rep, cnt], at(5)), at(5))).toEqual([])
   })
 
-  it('garde les gains d’une tâche purgée', () => {
+  it('keeps the payouts of a purged task', () => {
     const t = task()
     const r = replay([done(0)], [{ ...t, deletedAt: at(1) }], at(1))
     expect(r.balance).toBe(10)
   })
 })
 
-describe('taps venus des widgets', () => {
+describe('taps coming from the widgets', () => {
   let n = 0
   const ids = () => `p${++n}`
 
-  it('convertit un incrément en événement de compteur', () => {
+  it('turns an increment into a counter event', () => {
     const t = task({ counter: { target: 8, unit: '', tiers: [] } })
     const got = pendingToEvents([{ kind: 'count', taskId: 't1', delta: 1, ts: at(0) }], [t], [], () => 'p0')
-    // Le compteur est figé sur l'événement au versement : éditer la tâche
-    // ensuite ne doit pas rejouer ce tap-là.
+    // The counter is frozen onto the event at pour time: editing the task
+    // afterwards must not replay that particular tap.
     expect(got).toEqual([
       {
         id: 'p0',
@@ -587,17 +588,17 @@ describe('taps venus des widgets', () => {
     ])
   })
 
-  it('applique la pénalité de l’heure du tap, pas de celle du versement', () => {
+  it('applies the penalty of the tap time, not of the pour time', () => {
     const t = task({
       reward: 50,
       due: { at: new Date(at(1)).toISOString(), penalty: { kind: 'decay', percentPerDay: 50 } },
     })
-    // Validé dans les temps depuis l'écran d'accueil, appli rouverte 5 jours après.
+    // Completed on time from the home screen, app reopened 5 days later.
     const got = pendingToEvents([{ kind: 'complete', taskId: 't1', delta: 1, ts: at(0) }], [t], [], ids)
     expect(replay(got, [t], at(6)).balance).toBe(50)
   })
 
-  it('enchaîne plusieurs validations en gardant la série cohérente', () => {
+  it('chains several completions while keeping the streak consistent', () => {
     const t = task({ repeat: daily, streak: { tiers: [{ at: 2, bonus: 100 }], multiplier: null } })
     const got = pendingToEvents(
       [
@@ -612,12 +613,12 @@ describe('taps venus des widgets', () => {
     expect(replay(got, [t], at(1)).balance).toBe(120) // 10 + 10 + palier 100
   })
 
-  it('ignore une tâche supprimée entre-temps', () => {
+  it('ignores a task deleted in the meantime', () => {
     expect(pendingToEvents([{ kind: 'complete', taskId: 'zzz', delta: 1, ts: at(0) }], [], [], ids)).toEqual([])
   })
 })
 
-describe('sauvegarde', () => {
+describe('backup', () => {
   const db = {
     tasks: [task({ name: 'Vaisselle' })],
     shopItems: [],
@@ -636,14 +637,14 @@ describe('sauvegarde', () => {
     },
   }
 
-  it('fait l’aller-retour sans rien perdre', () => {
+  it('round-trips without losing anything', () => {
     const relu = parseBackup(serialize(db))
     expect(relu.tasks).toEqual(db.tasks)
     expect(relu.events).toEqual(db.events)
     expect(relu.settings.currency).toBe('€')
   })
 
-  it('refuse un fichier étranger plutôt que d’écraser la base', () => {
+  it('refuses a foreign file rather than overwrite the database', () => {
     expect(() => parseBackup('pas du json')).toThrow(/JSON/)
     expect(() => parseBackup('{"app":"autre"}')).toThrow(/Butineur/)
     expect(() => parseBackup('{"app":"butineur","format":99}')).toThrow(/inconnu/)
@@ -651,9 +652,9 @@ describe('sauvegarde', () => {
   })
 })
 
-describe('série d’un compteur', () => {
-  // Atteindre l'objectif est la validation d'un compteur : sans ça, « Bonus de
-  // série » ne servait à rien sur ces tâches.
+describe('streak of a counter', () => {
+  // Reaching the target is a counter's completion: without that, the "streak
+  // bonus" setting was useless on those tasks.
   const boire = task({
     reward: 5,
     repeat: daily,
@@ -662,31 +663,31 @@ describe('série d’un compteur', () => {
   })
   const jour = (d: number) => [count(d), count(d), count(d)]
 
-  it('monte d’un cran par objectif atteint', () => {
+  it('grows one step per target reached', () => {
     const { perTask } = replay([...jour(0), ...jour(1), ...jour(2)], [boire], at(2))
     expect(perTask.get('t1')!.streak).toBe(3)
   })
 
-  it('ne monte pas deux fois pour le même jour', () => {
+  it('does not grow twice for the same day', () => {
     const { perTask } = replay([...jour(0), count(0, -1), count(0)], [boire], at(0))
     expect(perTask.get('t1')!.streak).toBe(1)
   })
 
-  it('se rompt quand un jour est sauté', () => {
+  it('breaks when a day is skipped', () => {
     const { perTask } = replay([...jour(0), ...jour(1), ...jour(5)], [boire], at(5))
     const s = perTask.get('t1')!
     expect(s.streak).toBe(1)
     expect(s.brokenStreak).toBe(2)
   })
 
-  it('ne paie toujours que l’objectif, pas les bonus de série', () => {
-    // Trois objectifs à 5 : le palier de série reste réservé aux validations.
+  it('still pays the target only, not the streak bonuses', () => {
+    // Three targets at 5: the streak tier stays reserved for completions.
     expect(replay([...jour(0), ...jour(1), ...jour(2)], [boire], at(2)).balance).toBe(15)
   })
 })
 
-describe('le passé ne se recalcule pas', () => {
-  // Quotidienne validée trois jours d'affilée, puis passée à « tous les 5 jours ».
+describe('the past is not recomputed', () => {
+  // A daily task completed three days in a row, then moved to "every 5 days".
   const quotidienne = task({ repeat: daily, streak: { tiers: [], multiplier: null } })
   const evts = [
     done(0, { repeat: { everyDays: 1 } }),
@@ -694,101 +695,101 @@ describe('le passé ne se recalcule pas', () => {
     done(2, { repeat: { everyDays: 1 } }),
   ]
 
-  it('garde la série qu’avait le rythme d’alors', () => {
+  it('keeps the streak the rhythm of the time produced', () => {
     const rallongee = { ...quotidienne, repeat: { everyDays: 5 } }
     expect(replay(evts, [rallongee], at(2)).perTask.get('t1')!.streak).toBe(3)
   })
 
-  it('ne répare pas une série cassée en rallongeant le rythme', () => {
-    // Trois jours espacés de 4 : la série était rompue sous le rythme quotidien.
+  it('does not repair a broken streak by lengthening the rhythm', () => {
+    // Three days four apart: the streak was broken under the daily rhythm.
     const espaces = [0, 4, 8].map((d) => done(d, { repeat: { everyDays: 1 } }))
     const rallongee = { ...quotidienne, repeat: { everyDays: 5 } }
     expect(replay(espaces, [rallongee], at(8)).perTask.get('t1')!.streak).toBe(1)
   })
 
-  it('retombe sur le rythme actuel pour un événement d’avant le gel', () => {
+  it('falls back on the current rhythm for an event predating the freeze', () => {
     const anciens = [done(0), done(1), done(2)] // sans `repeat` figé
     expect(replay(anciens, [quotidienne], at(2)).perTask.get('t1')!.streak).toBe(3)
   })
 
-  describe('les bonus de série', () => {
+  describe('the streak bonuses', () => {
     const petit = { tiers: [], multiplier: { perStep: 0.1, cap: 2 } }
     const bonus = [done(0, { streak: petit }), done(1, { streak: petit }), done(2, { streak: petit })]
 
-    it('ne revalorise pas les validations passées quand le multiplicateur monte', () => {
-      // 10 + 11 + 12 = 33, quel que soit le réglage d'aujourd'hui.
+    it('does not re-price past completions when the multiplier goes up', () => {
+      // 10 + 11 + 12 = 33, whatever today's setting is.
       const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
       expect(replay(bonus, [gros], at(2)).balance).toBeCloseTo(33)
     })
 
-    it('ne paie pas rétroactivement un palier ajouté après coup', () => {
+    it('does not retroactively pay a tier added afterwards', () => {
       const avecPalier = task({ repeat: daily, streak: { tiers: [{ at: 2, bonus: 50 }], multiplier: null } })
       expect(replay(bonus, [avecPalier], at(2)).balance).toBeCloseTo(33)
     })
 
-    it('applique le nouveau réglage à la validation suivante', () => {
-      // Ce que Cléa demande : le passé ne bouge pas, la suite en profite.
+    it('applies the new setting to the next completion', () => {
+      // What is wanted: the past does not move, what follows benefits.
       const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
       const suite = [...bonus, done(3, { streak: gros.streak })]
       expect(replay(suite, [gros], at(3)).balance).toBeCloseTo(33 + 40)
     })
 
-    it('ne casse pas la série au passage', () => {
+    it('does not break the streak in passing', () => {
       const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
       expect(replay(bonus, [gros], at(2)).perTask.get('t1')!.streak).toBe(3)
     })
 
-    it('retombe sur les bonus actuels pour un événement d’avant le gel', () => {
+    it('falls back on the current bonuses for an event predating the freeze', () => {
       const anciens = [done(0), done(1), done(2)] // sans `streak` figé
       const gros = task({ repeat: daily, streak: { tiers: [], multiplier: { perStep: 1, cap: 5 } } })
       expect(replay(anciens, [gros], at(2)).balance).toBeCloseTo(10 + 20 + 30)
     })
   })
 
-  describe('les compteurs', () => {
+  describe('the counters', () => {
     const objectif = { target: 3, unit: '', tiers: [{ at: 2, bonus: 4 }] }
     const cnt = task({ repeat: daily, counter: objectif, streak: null })
     const gele = { baseReward: 10, counter: objectif, repeat: daily }
-    // Objectif atteint le jour 0 : 10 € pour l'objectif, 4 € pour le palier.
+    // Target reached on day 0: 10 € for the target, 4 € for the tier.
     const taps = [count(0, 1), count(0, 1), count(0, 1)].map((e) => ({ ...e, ...gele }))
 
-    it('ne revalorise pas un objectif déjà atteint quand la récompense change', () => {
+    it('does not re-price a target already reached when the reward changes', () => {
       expect(replay(taps, [{ ...cnt, reward: 100 }], at(1)).balance).toBeCloseTo(14)
     })
 
-    it('ne reprend pas un objectif déjà atteint quand on relève la cible', () => {
+    it('does not take back a target already reached when it is raised', () => {
       const plusHaut = { ...cnt, counter: { ...objectif, target: 10 } }
       expect(replay(taps, [plusHaut], at(1)).balance).toBeCloseTo(14)
     })
 
-    it('ne repaie pas un palier dont on a changé le montant', () => {
+    it('does not pay a tier again after its amount was changed', () => {
       const plusCher = { ...cnt, counter: { ...objectif, tiers: [{ at: 2, bonus: 40 }] } }
       expect(replay(taps, [plusCher], at(1)).balance).toBeCloseTo(14)
     })
 
-    it('reprend exactement ce qui a été versé quand on redescend', () => {
-      // Le retrait tombe après le changement de récompense : c'est le montant
-      // réellement crédité qui repart, pas celui de la tâche d'aujourd'hui.
+    it('takes back exactly what was paid when counting back down', () => {
+      // The decrement lands after the reward change: what goes back is the
+      // amount actually credited, not today's task value.
       const retrait = { ...count(0, -1), baseReward: 100, counter: objectif, repeat: daily }
       expect(replay([...taps, retrait], [{ ...cnt, reward: 100 }], at(1)).balance).toBeCloseTo(4)
     })
 
-    it('retombe sur le compteur actuel pour un événement d’avant le gel', () => {
+    it('falls back on the current counter for an event predating the freeze', () => {
       const anciens = [count(0, 1), count(0, 1), count(0, 1)] // sans gel
       expect(replay(anciens, [{ ...cnt, reward: 100 }], at(1)).balance).toBeCloseTo(104)
     })
   })
 })
 
-describe('atelier de debug', () => {
+describe('debug workshop', () => {
   const t = task({ repeat: daily, streak: { tiers: [{ at: 3, bonus: 5 }], multiplier: null } })
 
-  it('fabrique une vraie série, calculée par le moteur', () => {
+  it('manufactures a real streak, computed by the engine', () => {
     const { perTask } = replay(fakeStreak(t, 5, at(0)), [t], at(0))
     expect(perTask.get('t1')!.streak).toBe(5)
   })
 
-  it('rend le solde intact une fois les événements retirés', () => {
+  it('leaves the balance intact once the events are taken back', () => {
     const faux = fakeStreak(t, 5, at(0))
     expect(replay(faux, [t], at(0)).balance).toBeGreaterThan(0)
     const propre = [...faux, ...undoDebugEvents(faux, at(0))]
@@ -796,23 +797,23 @@ describe('atelier de debug', () => {
     expect(replay(propre, [t], at(0)).entries).toEqual([])
   })
 
-  it('reprend aussi ce qui a été validé pendant le décalage', () => {
-    // Une validation datée de demain ne peut venir que d'une horloge décalée.
+  it('also takes back what was completed while the clock was shifted', () => {
+    // A completion dated tomorrow can only come from a shifted clock.
     const demain = done(1)
     const propre = [demain, ...undoDebugEvents([demain], at(0))]
     expect(replay(propre, [t], at(0)).balance).toBe(0)
     expect(replay(propre, [t], at(0)).entries).toEqual([])
   })
 
-  it('n’annule pas deux fois ce qui l’est déjà', () => {
+  it('does not undo twice what is already undone', () => {
     const faux = fakeStreak(t, 3, at(0))
     const premier = undoDebugEvents(faux, at(0))
     expect(undoDebugEvents([...faux, ...premier], at(0))).toEqual([])
   })
 })
 
-describe('disponibilité', () => {
-  it('bloque une tâche répétitive avant la fin de son cycle', () => {
+describe('availability', () => {
+  it('blocks a repeating task before the end of its cycle', () => {
     const t = task({ repeat: { everyDays: 3 } })
     const { perTask } = replay([done(0)], [t], at(0))
     const s = perTask.get('t1')
@@ -820,7 +821,7 @@ describe('disponibilité', () => {
     expect(isAvailable(t, s, at(3))).toBe(true)
   })
 
-  it('épuise une tâche ponctuelle', () => {
+  it('uses up a one-shot task', () => {
     const t = task()
     const { perTask } = replay([done(0)], [t], at(0))
     expect(isAvailable(t, perTask.get('t1'), at(9))).toBe(false)

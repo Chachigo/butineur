@@ -1,14 +1,14 @@
 /**
- * Une icône de tâche est soit un emoji, soit un glyphe Phosphor préfixé `ph:`.
+ * A task icon is either an emoji or a Phosphor glyph prefixed with `ph:`.
  *
- * On stocke le ou les caractères eux-mêmes, pas le nom de l'icône : les widgets
- * Android affichent alors la même chaîne avec la même police, sans table de
- * correspondance à dupliquer côté Kotlin.
+ * We store the character(s) themselves, not the icon name: the Android widgets
+ * then draw the same string with the same font, with no lookup table to
+ * duplicate on the Kotlin side.
  *
- * La police est duotone : une icône y vaut **deux** caractères dessinés l'un
- * sur l'autre — le fond, qui porte la couleur d'accentuation, puis le détail.
- * Un seul caractère est une icône d'avant ce changement : on la rend telle
- * quelle plutôt que d'afficher une silhouette sans son détail.
+ * The font is duotone: an icon is worth **two** characters drawn on top of each
+ * other — the background, which carries the accent color, then the detail. A
+ * single character is an icon from before that change: it is rendered as is
+ * rather than showing a silhouette without its detail.
  */
 const PH = 'ph:'
 

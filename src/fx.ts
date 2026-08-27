@@ -1,6 +1,6 @@
 import confetti from 'canvas-confetti'
 
-/** Accessibilité : aucune animation ne doit être imposée. */
+/** Accessibility: no animation must ever be forced on anyone. */
 export const reduced = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -10,11 +10,11 @@ const center = (el: HTMLElement) => {
 }
 
 /**
- * La pièce s'envole entre la tâche et le solde. ~380 ms.
+ * The coin flies between the task and the balance. ~380 ms.
  *
- * Le sens suit l'argent : un gain va vers le solde, une perte en part. Les
- * appelants passent toujours les deux extrémités dans le même ordre, c'est le
- * signe qui décide — sinon chaque site d'appel devrait y penser.
+ * The direction follows the money: a gain flies to the balance, a loss flies out
+ * of it. Callers always pass both ends in the same order, the sign is what
+ * decides — otherwise every call site would have to think about it.
  */
 export function coinFly(
   task: HTMLElement | null,
@@ -44,7 +44,7 @@ export function coinFly(
   ).finished.finally(() => el.remove())
 }
 
-/** Gerbe de confettis pour un palier ou une série franchie. */
+/** Burst of confetti for a tier or a streak just crossed. */
 export function burst(el?: HTMLElement | null) {
   if (reduced()) return
   const o = el ? center(el) : null
@@ -59,7 +59,7 @@ export function burst(el?: HTMLElement | null) {
   })
 }
 
-/** Petit à-coup sur un élément — validation, dépense, incrément. */
+/** Small jolt on an element — completion, spending, increment. */
 export function pop(el: HTMLElement | null, negative = false) {
   if (!el || reduced()) return
   el.animate(

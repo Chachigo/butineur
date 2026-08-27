@@ -40,22 +40,22 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const balanceRef = useRef<HTMLElement | null>(null)
 
-  // Le retour ramène à l'onglet des tâches avant de songer à quitter l'appli.
+  // Back goes to the tasks tab before even thinking about leaving the app.
   useCloseOnBack(tab !== 'tasks', () => setTab('tasks'))
 
   const tabs = db.settings.showStats ? TABS : TABS.filter(([id]) => id !== 'stats')
-  // L'onglet peut disparaître pendant qu'on le consulte, depuis les réglages.
+  // The tab can vanish while it is being viewed, from the settings.
   useEffect(() => {
     if (tab === 'stats' && !db.settings.showStats) setTab('tasks')
   }, [tab, db.settings.showStats])
 
-  // La couleur d'accentuation pilote toute la feuille de style.
+  // The accent color drives the whole stylesheet.
   useEffect(() => {
     document.documentElement.style.setProperty('--go', db.settings.accent)
   }, [db.settings.accent])
 
-  // Clavier ouvert : le bouton flottant recouvre le champ de saisie. La
-  // WebView ne le dit pas, mais elle rétrécit le viewport — c'est le signal.
+  // Keyboard open: the floating button covers the input field. The WebView does
+  // not say so, but it shrinks the viewport — that is the signal.
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
@@ -65,15 +65,15 @@ export default function App() {
     return () => vv.removeEventListener('resize', onResize)
   }, [])
 
-  // Fait basculer les échéances et les périodes de compteur au fil du temps.
-  // `clock()` porte le décalage de l'atelier de debug, nul en usage normal.
+  // Flips deadlines and counter periods over as time passes.
+  // `clock()` carries the debug workshop offset, zero in normal use.
   const [now, setNow] = useState(() => clock())
   useEffect(() => {
     const i = setInterval(() => setNow(clock()), 60_000)
     return () => clearInterval(i)
   }, [])
 
-  // Le journal complet est rejoué : le solde n'est jamais stocké.
+  // The whole log is replayed: the balance is never stored.
   const rep = useMemo(
     () => replay(db.events, db.tasks, now, db.settings.dayStart),
     [db.events, db.tasks, now, db.settings.dayStart],
@@ -84,8 +84,8 @@ export default function App() {
   )
   const modeles = useMemo(() => db.tasks.filter((t) => !t.deletedAt && t.template), [db.tasks])
 
-  // Les taps faits sur un widget, appli fermée, rejoignent le journal. Même
-  // mécanique append-only que le reste : rien ne se perd, rien ne double.
+  // Taps made on a widget with the app closed join the log. Same append-only
+  // mechanics as the rest: nothing is lost, nothing is doubled.
   useEffect(() => {
     const drain = async () => {
       const items = await drainPending()
@@ -95,8 +95,8 @@ export default function App() {
           events: [...d.events, ...pendingToEvents(items, d.tasks, d.events, uid)],
         }))
       }
-      // Raccourci « + » du widget liste : il ne peut qu'écrire une intention,
-      // c'est l'appli qui ouvre réellement l'éditeur.
+      // The "+" shortcut of the list widget: it can only write an intent, the
+      // app is what actually opens the editor.
       if (await takeNewTaskRequest()) setEditing(blankTask(db.settings.defaultReward))
     }
     void drain()
@@ -105,14 +105,14 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [db.settings.defaultReward])
 
-  // Les tâches à usage unique disparaissent le lendemain de leur validation.
+  // One-shot tasks disappear the day after they are completed.
   useEffect(() => {
     const stale = staleOneShots(db.tasks, rep, now, db.settings.dayStart)
     if (stale.length) stale.forEach(deleteTask)
   }, [db.tasks, rep, now, db.settings.dayStart])
 
-  // On ne réécrit les widgets et les rappels que si leur contenu a bougé —
-  // sinon le tick d'une minute les redessinerait en boucle.
+  // Widgets and reminders are only rewritten when their content has changed —
+  // otherwise the one-minute tick would redraw them in a loop.
   const widgetKey = useMemo(
     () => JSON.stringify(widgetPayload(rep, db.tasks, db.settings, now)),
     [rep, db.tasks, db.settings, now],

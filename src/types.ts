@@ -1,4 +1,4 @@
-/** Palier : `at` = n° de série atteint, ou compte atteint sur un compteur. */
+/** Tier: `at` = streak rank reached, or count reached on a counter. */
 export type Tier = { at: number; bonus: number }
 
 export type Penalty =
@@ -13,38 +13,38 @@ export type Task = {
   icon?: string
   reward: number
   /**
-   * null = tâche ponctuelle. Sinon le rythme, qui découpe le temps en cycles :
-   * `weekday` (0 = dimanche) pour un rendez-vous hebdomadaire, `monthday` (1-31)
-   * pour « le 5 du mois », aucun des deux pour un cycle qui glisse d'`everyDays`
-   * après chaque passage. `everyDays` reste le rythme en jours dans tous les
-   * cas — c'est lui qui règle les périodes de compteur et la tolérance de série.
+   * null = one-shot task. Otherwise the rhythm, which cuts time into cycles:
+   * `weekday` (0 = Sunday) for a weekly appointment, `monthday` (1-31) for "the
+   * 5th of the month", neither of them for a cycle rolling `everyDays` after
+   * each completion. `everyDays` stays the rhythm in days in every case — it is
+   * what sets counter periods and streak tolerance.
    */
   repeat: null | { everyDays: number; weekday?: number; monthday?: number }
-  /** null = validation simple ; sinon on incrémente jusqu'à `target`. */
+  /** null = plain completion; otherwise it is incremented up to `target`. */
   counter: null | { target: number; unit?: string; tiers: Tier[] }
   /**
-   * Date limite. Sur une tâche répétitive, seule l'heure de `at` compte : le
-   * jour vient du rythme. Sans `due`, la tâche a quand même des cycles, elle
-   * n'est simplement jamais en retard.
+   * Deadline. On a repeating task only the time of day of `at` matters: the day
+   * comes from the rhythm. Without `due` the task still has cycles, it simply is
+   * never late.
    */
   due: null | { at: string; penalty: Penalty }
   streak: null | { tiers: Tier[]; multiplier: null | { perStep: number; cap: number } }
   /**
-   * Rappel, tant que la tâche est à faire : à une heure fixe chaque jour, le
-   * jour de l'échéance à l'heure dite, ou un certain temps avant elle.
-   * `kind` absent = heure fixe, pour les tâches créées avant les autres modes.
+   * Reminder, for as long as the task is pending: at a fixed time every day, on
+   * the day of the deadline at the given time, or some time before it.
+   * Missing `kind` = fixed time, for tasks created before the other modes.
    */
   remind:
     | null
     | { kind?: 'time'; time: string }
     | { kind: 'jour'; time: string }
     | { kind: 'before'; minutes: number }
-  /** Encouragements sur la série en cours. Désactivé par défaut, c'est intrusif. */
+  /** Cheers about the running streak. Off by default, it is intrusive. */
   cheer: boolean
   /**
-   * Modèle de tâche rapide : absent de la liste et des widgets, il attend dans
-   * une barre de raccourcis qu'on le ressorte. Pour ce qui revient souvent sans
-   * être régulier — les courses, la lessive.
+   * Quick-task template: absent from the list and the widgets, it waits in a
+   * shortcut bar to be pulled out again. For what comes back often without being
+   * regular — groceries, laundry.
    */
   template?: boolean
   archived: boolean
@@ -62,9 +62,9 @@ export type ShopItem = {
 }
 
 /**
- * Journal append-only. Un événement ne porte que des faits locaux : jamais un
- * montant qui dépend des autres événements. Séries, multiplicateurs et paliers
- * sont dérivés au rejeu — c'est ce qui rend la fusion multi-appareils juste.
+ * Append-only log. An event carries local facts only: never an amount that
+ * depends on the other events. Streaks, multipliers and tiers are derived at
+ * replay time — that is what makes the multi-device merge correct.
  */
 export type Event =
   | {
@@ -72,21 +72,21 @@ export type Event =
       ts: number
       kind: 'complete'
       taskId: string
-      /** Récompense figée au moment de la validation : éditer la tâche ne réécrit pas l'historique. */
+      /** Reward frozen at completion time: editing the task does not rewrite history. */
       baseReward: number
       penaltyFactor: number
       penaltyFlat: number
       /**
-       * Rythme de la tâche au moment du tap, figé pour la même raison que la
-       * récompense : passer une tâche de 60 à 31 jours ne doit pas recalculer
-       * les échéances passées ni réparer — ou casser — une série d'hier.
-       * Absent sur les événements d'avant : on retombe alors sur le rythme actuel.
+       * The task's rhythm at the time of the tap, frozen for the same reason as
+       * the reward: moving a task from 60 to 31 days must not recompute past
+       * deadlines, nor repair — or break — yesterday's streak.
+       * Absent on older events: they fall back on the current rhythm.
        */
       repeat?: { everyDays: number; weekday?: number; monthday?: number } | null
       /**
-       * Bonus de série au moment du tap. Même gel, et il manquait : relever le
-       * multiplicateur revalorisait d'un coup toutes les validations passées,
-       * et ajouter un palier le payait rétroactivement.
+       * Streak bonus at the time of the tap. Same freeze, and it was missing:
+       * raising the multiplier re-priced every past completion at once, and
+       * adding a tier paid it retroactively.
        */
       streak?: Task['streak']
     }
@@ -97,11 +97,11 @@ export type Event =
       taskId: string
       delta: number
       /**
-       * Le compteur tel qu'il était au tap. Rien n'y était figé : changer la
-       * récompense revalorisait les objectifs déjà atteints, relever l'objectif
-       * reprenait ce qu'ils avaient versé, et changer le rythme redécoupait les
-       * périodes passées. Absents sur les événements d'avant ce gel : repli sur
-       * la tâche actuelle, faute de mieux.
+       * The counter as it stood at the tap. Nothing used to be frozen here:
+       * changing the reward re-priced targets already reached, raising the target
+       * took back what they had paid, and changing the rhythm re-cut past
+       * periods. Absent on events predating the freeze: fall back on the current
+       * task, for want of anything better.
        */
       baseReward?: number
       counter?: Task['counter']
@@ -110,15 +110,15 @@ export type Event =
   | { id: string; ts: number; kind: 'spend'; amount: number; label: string; shopItemId?: string }
   | { id: string; ts: number; kind: 'adjust'; amount: number; label: string }
   /**
-   * Annule un autre événement. On n'efface jamais un fait du journal — on en
-   * ajoute un qui dit « celui-là ne compte pas », ce qui reste fusionnable
-   * entre appareils et idempotent.
+   * Undoes another event. A fact is never erased from the log — one is added
+   * saying "that one does not count", which stays mergeable across devices and
+   * idempotent.
    */
   | { id: string; ts: number; kind: 'undo'; targetId: string }
 
 /**
- * Un tap fait depuis un widget, appli fermée. Le natif n'y met que des faits :
- * quelle tâche, quand, et quel geste. Le montant est calculé au versement.
+ * A tap made from a widget with the app closed. The native side only puts facts
+ * in it: which task, when, and which gesture. The amount is computed at pour time.
  */
 export type Pending = {
   kind?: 'count' | 'complete'
@@ -129,21 +129,21 @@ export type Pending = {
 
 export type Settings = {
   currency: string
-  /** Sous-titre du solde — « budget loisirs » par défaut. */
+  /** Subtitle of the balance — "budget loisirs" by default. */
   budgetLabel: string
-  /** Couleur d'accentuation, en hexa. Partagée avec les widgets. */
+  /** Accent color, in hex. Shared with the widgets. */
   accent: string
-  /** Début d'une nouvelle journée, en minutes depuis minuit (0-1439). */
+  /** Start of a new day, in minutes since midnight (0-1439). */
   dayStart: number
-  /** Récompense pré-remplie à la création d'une tâche. */
+  /** Reward pre-filled when creating a task. */
   defaultReward: number
-  /** Le journal sait tenir un solde négatif ; l'interface le refuse par défaut. */
+  /** The log can hold a negative balance; the interface refuses it by default. */
   allowNegative: boolean
-  /** Premier jour de la semaine dans le graphe des statistiques. 1 = lundi. */
+  /** First day of the week in the statistics graph. 1 = Monday. */
   weekStart: 0 | 1
-  /** L'onglet Stats peut être masqué pour qui n'en a pas l'usage. */
+  /** The Stats tab can be hidden for those who have no use for it. */
   showStats: boolean
-  /** Renseignés au lot 3. */
+  /** Filled in at batch 3. */
   serverUrl: string
   serverToken: string
 }
@@ -155,31 +155,31 @@ export type DB = {
   settings: Settings
 }
 
-/** État d'une tâche, entièrement dérivé du journal. Jamais persisté. */
+/** A task's state, entirely derived from the log. Never persisted. */
 export type TaskState = {
   streak: number
   lastDoneTs: number | null
   /**
-   * Fin du cycle en cours — l'échéance que la prochaine validation doit tenir.
-   * Elle n'avance qu'à la validation, jamais avec le temps qui passe : c'est ce
-   * qui fait qu'une tâche faite en avance ne rapproche pas l'échéance suivante.
+   * End of the current cycle — the deadline the next completion has to meet.
+   * It only moves forward on a completion, never with time passing: that is what
+   * makes a task done early not pull the next deadline closer.
    */
   pendingDue: number | null
-  /** Compte de la période courante. */
+  /** Count for the current period. */
   count: number
   periodKey: number | null
-  /** L'objectif du compteur a déjà été payé pour cette période. */
+  /** The counter's target has already been paid for this period. */
   targetPaid: boolean
-  /** Dernier moment où l'objectif d'un compteur a été atteint, toutes périodes confondues. */
+  /** Last time a counter's target was reached, across all periods. */
   lastTargetTs: number | null
   /**
-   * Un cycle manqué met la série en gel : elle est conservée mais n'avance
-   * plus. Le cycle suivant la dégèle, ou la casse s'il est manqué aussi.
+   * A missed cycle freezes the streak: it is kept but no longer grows. The next
+   * cycle thaws it, or breaks it if that one is missed too.
    */
   frozen: boolean
-  /** Longueur de la série qui vient d'être perdue, tant qu'on ne l'a pas relancée. */
+  /** Length of the streak just lost, until a new one is started. */
   brokenStreak: number
-  /** Plus longue série jamais tenue sur cette tâche. */
+  /** Longest streak ever held on this task. */
   bestStreak: number
   countTiersPaid: Set<number>
   streakTiersPaid: Set<number>
@@ -191,12 +191,12 @@ export type LedgerEntry = {
   kind: Event['kind']
   taskId?: string
   label: string
-  /** Récompense de base avant pénalité (0 pour une dépense). */
+  /** Base reward before penalty (0 for a spending). */
   base: number
-  /** Négatif ou nul. */
+  /** Negative or zero. */
   penalty: number
   multiplierBonus: number
   tierBonus: number
-  /** Effet net sur le solde, signé. */
+  /** Net effect on the balance, signed. */
   total: number
 }

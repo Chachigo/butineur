@@ -20,46 +20,46 @@ const WidgetBridge = registerPlugin<WidgetBridgePlugin>('WidgetBridge')
 
 export type WidgetPayload = {
   balance: string
-  /** Valeur brute : le natif y ajoute les taps en attente pour un affichage immédiat. */
+  /** Raw value: the native side adds pending taps to it for an immediate display. */
   balanceRaw: number
   currency: string
   budgetLabel: string
   accent: string
-  /** Bascule du jour en minutes, pour que le natif compte comme le moteur. */
+  /** Day rollover in minutes, so the native side counts like the engine. */
   dayStart: number
   tasks: {
     id: string
     name: string
     icon: string
-    /** Vrai si `icon` est un glyphe Phosphor : le widget applique alors sa police. */
+    /** True when `icon` is a Phosphor glyph: the widget then applies its font. */
     iconPh: boolean
     count: number
     target: number
     unit: string
     day: number
-    /** Base des identifiants de notification, pour que le widget puisse les couper. */
+    /** Base of the notification ids, so the widget can cancel them. */
     notifBase: number
     /**
-     * Ce que rapporte chaque cran : `gains[i]` est le gain du tap qui fait
-     * passer le compte de `i` à `i+1`. Le widget indexe par son compte courant,
-     * et reste donc juste sur plusieurs taps consécutifs appli fermée.
+     * What each step pays: `gains[i]` is the payout of the tap taking the count
+     * from `i` to `i+1`. The widget indexes by its current count, and therefore
+     * stays right across several consecutive taps with the app closed.
      */
     gains: number[]
   }[]
-  /** Toutes les tâches en cours, compteurs compris — la liste du widget défile. */
+  /** Every live task, counters included — the widget list scrolls. */
   todo: {
     id: string
     name: string
     icon: string
     iconPh: boolean
-    /** Ce que fait le bouton : incrémenter, ou valider. */
+    /** What the button does: increment, or complete. */
     kind: 'count' | 'complete'
-    /** Libellé du bouton, déjà formaté : « +10 », « 3/8 », « ✓ ». */
+    /** Button label, already formatted: "+10", "3/8", "✓". */
     label: string
     /**
-     * Ce que rapporterait le prochain tap. Le widget l'ajoute au solde affiché
-     * en attendant que l'appli recalcule pour de vrai — sans quoi valider une
-     * tâche depuis l'écran d'accueil ne bougeait rien.
+     * What the next tap would pay. The widget adds it to the displayed balance
+     * while waiting for the app to recompute for real — without it, completing a
+     * task from the home screen moved nothing.
      */
     gain: number
     done: boolean
@@ -69,11 +69,11 @@ export type WidgetPayload = {
 }
 
 /**
- * Gain de chaque cran d'un compteur, du premier à l'objectif.
+ * Payout of every step of a counter, from the first one to the target.
  *
- * Un seul montant ne suffisait pas : après un tap appli fermée, il valait encore
- * ce que le web avait chiffré pour le cran précédent, et le solde du widget ne
- * bougeait plus. Avec le tableau, le natif indexe par son compte courant.
+ * A single amount was not enough: after a tap with the app closed, it still held
+ * what the web side had priced for the previous step, and the widget balance
+ * stopped moving. With the array, the native side indexes by its current count.
  */
 function countGains(t: Task, rep: Replay): number[] {
   if (!t.counter) return []
@@ -88,13 +88,13 @@ function countGains(t: Task, rep: Replay): number[] {
   })
 }
 
-/** Le natif reçoit le caractère à afficher, jamais un nom d'icône à résoudre. */
+/** The native side receives the character to draw, never an icon name to resolve. */
 const icon = (raw: string | undefined) => ({
   icon: iconChar(raw ?? ''),
   iconPh: isPhosphor(raw ?? ''),
 })
 
-/** Strictement ce que les widgets ont besoin de savoir — aucune règle métier. */
+/** Strictly what the widgets need to know — no business rule. */
 export function widgetPayload(
   rep: Replay,
   tasks: Task[],
@@ -138,7 +138,7 @@ export function widgetPayload(
             ...icon(t.icon),
             kind: 'count' as const,
             label: done ? '✓' : `${count}/${t.counter.target}`,
-            // Un compteur : le gain dépend du cran, le natif le lit dans `tasks`.
+            // A counter: the payout depends on the step, the native side reads it in `tasks`.
             gain: 0,
             done,
             notifBase: notifId(t.id),
@@ -155,7 +155,7 @@ export function widgetPayload(
           notifBase: notifId(t.id),
         }
       })
-      // Ce qui reste à faire d'abord, le plus urgent en tête ; le fini en bas.
+      // What is still to do first, most urgent on top; what is done at the bottom.
       .sort((a, b) => {
         if (a.done !== b.done) return a.done ? 1 : -1
         const ta = live.find((t) => t.id === a.id)!
@@ -182,9 +182,9 @@ export async function pushWidgetState(p: WidgetPayload): Promise<void> {
 }
 
 /**
- * Propose d'épingler un widget sur l'écran d'accueil. Rend `false` quand le
- * lanceur ne sait pas faire — il en reste beaucoup — pour qu'on puisse dire
- * quoi faire à la main plutôt que de laisser un bouton sans effet.
+ * Offers to pin a widget onto the home screen. Returns `false` when the launcher
+ * cannot do it — many still cannot — so we can explain how to do it by hand
+ * rather than leave a button that does nothing.
  */
 export async function pinWidget(kind: 'compteur' | 'liste' | 'solde'): Promise<boolean> {
   if (!isNative) return false
@@ -192,7 +192,7 @@ export async function pinWidget(kind: 'compteur' | 'liste' | 'solde'): Promise<b
   return asked
 }
 
-/** Les taps faits sur un widget appli fermée, à verser au journal. */
+/** Taps made on a widget with the app closed, to be poured into the log. */
 export async function drainPending(): Promise<Pending[]> {
   if (!isNative) return []
   const { items } = await WidgetBridge.drainPending()
@@ -200,8 +200,8 @@ export async function drainPending(): Promise<Pending[]> {
 }
 
 /**
- * Le « + » du widget liste. Il écrit juste un drapeau : le natif n'ouvre pas
- * d'écran de création lui-même, il n'y a qu'un seul éditeur, celui du web.
+ * The "+" of the list widget. It only writes a flag: the native side does not
+ * open a creation screen itself, there is a single editor, the web one.
  */
 export async function takeNewTaskRequest(): Promise<boolean> {
   if (!isNative) return false
@@ -211,27 +211,27 @@ export async function takeNewTaskRequest(): Promise<boolean> {
   return true
 }
 
-// --- rappels d'échéance ---
+// --- deadline reminders ---
 
 export type NotifSpec = { id: number; title: string; body: string; at: number }
 
 /**
- * Combien de cycles d'avance on programme.
+ * How many cycles ahead we schedule.
  *
- * Rien ne tourne en arrière-plan : une notification n'existe que si elle a été
- * posée pendant que l'appli était ouverte. En n'en posant qu'une, un rappel
- * cessait dès qu'il avait sonné, jusqu'à la prochaine ouverture. On en pose
- * donc plusieurs — la couverture suit le rythme de la tâche, quatre jours pour
- * une quotidienne, quatre mois pour une mensuelle.
+ * Nothing runs in the background: a notification only exists if it was posted
+ * while the app was open. Posting a single one meant a reminder stopped as soon
+ * as it had fired, until the next launch. So we post several — the coverage
+ * follows the task's rhythm, four days for a daily one, four months for a
+ * monthly one.
  */
 const CYCLES_AVANCE = 4
 
 export function notificationSpecs(rep: Replay, tasks: Task[], now: number, currency: string): NotifSpec[] {
   const live = tasks.filter((t) => !t.deletedAt && !t.archived && !t.template)
 
-  // `isAvailable` partout : une tâche déjà faite n'a plus rien à rappeler, ni
-  // son échéance ni son rappel. Sans ce filtre, valider une tâche — dans
-  // l'appli comme depuis un widget — laissait la notification partir quand même.
+  // `isAvailable` everywhere: a task already done has nothing left to remind
+  // about, neither its deadline nor its reminder. Without that filter, completing
+  // a task — in the app or from a widget — still let the notification fire.
   const deadlines = live
     .filter((t) => t.due && isAvailable(t, rep.perTask.get(t.id), now))
     .flatMap((t) =>
@@ -245,14 +245,14 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
         })),
     )
 
-  // Rappels : rien pour une tâche déjà faite, on la reprogramme au prochain cycle.
+  // Reminders: nothing for a task already done, it is rescheduled on the next cycle.
   const reminders = live
     .filter((t) => t.remind && isAvailable(t, rep.perTask.get(t.id), now))
     .flatMap((t) =>
       remindTimes(t, rep, now)
         .filter((at) => at > now)
         .map((at, i) => ({
-          // Décalé pour ne pas écraser la notification d'échéance de la même tâche.
+          // Offset so it does not overwrite the deadline notification of the same task.
           id: notifId(t.id) + i * 3 + 1,
           title: t.name,
           body: t.counter
@@ -262,7 +262,7 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
         })),
     )
 
-  // Encouragements : uniquement quand il y a quelque chose à dire.
+  // Cheers: only when there is something to say.
   const cheers = live
     .filter((t) => t.cheer && t.streak && isAvailable(t, rep.perTask.get(t.id), now))
     .map((t) => ({ t, body: cheerFor(t, rep.perTask.get(t.id)) }))
@@ -276,16 +276,16 @@ export function notificationSpecs(rep: Replay, tasks: Task[], now: number, curre
 
   return [...deadlines, ...reminders, ...cheers]
     .sort((a, b) => a.at - b.at)
-    // Android plafonne les alarmes programmées ; les plus proches suffisent.
+    // Android caps scheduled alarms; the nearest ones are enough.
     .slice(0, 32)
 }
 
 /**
- * Le message d'encouragement du jour, ou `null` s'il n'y a rien à dire.
+ * Today's cheer message, or `null` when there is nothing to say.
  *
- * Trois cas seulement : un palier tout proche, une série qu'on vient de perdre,
- * un record en vue. Le reste du temps on se tait — un encouragement quotidien
- * sans contenu devient du bruit qu'on finit par désactiver.
+ * Three cases only: a tier within reach, a streak just lost, a record in sight.
+ * The rest of the time we keep quiet — a daily cheer with no content turns into
+ * noise one ends up switching off.
  */
 function cheerFor(t: Task, s: TaskState | undefined): string | null {
   const streak = s?.streak ?? 0
@@ -310,11 +310,11 @@ function cheerFor(t: Task, s: TaskState | undefined): string | null {
 }
 
 /**
- * Quand sonner le rappel d'une tâche, sur les prochains cycles.
+ * When to fire a task's reminder, over the next cycles.
  *
- * « x avant l'échéance » et « le jour même » n'ont de sens que s'il y a une
- * échéance : sans elle, il n'y a rien à quoi les accrocher. Le rappel à heure
- * fixe, lui, ne dépend pas du rythme — ce sont les prochains jours.
+ * "x before the deadline" and "on the day" only make sense when there is a
+ * deadline: without one, there is nothing to hang them on. The fixed-time
+ * reminder does not depend on the rhythm — it is simply the next few days.
  */
 function remindTimes(t: Task, rep: Replay, now: number): number[] {
   const r = t.remind!
@@ -324,8 +324,8 @@ function remindTimes(t: Task, rep: Replay, now: number): number[] {
     return dues().map((due) => due - r.minutes * 60_000)
   }
   if ('kind' in r && r.kind === 'jour') {
-    // Le jour de l'échéance à l'heure dite — pas les jours sans échéance,
-    // c'est ce qui le distingue du rappel quotidien.
+    // On the day of the deadline at the given time — not on days without a
+    // deadline, which is what sets it apart from the daily reminder.
     const [h, m] = r.time.split(':').map(Number)
     return dues().map((due) => {
       const d = new Date(due)
@@ -342,7 +342,7 @@ function remindTimes(t: Task, rep: Replay, now: number): number[] {
   })
 }
 
-/** Prochaine occurrence de « HH:MM » : aujourd'hui si l'heure est à venir, sinon demain. */
+/** Next occurrence of "HH:MM": today if the time is still ahead, tomorrow otherwise. */
 function nextTimeToday(time: string, now: number): number {
   const [h, m] = time.split(':').map(Number)
   const d = new Date(now)
@@ -369,17 +369,17 @@ export async function syncNotifications(specs: NotifSpec[]): Promise<void> {
       id: s.id,
       title: s.title,
       body: s.body,
-      // `allowWhileIdle` sinon le plugin pose un `set(RTC)` : ni exact, ni
-      // réveillant, donc repoussé par le Doze jusqu'à ce qu'on prenne le
-      // téléphone en main. C'est ce qui faisait arriver les rappels en retard,
-      // ou pas du tout. Avec, et avec USE_EXACT_ALARM au manifeste, il pose un
+      // `allowWhileIdle`, otherwise the plugin posts a `set(RTC)`: neither exact
+      // nor waking, hence pushed back by Doze until the phone is picked up. That
+      // is what made reminders arrive late, or not at all. With it, and with
+      // USE_EXACT_ALARM in the manifest, it posts a
       // `setExactAndAllowWhileIdle(RTC_WAKEUP)`.
       schedule: { at: new Date(s.at), allowWhileIdle: true },
     })),
   })
 }
 
-/** L'API n'accepte qu'un entier ; on en dérive un stable depuis l'uuid. */
+/** The API only takes an integer; a stable one is derived from the uuid. */
 function notifId(taskId: string): number {
   let h = 0
   for (let i = 0; i < taskId.length; i++) h = (h * 31 + taskId.charCodeAt(i)) | 0

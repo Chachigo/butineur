@@ -72,7 +72,9 @@ npm run screenshots  # captures du README, sur des données de démo (dev server
 
 ## Conventions
 
-- Interface et commentaires en **français**. Les commentaires disent *pourquoi*, pas *quoi*.
+- **Commentaires du code en anglais** (dépôt public, cf. `CONTRIBUTING.md`) ; ils
+  disent *pourquoi*, pas *quoi*. L'interface est encore en français, la
+  traduction est en cours.
 - Debug natif : **`Log.e`, jamais `Log.d`** (filtré sur le téléphone de Cléa).
 - Suppression douce (`deletedAt`) partout : la synchro du lot 3 en dépendra.
 - Les raccourcis assumés portent un commentaire `ponytail:` avec leur plafond.

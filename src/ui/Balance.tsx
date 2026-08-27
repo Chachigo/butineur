@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { fmt } from '../format'
 import { reduced } from '../fx'
 
-/** Le solde grimpe (ou descend) au lieu de sauter d'un coup. ~420 ms. */
+/** The balance climbs (or falls) instead of jumping at once. ~420 ms. */
 function useCountUp(target: number) {
   const [shown, setShown] = useState(target)
   const current = useRef(target)

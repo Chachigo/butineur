@@ -33,7 +33,7 @@ def caracteres_retenus() -> set[str]:
     if not m:
         sys.exit('icons.generated.ts illisible — lancer scripts/build-icons.mjs d’abord')
     groupes = json.loads(m.group(1))
-    # Chaque icône duotone vaut deux caractères : le fond et le détail.
+    # Every duotone icon is worth two characters: the background and the detail.
     return {c for _, icones in groupes for _, chars in icones for c in chars}
 
 

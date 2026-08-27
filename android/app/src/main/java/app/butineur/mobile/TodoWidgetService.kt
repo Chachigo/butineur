@@ -6,8 +6,8 @@ import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 
 /**
- * Alimente la liste défilante du widget todo. Toutes les tâches en cours y
- * passent, compteurs compris — d'où l'adaptateur plutôt que des lignes fixes.
+ * Feeds the scrolling list of the todo widget. Every live task goes through it,
+ * counters included — hence the adapter rather than fixed rows.
  */
 class TodoWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
@@ -21,8 +21,8 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
     override fun onCreate() = Unit
 
     override fun onDataSetChanged() {
-        // Une tâche validée depuis le widget disparaît tout de suite, sans
-        // attendre que l'appli ait versé le fait au journal.
+        // A task completed from the widget disappears at once, without waiting
+        // for the app to pour the fact into the log.
         val done = Store.pendingCompleted(ctx)
         items = Store.todo(ctx).filterNot { it.id in done }
     }
@@ -37,8 +37,8 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
         val t = items[position]
         val v = RemoteViews(ctx.packageName, R.layout.item_todo_row)
 
-        // Un compteur doit refléter les taps pas encore versés au journal :
-        // sinon la ligne restait figée sur le compte qu'avait l'appli.
+        // A counter has to reflect taps not yet poured into the log: otherwise
+        // the row stayed stuck on the count the app had.
         val counter = if (t.kind == "count") Store.task(ctx, t.id) else null
         val count = counter?.let { Store.displayedCount(ctx, it) }
         val done = if (counter != null) count!! >= counter.target else t.done
@@ -70,8 +70,8 @@ private class TodoFactory(private val ctx: Context) : RemoteViewsService.RemoteV
             v.setTextColor(R.id.row_go, ctx.getColor(R.color.widget_go_ink))
         }
 
-        // Le PendingIntent est porté par le widget ; chaque ligne ne fournit
-        // que ses propres extras. C'est le mécanisme imposé par RemoteViews.
+        // The PendingIntent is carried by the widget; each row only supplies its
+        // own extras. That is the mechanism RemoteViews imposes.
         v.setOnClickFillInIntent(
             R.id.row_root,
             Intent()

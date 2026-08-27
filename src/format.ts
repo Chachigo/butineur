@@ -2,9 +2,9 @@ import { DAY, dayNum, rythme } from './engine'
 import type { Task } from './types'
 
 /**
- * Montants au centime — les multiplicateurs produisent des décimales, et le
- * dixième arrondissait de vraies différences à l'identique. Un compte rond
- * reste écrit rond : « 10 € », pas « 10,00 € ».
+ * Amounts to the cent — multipliers produce decimals, and rounding to a tenth
+ * flattened real differences to the same figure. A round amount stays written
+ * round: "10 €", not "10,00 €".
  */
 export function fmt(n: number): string {
   const r = Math.round(n * 100) / 100
@@ -26,15 +26,15 @@ const dtDue = new Intl.DateTimeFormat('fr-FR', {
 
 export const formatDate = (ts: number) => dt.format(ts)
 export const formatDateTime = (ts: number) => dtTime.format(ts)
-/** « dimanche 2 août à 20:00 » — l'échéance en toutes lettres, dans l'éditeur. */
+/** "dimanche 2 août à 20:00" — the deadline spelled out, in the editor. */
 export const formatDueLong = (ts: number) => dtDue.format(ts)
 
 /**
- * « aujourd'hui », « demain », « il y a 3 j » — pour les échéances.
+ * "today", "tomorrow", "3 d ago" — for deadlines.
  *
- * `dayStart` compris : avec une journée qui commence à 1 h, une échéance de
- * 23 h 59 lue à 0 h 30 appartient encore à aujourd'hui. Sans lui, elle passait
- * à « hier » au coup de minuit alors que la journée n'était pas finie.
+ * `dayStart` included: with a day starting at 1 am, a deadline of 11:59 pm read
+ * at 0:30 am still belongs to today. Without it, it flipped to "yesterday" on
+ * the stroke of midnight while the day was not over.
  */
 export function relativeDay(ts: number, now = Date.now(), dayStart = 0): string {
   const d = dayNum(ts, dayStart) - dayNum(now, dayStart)
@@ -48,7 +48,7 @@ export function relativeDay(ts: number, now = Date.now(), dayStart = 0): string 
 
 const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
 
-/** Le rythme en toutes lettres — le badge de la liste dit la même chose que l'éditeur. */
+/** The rhythm spelled out — the list badge says the same thing as the editor. */
 export function rythmeLabel(repeat: NonNullable<Task['repeat']>): string {
   switch (rythme(repeat)) {
     case 'jour':
@@ -65,9 +65,9 @@ export function rythmeLabel(repeat: NonNullable<Task['repeat']>): string {
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /**
- * `<input type="date">` ouvre un vrai calendrier sur Android, là où
- * `datetime-local` n'affichait que des sélecteurs à molette. On sépare donc
- * le jour et l'heure en deux champs natifs.
+ * `<input type="date">` opens a real calendar on Android, where
+ * `datetime-local` only showed spinners. So the day and the time are split into
+ * two native fields.
  */
 export function toDateInput(iso: string): string {
   const d = new Date(iso)
@@ -81,14 +81,14 @@ export function toTimeInput(iso: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-/** Recompose un ISO local. Sans heure, l'échéance tombe en fin de journée. */
+/** Rebuilds a local ISO string. Without a time, the deadline lands at end of day. */
 export function combineDateTime(date: string, time: string): string | null {
   if (!date) return null
   const d = new Date(`${date}T${time || '23:59'}`)
   return Number.isNaN(+d) ? null : d.toISOString()
 }
 
-/** Demain, fin de journée — une échéance à minuit pile serait un piège. */
+/** Tomorrow, end of day — a deadline at midnight sharp would be a trap. */
 export function defaultDue(): string {
   const d = new Date(Date.now() + DAY)
   d.setHours(23, 59, 0, 0)

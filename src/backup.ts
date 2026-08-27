@@ -4,9 +4,9 @@ import { isNative } from './native'
 import type { DB } from './types'
 
 /**
- * Une sauvegarde est le contenu brut de la base, entouré du minimum permettant
- * de la relire plus tard : un numéro de format et une date. Le solde n'y figure
- * pas — il se recalcule du journal, l'écrire serait le figer.
+ * A backup is the raw content of the database, wrapped in the minimum needed to
+ * read it back later: a format number and a date. The balance is not in it — it
+ * is recomputed from the log, writing it down would freeze it.
  */
 export type Backup = {
   format: 1
@@ -26,9 +26,9 @@ export function serialize(db: DB): string {
 }
 
 /**
- * Écrit le fichier puis propose de l'envoyer. Sur le web, un simple
- * téléchargement suffit — c'est le seul endroit où la plateforme change quelque
- * chose, le reste du chemin est commun.
+ * Writes the file then offers to send it. On the web a plain download is enough
+ * — this is the only place where the platform changes anything, the rest of the
+ * path is shared.
  */
 export async function exportBackup(db: DB): Promise<string> {
   const name = backupName()
@@ -52,8 +52,8 @@ export async function exportBackup(db: DB): Promise<string> {
     recursive: true,
   })
 
-  // Le partage est un bonus : le fichier est déjà écrit dans Documents. Refuser
-  // la feuille de partage ne doit donc pas ressembler à une sauvegarde ratée.
+  // Sharing is a bonus: the file is already written to Documents. Dismissing the
+  // share sheet must therefore not look like a failed backup.
   void Share.share({
     title: 'Sauvegarde Butineur',
     url: uri,
@@ -66,9 +66,9 @@ export async function exportBackup(db: DB): Promise<string> {
 export type ImportResult = { tasks: number; events: number; shopItems: number }
 
 /**
- * Relit une sauvegarde. On valide la forme avant de rendre quoi que ce soit :
- * importer un fichier étranger écraserait tout, autant refuser tôt et
- * clairement plutôt que de laisser une base à moitié écrite.
+ * Reads a backup back. The shape is validated before anything is returned:
+ * importing a foreign file would overwrite everything, so better refuse early
+ * and clearly than leave a half-written database.
  */
 export function parseBackup(text: string): DB {
   let parsed: unknown

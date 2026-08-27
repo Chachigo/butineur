@@ -16,9 +16,9 @@ import NumberInput from './NumberInput'
 import { useCloseOnBack } from './useCloseOnBack'
 
 /**
- * Lien d'issue GitHub avec la version de l'appli et celle du téléphone déjà
- * remplies : personne ne pense à les donner, et sans elles un bug n'est pas
- * reproductible. Le lien ouvre le gabarit `bug.yml`, qui exige le reste.
+ * GitHub issue link with the app version and the phone version already filled
+ * in: nobody thinks of giving them, and without them a bug is not reproducible.
+ * The link opens the `bug.yml` template, which demands the rest.
  */
 const lienBug = () => {
   const appareil = navigator.userAgent.match(/Android [\d.]+(; [^;)]+?)?(?= Build|\))/)?.[0] ?? ''
@@ -37,7 +37,7 @@ const timeToMinutes = (t: string) => {
   return ((h || 0) * 60 + (m || 0)) % 1440
 }
 
-/** Teintes lisibles sur le fond sombre, contraste vérifié à l'œil. */
+/** Hues readable on the dark background, contrast checked by eye. */
 const ACCENTS = [
   ['#4ade80', 'Vert'],
   ['#38bdf8', 'Bleu'],
@@ -80,8 +80,8 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
   const restaurer = async (f: File) => {
     try {
       const db = parseBackup(await f.text())
-      // Remplacement complet : mélanger deux bases ferait doublonner le journal
-      // et donc le solde. Une restauration remet l'appareil dans un état connu.
+      // Full replacement: mixing two databases would duplicate the log and
+      // therefore the balance. A restore puts the device in a known state.
       replaceAll(db)
       setMessage({ ok: true, texte: `Restauré : ${db.tasks.length} tâches, ${db.events.length} événements.` })
     } catch (e) {
@@ -333,9 +333,9 @@ export default function Settings({ onClose, onTuto }: { onClose: () => void; onT
 }
 
 /**
- * Atelier de debug : voyager dans le temps et fabriquer des séries, pour
- * vérifier en dix secondes ce qui demanderait des jours. Tout ce qu'il ajoute
- * au journal est repris par un `undo`, jamais effacé.
+ * Debug workshop: travel in time and manufacture streaks, to check in ten
+ * seconds what would otherwise take days. Everything it adds to the log is taken
+ * back by an `undo`, never erased.
  */
 function Atelier({ onClose }: { onClose: () => void }) {
   const db = useDB()

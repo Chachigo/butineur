@@ -24,9 +24,9 @@ type Props = {
   dayStart: number
   balanceRef: RefObject<HTMLElement | null>
   onEdit: (t: Task) => void
-  /** Une tâche qui revient a une histoire : le clic l'ouvre au lieu de l'éditeur. */
+  /** A recurring task has a history: a click opens it instead of the editor. */
   onStats: (t: Task) => void
-  /** Modèles de tâches rapides, à ressortir d'un bouton. */
+  /** Quick-task templates, pulled back out with a button. */
   modeles: Task[]
   onNew: () => void
 }
@@ -43,13 +43,14 @@ export default function TaskList({
   modeles,
   onNew,
 }: Props) {
-  // Le plus urgent en haut : en retard, puis échéance proche, puis disponible.
+  // Most urgent on top: late, then deadline approaching, then available.
   const sorted = [...tasks].sort((a, b) => rank(a, rep, now, dayStart) - rank(b, rep, now, dayStart))
 
   /*
-   * Une tâche validée descend en bas de liste — mais pas tout de suite. Sinon
-   * la suivante remonte sous le doigt, et un second tap un peu rapide valide
-   * une tâche qu'on ne visait pas. L'ordre affiché se fige deux secondes.
+   * A completed task drops to the bottom of the list — but not right away.
+   * Otherwise the next one slides up under the finger, and a slightly quick
+   * second tap completes a task that was not the target. The displayed order
+   * freezes for two seconds.
    */
   const [gele, setGele] = useState<string[] | null>(null)
   const minuteur = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -62,7 +63,7 @@ export default function TaskList({
 
   const place = (id: string) => {
     const i = gele!.indexOf(id)
-    // Une tâche créée entre-temps n'était pas dans l'ordre figé : elle passe en fin.
+    // A task created in the meantime was not in the frozen order: it goes last.
     return i === -1 ? gele!.length : i
   }
   const affichees = gele ? [...tasks].sort((a, b) => place(a.id) - place(b.id)) : sorted
@@ -118,14 +119,14 @@ export default function TaskList({
   )
 }
 
-/** Le modèle a son propre bouton, en dehors de la liste : appui long pour l'éditer, tap pour le reposer. */
+/** A template has its own button, outside the list: long press to edit it, tap to lay it down. */
 function Rapide({ modele, onEdit }: { modele: Task; onEdit: (t: Task) => void }) {
   const longPress = useLongPress(() => onEdit(modele), true)
   return (
     <button
       className="rapide"
-      // La tâche posée atterrit plus bas dans la liste, parfois hors écran :
-      // sans à-coup sous le doigt, rien ne dit que le tap a pris.
+      // The laid-down task lands lower in the list, sometimes off screen:
+      // without a jolt under the finger, nothing says the tap registered.
       onClick={(e) => {
         pop(e.currentTarget)
         saveTask({ ...modele, id: uid(), template: false, updatedAt: 0 })
@@ -140,7 +141,7 @@ function Rapide({ modele, onEdit }: { modele: Task; onEdit: (t: Task) => void })
 function rank(t: Task, rep: Replay, now: number, dayStart: number): number {
   const s = rep.perTask.get(t.id)
   if (!isAvailable(t, s, now, dayStart)) return 3
-  // Compteur à son objectif : plus rien à y faire aujourd'hui, il descend.
+  // Counter at its target: nothing left to do there today, it drops down.
   if (t.counter && (s?.count ?? 0) >= t.counter.target) return 3
   const due = dueTsFor(t, s, now, dayStart)
   if (due !== null && now > due) return 0
@@ -151,7 +152,7 @@ function rank(t: Task, rep: Replay, now: number, dayStart: number): number {
 type RowProps = Omit<Props, 'tasks' | 'onNew' | 'modeles'> & {
   task: Task
   sel: Selection
-  /** Fige l'ordre de la liste le temps que le doigt quitte l'écran. */
+  /** Freezes the list order for as long as it takes the finger to leave the screen. */
   onValider: () => void
 }
 
@@ -192,7 +193,7 @@ function TaskRow({
       streak: task.streak,
     })
     coinFly(el, balanceRef.current, `+${fmt(gain)}`)
-    // Confettis seulement quand un palier de série tombe.
+    // Confetti only when a streak tier is crossed.
     const next = streak + 1
     if ((task.streak?.tiers ?? []).some((t) => t.at <= next && !s?.streakTiersPaid.has(t.at))) burst(el)
     else pop(el)
@@ -213,7 +214,7 @@ function TaskRow({
     const before = s?.count ?? 0
     const after = Math.min(target, Math.max(0, before + delta))
 
-    // Le solde suit le compteur dans les deux sens : on annonce le même montant.
+    // The balance follows the counter both ways: we announce the same amount.
     const tiers = task.counter?.tiers ?? []
     const crossed = (n: number) =>
       (n >= target ? task.reward : 0) +
@@ -240,7 +241,7 @@ function TaskRow({
   const count = s?.count ?? 0
   const target = task.counter?.target ?? 0
   const reached = task.counter !== null && count >= target
-  // Un compteur à son objectif est fini pour aujourd'hui : on le grise comme le reste.
+  // A counter at its target is done for today: greyed out like the rest.
   const spent = !available || reached
 
   const selecting = sel.selecting

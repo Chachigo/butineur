@@ -7,14 +7,14 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 
-/** Le solde accumulé, sur l'écran d'accueil. Lecture seule. */
+/** The accumulated balance, on the home screen. Read only. */
 class BalanceWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         ids.forEach { manager.updateAppWidget(it, render(context)) }
     }
 
-    /** Porte d'entrée de l'alarme de bascule de jour, pour les trois widgets. */
+    /** Entry point of the day-rollover alarm, for all three widgets. */
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == Widgets.ACTION_DAY) Widgets.refreshAll(context)

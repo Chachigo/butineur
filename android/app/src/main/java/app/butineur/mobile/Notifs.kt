@@ -9,22 +9,22 @@ import androidx.core.app.NotificationManagerCompat
 import com.capacitorjs.plugins.localnotifications.TimedNotificationPublisher
 
 /**
- * Annule les rappels d'une tâche validée depuis un widget.
+ * Cancels the reminders of a task completed from a widget.
  *
- * Sans ça, le rappel programmé partait quand même : l'appli, fermée, n'avait pas
- * encore vu le tap et ne pouvait donc pas le déprogrammer.
+ * Without this the scheduled reminder still fired: the app, being closed, had
+ * not seen the tap yet and could therefore not unschedule it.
  *
- * Le montage reproduit celui de @capacitor/local-notifications — même classe de
- * receiver, même code de requête — car deux `PendingIntent` ne s'annulent que
- * s'ils se ressemblent au sens de `filterEquals`, qui ignore les extras.
+ * The setup mirrors the one from @capacitor/local-notifications — same receiver
+ * class, same request code — because two `PendingIntent`s only cancel each other
+ * when they match in the sense of `filterEquals`, which ignores extras.
  */
 object Notifs {
 
     /**
-     * Le web dérive les identifiants d'une tâche par cycle : échéance
-     * (base + 3i), rappel (base + 3i + 1) et encouragement (base + 2). Il en
-     * programme `CYCLES_AVANCE` = 4 d'avance — on coupe donc toute la plage,
-     * sinon les cycles suivants sonnaient encore après validation au widget.
+     * The web side derives a task's ids per cycle: deadline (base + 3i),
+     * reminder (base + 3i + 1) and cheer (base + 2). It schedules
+     * `CYCLES_AVANCE` = 4 of them ahead — so we cancel the whole range,
+     * otherwise the following cycles still rang after a completion on a widget.
      */
     fun cancelForTask(ctx: Context, base: Int) {
         if (base == 0) return

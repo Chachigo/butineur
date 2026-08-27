@@ -14,13 +14,13 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 /**
- * Lancée par le launcher au moment où l'on pose un widget compteur : on choisit
- * la tâche que cette instance-là affichera. C'est ce qui rend le widget
- * paramétrable, et permet d'en poser plusieurs sur des tâches différentes.
+ * Launched by the launcher when a counter widget is dropped: this is where the
+ * task that particular instance will show is chosen. That is what makes the
+ * widget configurable, and what allows several of them on different tasks.
  *
- * La liste vient de `widgetTasks`, écrit par l'appli. Si elle est vide, c'est
- * qu'aucune tâche à compteur n'existe encore — on le dit explicitement plutôt
- * que d'afficher un écran nu qui a l'air cassé.
+ * The list comes from `widgetTasks`, written by the app. When it is empty it
+ * means no counter task exists yet — we say so explicitly rather than show a
+ * bare screen that looks broken.
  */
 class CounterConfigActivity : AppCompatActivity() {
 
@@ -28,7 +28,7 @@ class CounterConfigActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Annulé par défaut : si l'on revient en arrière, pas de widget orphelin.
+        // Cancelled by default: going back leaves no orphan widget.
         setResult(RESULT_CANCELED)
         setContentView(R.layout.activity_counter_config)
 
@@ -60,7 +60,7 @@ class CounterConfigActivity : AppCompatActivity() {
                     ?: layoutInflater.inflate(R.layout.item_counter_task, parent, false)
                 val t = getItem(position) ?: return v
 
-                // Même rendu que les widgets : emoji en texte, Phosphor en image.
+                // Same rendering as the widgets: emoji as text, Phosphor as image.
                 val txt = v.findViewById<TextView>(R.id.item_icon)
                 val img = v.findViewById<ImageView>(R.id.item_icon_img)
                 val bmp = if (t.iconPh && t.icon.isNotEmpty()) {
@@ -92,9 +92,9 @@ class CounterConfigActivity : AppCompatActivity() {
     }
 
     /**
-     * Depuis Android 15 les activités sont bord à bord par défaut : sans ça,
-     * le titre passait sous la barre d'état. `fitsSystemWindows` ne suffit pas
-     * de façon fiable, on applique les insets nous-mêmes.
+     * Since Android 15 activities are edge to edge by default: without this the
+     * title slid under the status bar. `fitsSystemWindows` is not reliably
+     * enough, so we apply the insets ourselves.
      */
     private fun applyBarInsets() {
         val root = findViewById<View>(R.id.config_root)

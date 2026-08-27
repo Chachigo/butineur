@@ -4,14 +4,14 @@ import NumberInput from './NumberInput'
 type Props = {
   tiers: Tier[]
   onChange: (t: Tier[]) => void
-  /** Ce que compte `at` : « d'affilée », « verres »… */
+  /** What `at` counts: "in a row", "glasses"… */
   unit: string
   currency: string
-  /** Sur un compteur, un palier au-delà de l'objectif ne tomberait jamais. */
+  /** On a counter, a tier beyond the target would never be crossed. */
   max?: number
 }
 
-/** Paliers de série et paliers de compteur : même forme, même éditeur. */
+/** Streak tiers and counter tiers: same shape, same editor. */
 export default function TierEditor({ tiers, onChange, unit, currency, max }: Props) {
   const set = (i: number, p: Partial<Tier>) =>
     onChange(tiers.map((t, j) => (j === i ? { ...t, ...p } : t)))
