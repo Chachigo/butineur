@@ -14,7 +14,7 @@ import { now as clock } from '../debug'
 import { fmt, relativeDay, rythmeLabel } from '../format'
 import { tr } from '../i18n'
 import { burst, coinFly, pop } from '../fx'
-import { addEvent, deleteTask, saveTask, uid, useDB } from '../store'
+import { addEvent, deleteTask, saveTaskTree, uid, useDB } from '../store'
 import type { Task } from '../types'
 import Icon from './Icon'
 import { useCloseOnBack } from './useCloseOnBack'
@@ -94,7 +94,7 @@ export default function TaskList({
       {!sel.selecting && modeles.length > 0 && (
         <div className="rapides">
           {modeles.map((m) => (
-            <Rapide key={m.id} modele={m} onEdit={onEdit} />
+            <Rapide key={m.id} modele={m} tasks={tasks} onEdit={onEdit} />
           ))}
         </div>
       )}
@@ -160,7 +160,15 @@ export default function TaskList({
 }
 
 /** A template has its own button, outside the list: long press to edit it, tap to lay it down. */
-function Rapide({ modele, onEdit }: { modele: Task; onEdit: (t: Task) => void }) {
+function Rapide({
+  modele,
+  tasks,
+  onEdit,
+}: {
+  modele: Task
+  tasks: Task[]
+  onEdit: (t: Task) => void
+}) {
   const longPress = useLongPress(() => onEdit(modele), true)
   return (
     <button
@@ -169,7 +177,13 @@ function Rapide({ modele, onEdit }: { modele: Task; onEdit: (t: Task) => void })
       // without a jolt under the finger, nothing says the tap registered.
       onClick={(e) => {
         pop(e.currentTarget)
-        saveTask({ ...modele, id: uid(), template: false, updatedAt: 0 })
+        // The template keeps its own subtasks: the copy gets fresh ids, laid
+        // down in one write so the bouquet never appears half there.
+        const id = uid()
+        saveTaskTree(
+          { ...modele, id, template: false, updatedAt: 0 },
+          childrenOf(modele.id, tasks).map((c) => ({ ...c, id: uid(), parentId: id, updatedAt: 0 })),
+        )
       }}
       {...longPress}
     >
