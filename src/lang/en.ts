@@ -317,4 +317,6 @@ export default {
   'ed.repeatNoSub': 'A task with subtasks does not repeat',
   'ed.subNoRepeat': 'Not on a repeating task',
   'ed.isParent': 'A task with subtasks cannot be one itself',
+  // --- parent limits ---
+  'ed.counterNoSub': 'A task with subtasks is not counted',
 }

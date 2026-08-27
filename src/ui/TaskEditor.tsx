@@ -408,6 +408,8 @@ export default function TaskEditor({
             title={tr('ed.counter')}
             hint={tr('ed.counterHint')}
             on={!!t.counter}
+            disabled={aDesEnfants}
+            disabledHint={tr('ed.counterNoSub')}
             onToggle={(v) =>
               // Reaching the target pays the task's reward: no tier by default,
               // they only serve as intermediate bonuses.

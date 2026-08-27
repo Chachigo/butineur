@@ -313,6 +313,8 @@ const fr: Record<keyof typeof en, string> = {
   'ed.repeatNoSub': 'Une tâche à sous-tâches ne se répète pas',
   'ed.subNoRepeat': 'Pas sur une tâche répétitive',
   'ed.isParent': 'Une tâche à sous-tâches ne peut pas en être une',
+  // --- limites du parent ---
+  'ed.counterNoSub': 'Une tâche à sous-tâches ne se compte pas',
 }
 
 export default fr
